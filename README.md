@@ -45,7 +45,7 @@ Switch to your branch before starting to code <br>
 <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"><img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/JavaScript-logo.png" alt="JavaScript" width="40"/></a>&nbsp;&nbsp;
 <a href="https://www.typescriptlang.org/"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Typescript_logo_2020.svg/1200px-Typescript_logo_2020.svg.png" alt="TypeScript" width="40"/></a>&nbsp;&nbsp;
 <a href="https://react.dev/"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React" width="40"/></a>&nbsp;&nbsp;
-<a href="https://tailwindcss.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg" alt="Tailwind" width="30"/></a>&nbsp;&nbsp;
+<a href="https://tailwindcss.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg" alt="Tailwind" width="50"/></a>&nbsp;&nbsp;
 <a href="https://ui.shadcn.com/"><img src="https://github.com/user-attachments/assets/dd2eb75e-28c6-46e5-bb11-734e9e9a04f3" alt="ShadCN" width="30"/></a>&nbsp;&nbsp;
 <a href="https://supabase.com/auth"><img src="https://www.vectorlogo.zone/logos/supabase/supabase-icon.svg" alt="Supabase" width="40"/></a>&nbsp;&nbsp;
 <br>
@@ -95,7 +95,7 @@ Switch to your branch before starting to code <br>
 
 <p align="center"><strong>Message Brokers</strong></p>
 <p align="center">
-<a href="https://kafka.apache.org/"><img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Apache_Kafka_logo.svg" alt="Kafka" width="100"/></a>
+<a href="https://kafka.apache.org/"><img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Apache_Kafka_logo.svg" alt="Kafka" width="25"/></a>
 <br>
 <i>Kafka</i>
 </p>
