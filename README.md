@@ -74,22 +74,21 @@ Switch to your branch before starting to code <br>
 </p>
 <br>
 
-<p align="center"><strong>API Gateway and Reverse Proxy</strong></p>
+<p align="center"><strong>API Gateway</strong></p>
 <p align="center">
 <a href="https://konghq.com/"><img src="https://konghq.com/wp-content/uploads/2018/08/kong-combination-mark-color-256px.png" alt="Kong API Gateway" width="88"/></a>
-<a href="https://traefik.io/"><img src="https://raw.githubusercontent.com/docker-library/docs/a6cc2c5f4bc6658168f2a0abbb0307acaefff80e/traefik/logo.png" alt="Traefik" width="55"/></a>
 <br>
-<i>CORS · Rate Limit Plugin · Prometheus · Traefik</i>
+<i>CORS · Rate Limit Plugin · Prometheus</i>
 </p>
 <br>  
 
 <p align="center"><strong>Storage Solutions</strong></p>  
 <p align="center">
-<a href="https://firebase.google.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/3/37/Firebase_Logo.svg" alt="Firebase" width="150"/></a>&nbsp;&nbsp;
-<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg" alt="Google Cloud Storage" width="200"/></a>&nbsp;&nbsp;
+<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg" alt="Amazon Web Services" width="70"/></a>&nbsp;&nbsp;
+<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/b/bc/Amazon-S3-Logo.svg" alt="Google Cloud Storage" width="40"/></a>&nbsp;&nbsp;
 <a href="https://supabase.com/"><img src="https://www.vectorlogo.zone/logos/supabase/supabase-icon.svg" alt="Supabase" width="40" /></a>&nbsp;&nbsp;
 <br>
-<i>Firebase · Google Cloud Storage · Supabase</i>
+<i>AWS · S3 · Supabase</i>
 </p>
 <br> 
 
@@ -103,9 +102,9 @@ Switch to your branch before starting to code <br>
 
 <p align="center"><strong>Cloud Services</strong></p>
 <p align="center">
-<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg" alt="Google Cloud Platform" width="200"/></a>&nbsp;&nbsp;
+<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg" alt="Amazon Web Services" width="70"/></a>&nbsp;&nbsp;
 <br>
-<i>Google Cloud Platform</i>
+<i>Amazon Web Services</i>
 </p> 
 <br>
 
@@ -121,27 +120,24 @@ Switch to your branch before starting to code <br>
 <p align="center"><strong>DevSecOps and Site Reliability</strong></p>
 <p align="center">
 <a href="https://github.com/features/actions"><img src="https://github.com/user-attachments/assets/84046b86-7745-4ddd-8c36-b39b6a9ead91" alt="GitHub Actions" width="60"/></a>&nbsp;&nbsp;
-<a href="https://grafana.com/"><img src="https://github.com/user-attachments/assets/f35638ce-2ad1-4664-9cf1-e219222ca4f0" alt="Snyk" width="120"/></a>&nbsp;&nbsp;
-<a href="https://grafana.com/"><img src="https://github.com/user-attachments/assets/cd9f1fa6-5410-4407-81b3-d7cc28c79a75" alt="Checkov" width="120"/></a>&nbsp;&nbsp;
+<a href="https://grafana.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/e/e6/Sonarqube-48x200.png" alt="SonarQube" width="130"/></a>&nbsp;&nbsp;
+<a href="https://grafana.com/"><img src="https://github.com/user-attachments/assets/cd9f1fa6-5410-4407-81b3-d7cc28c79a75" alt="Checkov" width="100"/></a>&nbsp;&nbsp;
 <a href="https://grafana.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a1/Grafana_logo.svg" alt="Grafana" width="60"/></a>&nbsp;&nbsp;
 <a href="https://prometheus.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/3/38/Prometheus_software_logo.svg" alt="Prometheus" width="60"/></a>&nbsp;&nbsp;
 <a href="https://www.terraform.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Terraform_Logo.svg" alt="Terraform" width="150"/></a>&nbsp;&nbsp;
-<a href="https://argoproj.github.io/cd/"><img src="https://user-images.githubusercontent.com/25306803/43103633-a5d61dc4-8e83-11e8-9f0e-7ccdbee01eb6.png" alt="ArgoCD" width="70"/></a>&nbsp;&nbsp;
 <br>
-<i>Github Actions · Snyk · Checkov · Grafana · Prometheus · Terraform · ArgoCD</i>
+<i>Github Actions · SonarQube · Checkov · Grafana · Prometheus · Terraform</i>
 </p> 
 <br>
 
 <p align="center"><strong>Other Technologies</strong></p>
 <p align="center">
-<a href="https://stripe.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Stripe_Logo%2C_revised_2016.svg/1280px-Stripe_Logo%2C_revised_2016.svg.png" alt="Stripe Payment API" width="150"/></a>&nbsp;&nbsp;
 <a href="https://www.docker.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Docker_%28container_engine%29_logo.svg" alt="Docker" width="150"/></a>&nbsp;&nbsp;
-<a href="https://kubernetes.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/6/67/Kubernetes_logo.svg" alt="Kubernetes" width="150"/></a>&nbsp;&nbsp;
-<a href="https://openai.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4d/OpenAI_Logo.svg" alt="OpenAI" width="150"/></a>&nbsp;&nbsp;
+<a href="https://kubernetes.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/6/67/Kubernetes_logo.svg" alt="Kubernetes" width="180"/></a>&nbsp;&nbsp;
 <a href="https://socket.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Socket-io.svg" alt="Socket.io" width="40"/></a>&nbsp;&nbsp;
 </p>
 <p align="center">
-<i>StripeAPI · Docker Compose · Docker Hub · Kubernetes · OpenAI · Socket.io</i>
+<i>Docker Compose · Docker Hub · Kubernetes · Socket.io</i>
 </p>
 <br> 
 
