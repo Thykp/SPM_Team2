@@ -36,6 +36,8 @@ Switch to your branch before starting to code <br>
 ## DevOps CI/CD Pipelines
 
 ## Cloud Architecture
+<img width="908" height="644" alt="Screenshot 2025-09-10 at 3 40 22 PM" src="https://github.com/user-attachments/assets/9803b26b-ce40-4f6c-be60-7a1fc30472d1" />
+
 
 ## Frameworks and Databases Utilised
 
