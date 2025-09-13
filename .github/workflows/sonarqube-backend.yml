@@ -1,4 +1,4 @@
-name: Backend SonarQube
+name: SonarQube Scan
 
 on:
   pull_request:
