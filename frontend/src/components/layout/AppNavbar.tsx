@@ -15,9 +15,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Sidebar } from "./Sidebar"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function AppNavbar() {
   const [showMobileSearch, setShowMobileSearch] = useState(false)
+  const { user, profile, signOut } = useAuth()
+
+  const email = user?.email ?? ""
+  const initials = (email ? email[0] : "U").toUpperCase()
+  const canSeeSettings = profile?.role === "admin" || profile?.role === "staff"
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -43,6 +49,7 @@ export function AppNavbar() {
           <span className="font-semibold">AppName</span>
         </Link>
 
+        {/* Search */}
         <div className={`flex-1 max-w-md ${showMobileSearch ? "block" : "hidden md:block"}`}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -80,26 +87,34 @@ export function AppNavbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src="/diverse-user-avatars.png" alt="User" />
-                  <AvatarFallback>JD</AvatarFallback>
+                  {/* If you store an avatar URL in profile later, place it here */}
+                  <AvatarImage src="/diverse-user-avatars.png" alt={email || "User"} />
+                  <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">John Doe</p>
-                  <p className="text-xs leading-none text-muted-foreground">john@example.com</p>
+                  <p className="text-sm font-medium leading-none">{email || "Signed in"}</p>
+                  <p className="text-xs leading-none text-muted-foreground">Role: {profile?.role ?? "—"}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/app/profile">Profile</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Billing</DropdownMenuItem>
+              {canSeeSettings && (
+                <DropdownMenuItem asChild>
+                  <Link to="/app/settings">Settings</Link>
+                </DropdownMenuItem>
+              )}
+              {/* Example: keep Billing visible to all, or gate it if needed */}
+              <DropdownMenuItem asChild>
+                <Link to="/app/billing">Billing</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Sign out</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

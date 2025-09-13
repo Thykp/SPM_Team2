@@ -1,10 +1,12 @@
 import { Routes, Route } from 'react-router-dom'
 import { LandingPage } from './pages/LandingPage'
-import { SignIn } from './pages/SignIn'
-import { SignUp } from './pages/SignUp'
+import SignIn from './pages/SignIn'
+import SignUp from './pages/SignUp'
 import { AppLayout } from './layouts/AppLayout'
 import { Dashboard } from './pages/app/Dashboard'
 import { Settings } from './pages/app/Settings'
+import ProtectedRoute from './components/auth/ProtectedRoute'
+import RoleGate from './components/auth/RoleGate'
 
 function App() {
 
@@ -13,10 +15,21 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/signup" element={<SignUp />} />
-      <Route path="/app" element={<AppLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="settings" element={<Settings />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/app" element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route
+            path="settings"
+            element={
+              <RoleGate allow={["admin", "staff"]}>
+                <Settings />
+              </RoleGate>
+            }
+          />
+        </Route>
       </Route>
+
+      <Route path="*" element={<div className="p-6">Not Found</div>} />
     </Routes>
   )
 
