@@ -20,7 +20,6 @@ Switch to your branch before starting to code <br>
 > Local Setup, ensure Docker Desktop is running
 1. Open a terminal and run the following command:
 ```bash
-  cd backend
   docker-compose up -d --build
   docker-compose down
 ```

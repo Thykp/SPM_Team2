@@ -1,0 +1,37 @@
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# Editors / OS
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+tmp/
+.temp/
+*.tmp
+
+# Build outputs
+bin/
+dist/
+build/
+*.out
+*.test
+
+# Coverage / profiler
+coverage/
+cov/
+*.cov
+*.coverprofile
+profile.out
+
+# Docs and misc (optional)
+README.md
+
+# Go vendor (only ignore if you are NOT using vendored deps)
+# vendor/

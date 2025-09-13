@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path')
 require('dotenv').config();
 const { FE_ENDPOINT } = process.env
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3030;
 const cors = require('cors');
 const app = express()
 
