@@ -2,6 +2,7 @@
 node_modules
 .npm
 .pnpm-store
+coverage
 
 # logs & caches
 logs
