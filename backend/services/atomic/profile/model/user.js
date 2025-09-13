@@ -4,7 +4,7 @@ const userTable = "user";
 module.exports = {
 
     async getAllUsers() {
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from(userTable)
             .select('*')
 

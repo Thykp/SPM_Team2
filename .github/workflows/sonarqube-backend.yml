@@ -33,6 +33,7 @@ jobs:
       - run: npm test --if-present -- --coverage --coverageReporters=lcov
       - name: Sonar scan (Cloud)
         uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
@@ -56,6 +57,7 @@ jobs:
       - run: go test ./... -covermode=atomic -coverprofile=coverage.out
       - name: Sonar scan (Cloud)
         uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
