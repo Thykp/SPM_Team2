@@ -2,6 +2,7 @@
 .git
 .gitignore
 .gitattributes
+coverage.out
 
 # Editors / OS
 .vscode
