@@ -1,0 +1,90 @@
+name: spm-stack
+
+volumes:
+  pgdata:
+    name: spm_pgdata
+
+networks:
+  spm-net:
+    driver: bridge
+    name: spm-net
+
+services:
+  kong:
+    image: kong/kong-gateway:3.9.0.1
+    container_name: kong-dbless
+    restart: always
+    networks:
+      - spm-net
+    volumes:
+      - ./backend/kong:/kong/declarative
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: "/kong/declarative/kong.yml"
+      KONG_PROXY_ACCESS_LOG: "/dev/stdout"
+      KONG_ADMIN_ACCESS_LOG: "/dev/stdout"
+      KONG_PROXY_ERROR_LOG: "/dev/stderr"
+      KONG_ADMIN_ERROR_LOG: "/dev/stderr"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_ADMIN_GUI_URL: "http://localhost:8002"
+      KONG_LICENSE_DATA: ""
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "8444:8444"
+      - "8002:8002"
+      - "8445:8445"
+      - "8003:8003"
+      - "8004:8004"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    networks:
+      - spm-net
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      - spm-net
+    ports:
+      - "1010:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards
+
+  manage-account:
+    build:
+      context: ./backend/services/composite/manage-account
+      dockerfile: dockerfile
+    container_name: manage-account
+    restart: unless-stopped
+    networks:
+      - spm-net
+    ports:
+      - "8090:8090"
+
+  profile:
+    build:
+      context: ./backend/services/atomic/profile
+      dockerfile: dockerfile
+    container_name: profile
+    restart: unless-stopped
+    networks:
+      - spm-net
+    ports:
+      - "3030:3030"
+    environment:
+      PORT: "3030"
+      FE_ENDPOINT: "http://localhost:5173"
+
+
+

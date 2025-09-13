@@ -1,0 +1,59 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: profile-service
+    url: http://profile:3030
+    routes:
+      - name: profile-route
+        paths:
+          - /profile
+
+  - name: manage-account-service
+    url: http://manage-account:8090
+    routes:
+      - name: manage-account-route
+        paths:
+          - /manage-account
+
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - HEAD
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Access-Control-Allow-Origin
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        # - Authorization # Maybe remove this
+
+  - name: prometheus
+    enabled: true
+    protocols:
+      - grpc
+      - grpcs
+      - http
+      - https
+    config:
+      ai_metrics: false
+      bandwidth_metrics: false
+      latency_metrics: false
+      per_consumer: false
+      status_code_metrics: false
+      upstream_health_metrics: false

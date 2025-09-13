@@ -7,7 +7,7 @@ import (
 func main() {
     r := routers.SetupRouter()
 
-    if err := r.Run(":8080"); err != nil {
+    if err := r.Run(":8090"); err != nil {
         panic(err)
     }
 }
