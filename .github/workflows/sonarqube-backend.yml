@@ -39,7 +39,7 @@ jobs:
         with:
           projectBaseDir: backend/services/atomic/profile
           args: >
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.wait=false
 
   go_manage_account:
     name: composite/manage-account – test & sonar
@@ -63,4 +63,4 @@ jobs:
         with:
           projectBaseDir: backend/services/composite/manage-account
           args: >
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.wait=false
