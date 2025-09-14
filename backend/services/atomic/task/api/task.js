@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const user = require("../model/task")
+const task = require("../model/task")
 
 router.get("/", async (req, res) => {
 
@@ -18,7 +18,7 @@ router.get("/all", async (req, res) => {
 
     try {
         
-        const allTasks = await user.getAllTasks();
+        const allTasks = await task.getAllTasks();
 
         res.status(200).json(allTasks);
 
@@ -33,7 +33,7 @@ router.post("/new", async (req, res) => {
       const newTaskData = req.body;
   
       // Call your addNewTask function passing the task details
-      const insertedTask = await user.addNewTask(newTaskData);
+      const insertedTask = await task.addNewTask(newTaskData);
   
       // Respond with the inserted task
       res.status(201).json(insertedTask);
@@ -42,6 +42,16 @@ router.post("/new", async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   });
-  
+
+router.get("/:user_id", async (req, res) => {
+    try {
+        const inputUserId = req.params.user_id;
+        const userTasks = await task.getTasksRelatedToUser(inputUserId);
+
+        res.status(200).json(userTasks);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 module.exports = router;
