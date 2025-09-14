@@ -37,10 +37,10 @@ module.exports = {
       const { data, error } = await supabase
         .from(taskTable)
         .select()
-        .eq('collaborators', [user_id])
+        .contains('collaborators', [user_id])
 
       if (error) {
-        console.error("Error getting task related to :", error);
+        console.error("Error getting task related to user:", error);
         throw error;
       }
       
