@@ -4,12 +4,12 @@ const profileTable = "profiles";
 module.exports = {
 
     async getAllUsers() {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from(profileTable)
             .select('*')
 
-        console.log(data)
-        return data;
+        if (error) throw new Error(error.message);
+        return data || [];
     },
 
 }
