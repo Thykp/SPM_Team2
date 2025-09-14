@@ -23,3 +23,4 @@ jest.mock('@supabase/supabase-js', () => {
   });
   return { createClient };
 });
+
