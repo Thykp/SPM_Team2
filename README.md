@@ -35,6 +35,11 @@ Switch to your branch before starting to code <br>
 
 
 ## DevOps CI/CD Pipelines
+### Key Workflows
+- Merge to main
+
+<img width="530" height="611" alt="Screenshot 2025-09-14 at 11 48 05 PM" src="https://github.com/user-attachments/assets/5e5ed7fd-8eb5-496b-9949-482871ef419e" />
+
 
 ## Cloud Architecture
 <img width="908" height="644" alt="Screenshot 2025-09-10 at 3 40 22 PM" src="https://github.com/user-attachments/assets/9803b26b-ce40-4f6c-be60-7a1fc30472d1" />
