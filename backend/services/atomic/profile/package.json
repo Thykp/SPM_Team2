@@ -34,8 +34,7 @@
     "collectCoverage": true,
     "collectCoverageFrom": [
       "api/**/*.js",
-      "model/**/*.js",
-      "app.js"
+      "model/**/*.js"
     ],
     "coverageDirectory": "coverage"
   }
