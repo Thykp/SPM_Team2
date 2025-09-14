@@ -31,7 +31,21 @@ module.exports = {
       
         console.log("Inserted task:", data);
         return data;
+    },
+
+    async getTasksRelatedToUser(user_id){
+      const { data, error } = await supabase
+        .from(taskTable)
+        .select()
+        .eq('collaborators', [user_id])
+
+      if (error) {
+        console.error("Error getting task related to :", error);
+        throw error;
       }
+      
+      return data || [];
+    }
 
 }
 
