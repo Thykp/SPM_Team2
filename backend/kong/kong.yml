@@ -8,6 +8,13 @@ services:
       - name: profile-route
         paths:
           - /profile
+  
+  - name: task-service
+    url: http://task:3031
+    routes:
+      - name: task-route
+        paths:
+          - /task
 
   - name: manage-account-service
     url: http://manage-account:8090

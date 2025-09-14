@@ -86,5 +86,21 @@ services:
       PORT: "3030"
       FE_ENDPOINT: "http://localhost:5173"
 
+  task:
+    build:
+      context: ./backend/services/atomic/task
+      dockerfile: dockerfile
+    container_name: task
+    restart: unless-stopped
+    networks:
+      - spm-net
+    env_file:
+      - .env
+    ports:
+      - "3031:3031"
+    environment:
+      PORT: "3031"
+      FE_ENDPOINT: "http://localhost:5173"
+
 
 
