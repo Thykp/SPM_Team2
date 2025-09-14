@@ -46,7 +46,6 @@ router.post("/new", async (req, res) => {
 router.get("/:user_id", async (req, res) => {
     try {
         const inputUserId = req.params.user_id;
-        console.log('Selected ID = '+inputUserId)
         const userTasks = await task.getTasksRelatedToUser(inputUserId);
 
         res.status(200).json(userTasks);
