@@ -1,6 +1,3 @@
-// test/SPG-15/model-user.test.js
-
-// Keep a stable implementation for from() -> { select: mockSelect }
 const mockSelect = jest.fn();
 const mockFrom = jest.fn(() => ({ select: mockSelect }));
 
@@ -15,14 +12,8 @@ let getAllUsers;
 beforeEach(() => {
   jest.resetModules();
 
-  // Don't wipe implementations; just clear call history
   mockFrom.mockClear();
   mockSelect.mockClear();
-
-  // If you prefer mockReset(), then re-apply the implementation:
-  // mockFrom.mockReset();
-  // mockSelect.mockReset();
-  // mockFrom.mockImplementation(() => ({ select: mockSelect }));
 
   ({ getAllUsers } = require('../../model/user'));
 });
