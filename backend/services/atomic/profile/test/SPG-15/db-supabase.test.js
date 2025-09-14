@@ -1,22 +1,29 @@
-const origEnv = { ...process.env };
+describe('db/supabase', () => {
+  const ORIGINAL_ENV = process.env;
 
-afterEach(() => {
-  jest.resetModules();
-  process.env = { ...origEnv };
-});
-
-it('creates supabase client with env vars', () => {
-  process.env.SUPABASE_URL = 'http://example';
-  process.env.SUPABASE_API_KEY = 'key';
-
-  const createClient = jest.fn(() => ({ from: jest.fn() }));
-  jest.mock('@supabase/supabase-js', () => ({ createClient }));
-
-  // Load the module *after* mocking & env set
-  jest.isolateModules(() => {
-    const { supabase } = require('../../db/supabase');
-    expect(supabase).toBeTruthy();
+  afterEach(() => {
+    jest.resetModules();
+    process.env = ORIGINAL_ENV;
   });
 
-  expect(createClient).toHaveBeenCalledWith('http://example', 'key');
+  it('creates Supabase client with env vars', () => {
+    jest.isolateModules(() => {
+      process.env = {
+        ...ORIGINAL_ENV,
+        SUPABASE_URL: 'http://example',
+        SUPABASE_API_KEY: 'key',
+      };
+
+      jest.doMock('@supabase/supabase-js', () => {
+        const createClient = jest.fn(() => ({ from: jest.fn() }));
+        return { createClient };
+      });
+
+      const { supabase } = require('../../db/supabase');
+      expect(supabase).toBeTruthy();
+
+      const { createClient } = jest.requireMock('@supabase/supabase-js');
+      expect(createClient).toHaveBeenCalledWith('http://example', 'key');
+    });
+  });
 });
