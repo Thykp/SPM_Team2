@@ -2,10 +2,10 @@ const request = require('supertest');
 
 // Mock the model BEFORE requiring the app
 jest.mock('../../model/user', () => ({
-  getAllUsersDropdown: jest.fn(),
+  getAllUsersLite: jest.fn(),
 }));
 
-const { getAllUsersDropdown } = require('../../model/user');
+const { getAllUsersLite } = require('../../model/user');
 // Keep this import the same as your other passing tests
 const app = require('../../app');
 
@@ -29,21 +29,21 @@ describe('GET /user/all', () => {
         department: 'Engineering'
       },
     ];
-    getAllUsersDropdown.mockResolvedValue(fakeUsers);
+    getAllUsersLite.mockResolvedValue(fakeUsers);
 
     const res = await request(app).get('/user/all');
 
-    expect(getAllUsersDropdown).toHaveBeenCalledTimes(1);
+    expect(getAllUsersLite).toHaveBeenCalledTimes(1);
     expect(res.status).toBe(200);
     expect(res.body).toEqual(fakeUsers);
   });
 
   it('returns 500 when the model throws', async () => {
-    getAllUsersDropdown.mockRejectedValue(new Error('db unavailable'));
+    getAllUsersLite.mockRejectedValue(new Error('db unavailable'));
 
     const res = await request(app).get('/user/all');
 
-    expect(getAllUsersDropdown).toHaveBeenCalledTimes(1);
+    expect(getAllUsersLite).toHaveBeenCalledTimes(1);
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'db unavailable' });
   });
