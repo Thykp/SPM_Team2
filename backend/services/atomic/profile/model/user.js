@@ -1,16 +1,27 @@
 const { supabase } = require("../db/supabase");
 const profileTable = "profiles";
 
-module.exports = {
+// Get a list of users for dropdowns
+async function getAllUsersLite() {
+  const { data, error } = await supabase
+    .from(profileTable)
+    .select("id, display_name, role, department")
+    .order("display_name", { ascending: true });
 
-    async getAllUsers() {
-        const { data, error } = await supabase
-            .from(profileTable)
-            .select('*')
-
-        if (error) throw new Error(error.message);
-        return data || [];
-    },
-
+  if (error) throw new Error(error.message);
+  return data || [];
 }
 
+async function getAllUsers() {
+  const { data, error } = await supabase
+    .from(profileTable)
+    .select("*");
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+module.exports = {
+  getAllUsersLite,
+  getAllUsers,
+};
