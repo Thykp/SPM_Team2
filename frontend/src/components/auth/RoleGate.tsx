@@ -1,6 +1,5 @@
 import { Navigate } from "react-router-dom"
-import { useAuth } from "@/contexts/AuthContext"
-import type { Role } from "@/contexts/AuthContext"
+import { useAuth, type Role } from "@/contexts/AuthContext"
 
 type RoleGateProps = {
   allow: Role[]
@@ -8,13 +7,9 @@ type RoleGateProps = {
   redirectTo?: string
 }
 
-export default function RoleGate({
-  allow,
-  children,
-  redirectTo = "/app",
-}: RoleGateProps) {
-  const { profile, loading } = useAuth()
-  if (loading) return <div className="p-6">Loading…</div>
+export default function RoleGate({ allow, children, redirectTo = "/app" }: RoleGateProps) {
+  const { profile, profileLoading } = useAuth()
+  if (profileLoading) return <div className="p-6">Loading (profile)…</div>
   if (!profile || !allow.includes(profile.role)) return <Navigate to={redirectTo} replace />
   return <>{children}</>
 }
