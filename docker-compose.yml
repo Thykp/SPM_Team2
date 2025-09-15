@@ -103,6 +103,20 @@ services:
     environment:
       PORT: "3031"
       FE_ENDPOINT: "http://localhost:5173"
-
+  project:
+      build:
+        context: ./backend/services/atomic/project
+        dockerfile: dockerfile
+      container_name: project
+      restart: unless-stopped
+      networks:
+        - spm-net
+      env_file:
+        - ./backend/services/atomic/project/.env
+      ports:
+        - "3040:3040"
+      environment:
+        PORT: "3040"
+        FE_ENDPOINT: "http://localhost:5173"  
 
 
