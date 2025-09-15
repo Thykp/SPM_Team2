@@ -2,7 +2,7 @@ const { supabase } = require("../db/supabase");
 const profileTable = "profiles";
 
 // Get a list of users for dropdowns
-async function getAllUsersLite() {
+async function getAllUsersDropdown() {
   const { data, error } = await supabase
     .from(profileTable)
     .select("id, display_name, role, department")
@@ -22,6 +22,6 @@ async function getAllUsers() {
 }
 
 module.exports = {
-  getAllUsersLite,
+  getAllUsersDropdown,
   getAllUsers,
 };

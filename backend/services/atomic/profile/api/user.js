@@ -15,7 +15,7 @@ router.get("/", async (_req, res) => {
 // GET /user/all (dropdowns)
 router.get("/all", async (_req, res) => {
   try {
-    const all = await user.getAllUsersLite();
+    const all = await user.getAllUsersDropdown();
     res.status(200).json(all);
   } catch (e) {
     res.status(500).json({ error: e.message });
