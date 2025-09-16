@@ -8,6 +8,7 @@ import (
 
 func SetUpRouter() *gin.Engine {
 	router := gin.Default()
+	router.GET("/health", controllers.HealthCheck)
 	api := router.Group("/api")
 	{
 		task := api.Group("/task")
