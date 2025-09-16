@@ -72,6 +72,17 @@ services:
     ports:
       - "8090:8090"
 
+  manage-task:
+    build:
+      context: ./backend/services/composite/manage-task
+      dockerfile: dockerfile
+    container_name: manage-task
+    restart: unless-stopped
+    networks:
+      - spm-net
+    ports:
+      - "8091:8091"
+
   profile:
     build:
       context: ./backend/services/atomic/profile

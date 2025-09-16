@@ -18,7 +18,7 @@ type Task struct {
 	TaskParent        string    `json:"parent"`
 }
 
-const taskServiceAddress = "http://127.0.0.1"
+const taskServiceAddress = "http://task"
 const taskServicePort = 3031
 
 func GetTaskBasedOnUser(userId string) ([]Task, error) {
