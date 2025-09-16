@@ -9,7 +9,8 @@ type AuthContextType = {
   session: Session | null
   user: User | null
   profile: Profile | null
-  loading: boolean
+  authLoading: boolean
+  profileLoading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -19,38 +20,54 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   const fetchProfile = async (u: User | null) => {
     if (!u) {
       setProfile(null)
+      setProfileLoading(false)
       return
     }
+    setProfileLoading(true)
     const { data, error } = await supabase
       .from("profiles")
       .select("id, role, display_name")
       .eq("id", u.id)
-      .single()
-    if (!error) setProfile(data as Profile)
+      .maybeSingle()
+    if (error) console.error("[Auth] profile fetch error", error)
+    setProfile((data as Profile) ?? null)
+    setProfileLoading(false)
   }
 
   useEffect(() => {
-    // initial
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
+    let cancelled = false
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (cancelled) return
+      if (error) console.error("[Auth] getSession error", error)
+      setSession(data.session ?? null)
       setUser(data.session?.user ?? null)
-      setLoading(false)
+      setAuthLoading(false)
       void fetchProfile(data.session?.user ?? null)
     })
 
-    // subscribe to changes
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, sess) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      if (cancelled) return
       setSession(sess)
       setUser(sess?.user ?? null)
-      await fetchProfile(sess?.user ?? null)
+      if (!sess) {
+        setProfile(null)
+        setProfileLoading(false)
+      } else {
+        void fetchProfile(sess.user)
+      }
     })
+
     return () => {
+      cancelled = true
       sub.subscription.unsubscribe()
     }
   }, [])
@@ -60,6 +77,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     setSession(null)
     setUser(null)
     setProfile(null)
+    setProfileLoading(false)
   }
 
   const refreshProfile = async () => {
@@ -67,8 +85,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   }
 
   const value = useMemo(
-    () => ({ session, user, profile, loading, signOut, refreshProfile }),
-    [session, user, profile, loading]
+    () => ({ session, user, profile, authLoading, profileLoading, signOut, refreshProfile }),
+    [session, user, profile, authLoading, profileLoading]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

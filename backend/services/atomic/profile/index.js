@@ -1,24 +1,38 @@
-const express = require('express');
-const path = require('path')
 require('dotenv').config();
-const { FE_ENDPOINT } = process.env
-const PORT = process.env.PORT || 3030;
+const path = require('path');
+const express = require('express');
 const cors = require('cors');
-const app = express()
+
+const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(cors({origin: ['http://localhost:5173', FE_ENDPOINT],
-    credentials: true
-}));
+
+const { FE_ENDPOINT } = process.env;
+const allowed = ['http://localhost:5173', FE_ENDPOINT].filter(Boolean);
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin) return cb(null, true);
+      if (allowed.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 
 app.get('/', (req, res) => {
-    res.status(200).send('ok')
+  res.status(200).send('ok');
 });
 
-let apiRouter = require('./api/index');
+const apiRouter = require('./api/index');
 app.use('/', apiRouter);
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`)
-});
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = Number(process.env.PORT || 3030);
+  app.listen(PORT, () => {
+    console.log(`Profile running on http://localhost:${PORT}`);
+  });
+}
