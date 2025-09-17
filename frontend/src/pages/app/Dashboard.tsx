@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { TaskCard } from "@/components/task/TaskCard";
+import { CollaboratorPicker } from "@/components/CollaboratorPicker";
 import { useAuth } from "@/contexts/AuthContext";
 
 type Task = {
@@ -43,6 +44,7 @@ export function Dashboard() {
   }
 
   return (
+    <>
     <div>
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       <p className="text-muted-foreground mb-6">
@@ -52,5 +54,12 @@ export function Dashboard() {
       {/* Pass tasks as props to TaskCard */}
       <TaskCard tasks={tasks} />
     </div>
+    <div className="mt-8">
+    <CollaboratorPicker
+      projectId="42b46a00-891f-42c2-80d8-2c7c4b519b2f"
+      onSaved={(ids) => console.log("Saved collaborator IDs:", ids)}
+    />
+  </div>  
+  </>
   );
 }
