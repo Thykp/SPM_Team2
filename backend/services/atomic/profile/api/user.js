@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const user = require("../model/user");
 
-// Health
 router.get("/", async (_req, res) => {
   try {
     res.status(200).json('Health Check: Success!');
@@ -11,21 +10,18 @@ router.get("/", async (_req, res) => {
   }
 });
 
-// Get a list of users for dropdowns
-// GET /user/all (dropdowns)
 router.get("/all", async (_req, res) => {
   try {
-    const all = await user.getAllUsersLite();
+    const all = await user.getAllUsers();
     res.status(200).json(all);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// GET /user/all-full (full dump)
-router.get("/all-full", async (_req, res) => {
+router.get("/dropdown", async (_req, res) => {
   try {
-    const allUsers = await user.getAllUsers();
+    const allUsers = await user.getAllUsersDropdown();
     res.status(200).json(allUsers);
   } catch (error) {
     res.status(500).json({ error: error.message });

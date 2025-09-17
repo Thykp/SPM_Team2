@@ -1,0 +1,40 @@
+# --- Go build artifacts ---
+# compiled binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# test binaries
+*.test
+
+# temporary files from `go list -json`
+*.out
+
+# vendor directory (if you ever vendor dependencies)
+vendor/
+
+# build output directories
+/bin/
+/build/
+/dist/
+
+# Go workspace file (if you use go work)
+go.work
+
+# --- Module files (keep these!) --- 
+# go.mod and go.sum should be committed, so NOT ignored
+
+# --- Editor / IDE files ---
+.vscode/
+.idea/
+*.swp
+*~
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+
+# --- Logs ---
+*.log

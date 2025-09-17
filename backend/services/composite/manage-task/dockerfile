@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+
+# ---- build ----
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Copy everything (supports local `replace` directives)
+COPY . .
+
+# Tidy & download modules (with caches for speed)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod tidy && go mod download
+
+# Build (let GOARCH default to image arch; set explicitly if you need cross-compile)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o manage-task ./main.go
+
+# ---- runtime ----
+FROM alpine:3.21
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /root
+COPY --from=builder /app/manage-task .
+EXPOSE 8091
+CMD ["./manage-task"]

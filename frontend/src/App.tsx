@@ -5,6 +5,8 @@ import SignUp from './pages/SignUp'
 import { AppLayout } from './layouts/AppLayout'
 import { Dashboard } from './pages/app/Dashboard'
 import { Settings } from './pages/app/Settings'
+import Project from './pages/app/Project'
+import ProjectDetail from './pages/app/ProjectDetail'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import RoleGate from './components/auth/RoleGate'
 
@@ -18,6 +20,8 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="projects" element={<Project />} />
+          <Route path="project/:projectId" element={<ProjectDetail />} />
           <Route
             path="settings"
             element={

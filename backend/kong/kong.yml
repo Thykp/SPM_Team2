@@ -8,6 +8,13 @@ services:
       - name: profile-route
         paths:
           - /profile
+
+  - name: project-service
+    url: http://project:3040
+    routes:
+      - name: project-route
+        paths:
+          - /project
   
   - name: task-service
     url: http://task:3031
@@ -22,6 +29,13 @@ services:
       - name: manage-account-route
         paths:
           - /manage-account
+
+  - name: manage-task-service
+    url: http://manage-task:8091
+    routes:
+      - name: manage-task-route
+        paths:
+          - /manage-task
 
 plugins:
   - name: rate-limiting
