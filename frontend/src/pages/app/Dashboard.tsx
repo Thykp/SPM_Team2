@@ -12,7 +12,7 @@ export function Dashboard() {
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       <p className="text-muted-foreground mb-6">Welcome to your dashboard!</p>
 
-      {/* Task Card */}
+      Task Card
       <Card className="max-w-md">
         <CardHeader>
           <CardTitle>My Tasks</CardTitle>
