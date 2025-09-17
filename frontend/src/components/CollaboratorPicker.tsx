@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchAllUsers, putProjectCollaborators, type LiteUser } from "@/lib/api";
+import { Profile, Project, type LiteUser } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,7 +21,7 @@ export function CollaboratorPicker({ projectId, initialSelected = [], onSaved }:
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    fetchAllUsers()
+    Profile.getAllUsers()
       .then((data) => { if (mounted) setUsers(data); })
       .catch(console.error)
       .finally(() => { if (mounted) setLoading(false); });
@@ -43,7 +43,7 @@ export function CollaboratorPicker({ projectId, initialSelected = [], onSaved }:
   async function save() {
     setSaving(true);
     try {
-      await putProjectCollaborators(projectId, selected);
+      await Project.updateCollaborators(projectId, selected);
       onSaved?.(selected);
     } finally {
       setSaving(false);
