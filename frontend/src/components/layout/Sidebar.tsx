@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom"
-import { Home, Users, Settings, BarChart3, FileText, Calendar, MessageSquare, HelpCircle } from "lucide-react"
+import { Home, Users, Settings, BarChart3, FileText, Calendar, MessageSquare, HelpCircle, FolderOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
 const navigation = [
   { name: "Dashboard", href: "/app", icon: Home },
+  { name: "Projects", href: "/app/projects", icon: FolderOpen },
   { name: "Analytics", href: "/app/analytics", icon: BarChart3 },
   { name: "Users", href: "/app/users", icon: Users },
   { name: "Documents", href: "/app/documents", icon: FileText },

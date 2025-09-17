@@ -9,15 +9,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const { FE_ENDPOINT } = process.env;
-const allowed = ['http://localhost:5173', FE_ENDPOINT].filter(Boolean);
 app.use(
   cors({
-    origin(origin, cb) {
-      if (!origin) return cb(null, true);
-      if (allowed.includes(origin)) return cb(null, true);
-      return cb(new Error(`CORS blocked origin: ${origin}`));
-    },
-    credentials: true,
+    origin: ['http://localhost:5173', FE_ENDPOINT],
+    credentials: true
   })
 );
 
