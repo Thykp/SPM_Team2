@@ -38,4 +38,19 @@ module.exports = {
         };
     },
 
+    async updateCollaborators(projectId, collaboratorIds) {
+      const { supabase } = require("../db/supabase");
+      const unique = Array.from(new Set(collaboratorIds || []));
+    
+      const { data, error } = await supabase
+        .from("project")
+        .update({ collaborators: unique })
+        .eq("id", projectId)
+        .select()
+        .single();
+    
+      if (error) throw new Error(error.message);
+      return data;
+    },    
+
 }

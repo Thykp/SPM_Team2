@@ -1,4 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { CollaboratorPicker } from "@/components/CollaboratorPicker";
 
 export function Dashboard() {
   const tasks = [
@@ -8,6 +9,7 @@ export function Dashboard() {
   ];
 
   return (
+    <>
     <div>
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       <p className="text-muted-foreground mb-6">Welcome to your dashboard!</p>
@@ -33,5 +35,12 @@ export function Dashboard() {
         </CardContent>
       </Card>
     </div>
+    <div className="mt-8">
+    <CollaboratorPicker
+      projectId="42b46a00-891f-42c2-80d8-2c7c4b519b2f"
+      onSaved={(ids) => console.log("Saved collaborator IDs:", ids)}
+    />
+  </div>  
+  </>
   );
 }

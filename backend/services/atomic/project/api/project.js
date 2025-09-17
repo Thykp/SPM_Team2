@@ -41,4 +41,18 @@ router.post("/new", async (req, res) => {
     }
   });
 
+router.put("/:id/collaborators", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { collaborators } = req.body || {};
+      if (!Array.isArray(collaborators)) {
+        return res.status(400).json({ error: "collaborators must be an array of UUIDs" });
+      }
+      const updated = await project.updateCollaborators(id, collaborators);
+      res.status(200).json({ success: true, project: updated });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });  
+
 module.exports = router;
