@@ -16,6 +16,15 @@ export type LiteUser = {
   department: string;
 };
 
+export type Task = {
+  id: string;
+  title: string;
+  status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
+  owner: string;
+  collaborators: string[];
+  due_date: string;
+};
+
 // Services
 export const Profile = {
 
@@ -37,6 +46,31 @@ export const Project = {
     return data;
   },
   
+};
+
+export const Task = {
+  getTasksByUserId: async (userId: string): Promise<Task[]> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/${userId}`;
+    const { data } = await api.get<Task[]>(url);
+    return data;
+  },
+
+  createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task`;
+    const { data } = await api.post<Task>(url, newTask);
+    return data;
+  },
+
+  updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/${taskId}`;
+    const { data } = await api.put<Task>(url, updates);
+    return data;
+  },
+
+  deleteTask: async (taskId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/${taskId}`;
+    await api.delete(url);
+  },
 };
 
 export default api;
