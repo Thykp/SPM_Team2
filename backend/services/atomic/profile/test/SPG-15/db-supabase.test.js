@@ -23,7 +23,11 @@ describe('db/supabase', () => {
       expect(supabase).toBeTruthy();
 
       const { createClient } = jest.requireMock('@supabase/supabase-js');
-      expect(createClient).toHaveBeenCalledWith('http://example', 'key');
+      expect(createClient).toHaveBeenCalledWith(
+        'http://example',
+        'key',
+        expect.objectContaining({ auth: { persistSession: false } })
+      );
     });
   });
 });
