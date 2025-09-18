@@ -30,7 +30,7 @@ export const Profile = {
 export const Project = {
 
   updateCollaborators: async (projectId: string, collaborators: string[]): Promise<{ success: boolean; project: any }> => {
-    const url = `${KONG_BASE_URL}/project/${projectId}/collaborators`;
+    const url = `${KONG_BASE_URL}/project/project/${projectId}/collaborators`;
     const { data } = await api.put<{ success: boolean; project: any }>(url, {
       collaborators,
     });
