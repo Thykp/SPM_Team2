@@ -83,6 +83,17 @@ services:
     ports:
       - "8091:8091"
 
+  organise-project:
+    build:
+      context: ./backend/services/composite/organise-project
+      dockerfile: dockerfile
+    container_name: organise-project
+    restart: unless-stopped
+    networks:
+      - spm-net
+    ports:
+      - "8092:8092"
+
   profile:
     build:
       context: ./backend/services/atomic/profile
