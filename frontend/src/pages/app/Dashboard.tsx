@@ -2,6 +2,7 @@ import { CollaboratorPicker } from "@/components/CollaboratorPicker";
 import { useEffect, useState } from "react";
 import { TaskCard } from "@/components/task/TaskCard";
 import { useAuth } from "@/contexts/AuthContext";
+import CreateTask from "@/components/task/CreateTask";
 import { Task as TaskType, Task } from "@/lib/api"; // Import Task type and service
 
 export function Dashboard() {
@@ -28,6 +29,10 @@ export function Dashboard() {
     fetchTasks();
   }, [profile?.id]); // Refetch tasks when the profile ID changes
 
+  const handleTaskCreated = (newTask: TaskType) => {
+    setTasks((prev) => [newTask, ...prev]); // Add the new task to the top of the list
+  };
+
   if (authLoading || loading) {
     return <p>Loading tasks...</p>;
   }
@@ -43,6 +48,11 @@ export function Dashboard() {
         <p className="text-muted-foreground mb-6">Welcome to your dashboard!</p>
 
         <TaskCard tasks={tasks} />
+
+        {/* Create New Task Button */}
+        <div className="mt-8">
+          <CreateTask userId={profile?.id || ""}  onTaskCreated={handleTaskCreated} />
+        </div>
       </div>
       <div className="mt-8">
         <CollaboratorPicker
