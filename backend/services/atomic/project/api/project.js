@@ -28,6 +28,20 @@ router.get("/all", async (req, res) => {
 
 });
 
+// Get all projects for a user (owner or collaborator)
+router.get("/user/:uuid", async (req, res) => {
+    const { uuid } = req.params;
+    if (!uuid) {
+        return res.status(400).json({ error: "Missing user UUID" });
+    }
+    try {
+        const projects = await project.getProjectsByOwner(uuid);
+        res.status(200).json(projects);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.post("/new", async (req, res) => {
     try {
       const newProjData = req.body;
