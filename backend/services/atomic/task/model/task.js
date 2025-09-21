@@ -22,7 +22,8 @@ module.exports = {
             status: task.status,
             collaborators: task.collaborators,
             owner: task.owner
-          }]);
+          }])
+          .select();
       
         if (error) {
           console.error("Error inserting task:", error);
