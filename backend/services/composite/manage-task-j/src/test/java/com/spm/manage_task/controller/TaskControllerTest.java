@@ -32,6 +32,7 @@ public class TaskControllerTest {
     @Autowired
     private MockMvc mvc;
 
+    // SPG 62
     @Test
     void testGetAllTasks() throws Exception{
         MvcResult res = mvc.perform(get("/api/task"))
@@ -44,6 +45,7 @@ public class TaskControllerTest {
         System.out.println("Response Body: " + res.getResponse().getContentAsString());
     }
 
+    // SPG 62
     @Test
     void testGetUserTasks() throws Exception{
         String userId = "5ad17add-da44-43ec-b78f-da22451a827b";
@@ -57,6 +59,7 @@ public class TaskControllerTest {
         System.out.println("Response Body: " + res.getResponse().getContentAsString());
     }
     
+    // SPG 92
     @Test
     void testCreateTask() throws Exception{
         TaskPostRequestDto testInsertObj = new TaskPostRequestDto(
