@@ -12,6 +12,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class ProjectService {
@@ -52,12 +53,12 @@ public class ProjectService {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> updateCollaborators(String projectId, UpdateCollaboratorsRequest req) {
+    public Map<String, Object> updateCollaborators(UUID projectId, UpdateCollaboratorsRequest req) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<UpdateCollaboratorsRequest> entity = new HttpEntity<>(req, headers);
         ResponseEntity<Map> resp = restTemplate.exchange(
-                baseUrl + "/project/" + projectId + "/collaborators",
+                baseUrl + "/project/" + projectId.toString() + "/collaborators",
                 HttpMethod.PUT,
                 entity,
                 Map.class
