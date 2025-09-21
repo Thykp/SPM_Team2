@@ -19,7 +19,7 @@ import com.spm.manage_task.dto.TaskPostRequestDto;
 @Service
 public class TaskService {
     
-    private final String taskUrl = "http://localhost:3031/task";
+    private final String taskUrl = "http://task:3031/task";
 
 
     @Autowired
