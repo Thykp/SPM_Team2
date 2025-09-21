@@ -93,6 +93,10 @@ services:
       - spm-net
     ports:
       - "8092:8092"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - project
 
   profile:
     build:
