@@ -46,7 +46,7 @@ router.post("/new", async (req, res) => {
 router.get("/:user_id", async (req, res) => {
     try {
         const inputUserId = req.params.user_id;
-        const userTasks = await task.getTasksRelatedToUser(inputUserId);
+        const userTasks = await task.getTasksPerUser(inputUserId);
 
         res.status(200).json(userTasks);
     } catch (error) {
