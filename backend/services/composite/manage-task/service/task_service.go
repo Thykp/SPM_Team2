@@ -45,3 +45,32 @@ func GetTaskBasedOnUser(userId string) ([]Task, error) {
 	}
 	return nil, err
 }
+
+func GetTaskByID(taskID string) (*Task, error) {
+	inputURL := fmt.Sprintf("%s:%d/task/id/%s", taskServiceAddress, taskServicePort, taskID)
+    fmt.Println("Fetching task from URL:", inputURL) // Debug log
+
+    resp, err := http.Get(inputURL)
+    if err != nil {
+        fmt.Println("Error making HTTP request:", err) // Debug log
+        return nil, err
+    }
+
+    defer resp.Body.Close()
+
+    if resp.StatusCode == http.StatusOK {
+        var task Task
+        decoder := json.NewDecoder(resp.Body)
+        err := decoder.Decode(&task)
+        if err != nil {
+            fmt.Println("Error decoding response:", err) // Debug log
+            return nil, err
+        }
+
+        fmt.Println("Task fetched successfully:", task) // Debug log
+        return &task, nil
+    }
+
+    fmt.Println("Task not found, status code:", resp.StatusCode) // Debug log
+    return nil, fmt.Errorf("task not found")
+}

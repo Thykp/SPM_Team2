@@ -23,7 +23,8 @@ export type Task = {
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
   owner: string;
   collaborators: string[];
-  due_date: string;
+  deadline: string;
+  parent?: string | null;
 };
 
 // Services
@@ -56,6 +57,12 @@ export const Task = {
     return data;
   },
 
+  getTasksById: async (taskId: string): Promise<Task> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
+    const { data } = await api.get<Task>(url);
+    return data;
+  },
+  
   createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task`;
     const { data } = await api.post<Task>(url, newTask);

@@ -1,8 +1,10 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Task } from "./Task"; // Import the Task component
 
 type Task = {
   id: string;
   title: string;
+  description: string; // Add description field
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
 };
 
@@ -11,37 +13,29 @@ type TaskCardProps = {
 };
 
 export function TaskCard({ tasks }: TaskCardProps) {
-  // Helper function to determine the color based on the status
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Unassigned":
-        return "bg-gray-100 text-gray-800"; // Gray for unassigned
-      case "Ongoing":
-        return "bg-blue-100 text-blue-800"; // Blue for ongoing
-      case "Under Review":
-        return "bg-yellow-100 text-yellow-800"; // Yellow for under review
-      case "Completed":
-        return "bg-green-100 text-green-800"; // Green for completed
-      case "Overdue":
-        return "bg-red-100 text-red-800"; // Red for overdue
-      default:
-        return "bg-gray-100 text-gray-800"; // Default gray for unknown status
-    }
-  };
-
   return (
     <Card className="max-w-md">
       <CardHeader>
         <CardTitle>My Tasks</CardTitle>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-2">
+        <ul className="space-y-4">
           {tasks.map((task) => (
-            <li
-              key={task.id}
-              className={`p-2 rounded ${getStatusColor(task.status)}`}
-            >
-              {task.title} - <span className="capitalize">{task.status}</span>
+            <li key={task.id}>
+              <Task
+                id={task.id} // Pass the task ID
+                title={task.title}
+                description={task.description}
+                status={task.status}
+                onTaskUpdated={(updatedTask) => {
+                  // Handle task update logic here
+                  console.log("Task updated:", updatedTask);
+                }}
+                onDelete={() => {
+                  // Handle task deletion logic here
+                  console.log("Task deleted:", task.id);
+                }}
+              />
             </li>
           ))}
         </ul>

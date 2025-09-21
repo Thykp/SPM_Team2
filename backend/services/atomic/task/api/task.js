@@ -68,4 +68,20 @@ router.put("/edit/:task_id", async (req, res) => {
     }
 });
 
+router.get("/id/:id", async (req, res) => {
+    try {
+        const taskId = req.params.id;
+        const taskinfo = await task.getTaskById(taskId);
+
+        if (!taskinfo) {
+        return res.status(404).json({ error: "Task not found" });
+        }
+
+        res.status(200).json(taskinfo);
+    } catch (error) {
+        console.error("Error fetching task:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
 module.exports = router;

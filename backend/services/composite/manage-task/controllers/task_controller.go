@@ -23,3 +23,18 @@ func SampleGetTaskPerUser(c *gin.Context) {
 	resString := fmt.Sprintf("Sent ID: %s", id)
 	c.IndentedJSON(http.StatusOK, resString)
 }
+
+func GetTaskByID(c *gin.Context) {
+    taskID := c.Param("id") // Extract the task ID from the route parameter
+    fmt.Println("Task ID received:", taskID) // Debug log
+
+    task, err := task_service.GetTaskByID(taskID)
+    if err != nil {
+        fmt.Println("Error fetching task:", err) // Debug log
+        c.IndentedJSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+        return
+    }
+
+    fmt.Println("Task fetched successfully:", task) // Debug log
+    c.IndentedJSON(http.StatusOK, task)
+}

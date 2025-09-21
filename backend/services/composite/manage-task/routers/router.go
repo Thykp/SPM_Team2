@@ -13,6 +13,7 @@ func SetUpRouter() *gin.Engine {
 	{
 		task := api.Group("/task")
 		task.GET("/:user_id", controllers.GetTasksPerUser)
+		task.GET("/id/:id", controllers.GetTaskByID)
 	}
 	return router
 }

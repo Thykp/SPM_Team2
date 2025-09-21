@@ -71,5 +71,20 @@ module.exports = {
         return data;
     },
 
+    async getTaskById(taskId) {
+        const { data, error } = await supabase
+          .from(taskTable)
+          .select("*")
+          .eq("id", taskId)
+          .single(); 
+
+        if (error) {
+          console.error("Error fetching task:", error);
+          return null;
+        }
+
+        return data;
+    }
+
 }
 
