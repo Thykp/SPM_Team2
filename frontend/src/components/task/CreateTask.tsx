@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, X } from "lucide-react";
 import { Task } from "@/lib/api"; // Import the Task service
-import { Description } from "@radix-ui/react-dialog";
 
 interface CreateTaskProps {
   userId: string; // Add userId as a prop
