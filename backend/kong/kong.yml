@@ -37,6 +37,13 @@ services:
         paths:
           - /manage-task
 
+  - name: organise-project-service
+    url: http://organise-project:8092
+    routes:
+      - name: organise-project-route
+        paths:
+          - /organise-project
+
 plugins:
   - name: rate-limiting
     config:

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/projects")
@@ -38,7 +39,7 @@ public class ProjectController {
 
     @PutMapping("/{id}/collaborators")
     public ResponseEntity<Map<String, Object>> updateCollaborators(
-            @PathVariable("id") String id,
+            @PathVariable("id") UUID id,
             @RequestBody UpdateCollaboratorsRequest req
     ) {
         Map<String, Object> result = projectService.updateCollaborators(id, req);

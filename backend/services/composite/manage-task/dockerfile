@@ -1,27 +1,37 @@
-# syntax=docker/dockerfile:1
-
-# ---- build ----
-FROM golang:1.25-alpine AS builder
+# ---------- build stage ----------
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
-RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy everything (supports local `replace` directives)
-COPY . .
+# Pre-fetch deps (faster rebuilds)
+COPY pom.xml .
+RUN mvn -q -B dependency:go-offline
 
-# Tidy & download modules (with caches for speed)
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go mod tidy && go mod download
+# Build the jar
+COPY src ./src
+RUN mvn -q -DskipTests clean package
 
-# Build (let GOARCH default to image arch; set explicitly if you need cross-compile)
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o manage-task ./main.go
+# ---------- run stage ----------
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
 
-# ---- runtime ----
-FROM alpine:3.21
-RUN apk --no-cache add ca-certificates tzdata
-WORKDIR /root
-COPY --from=builder /app/manage-task .
+# (optional) run as non-root
+RUN useradd -r -s /usr/sbin/nologin appuser
+USER appuser
+
+# Spring profile for Docker (expects application-docker.properties in your jar)
+ENV SPRING_PROFILES_ACTIVE=docker
+# Optional JVM opts (tune as you like)
+ENV JAVA_OPTS=""
+
 EXPOSE 8091
-CMD ["./manage-task"]
+
+# Copy the fat jar from build stage (updated for manage-task project)
+COPY --from=build /app/target/manage_task-0.0.1-SNAPSHOT.jar /app/app.jar
+
+# (optional) simple TCP healthcheck without curl/wget
+# If you prefer an HTTP check, install curl/wget or point Kong at your / endpoint.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD bash -lc '</dev/tcp/127.0.0.1/8091' || exit 1
+
+# Run it
+ENTRYPOINT ["bash","-lc","java $JAVA_OPTS -jar /app/app.jar"]

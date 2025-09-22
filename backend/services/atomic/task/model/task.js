@@ -23,7 +23,8 @@ module.exports = {
             collaborators: task.collaborators,
             owner: task.owner,
             parent: task.parent
-          }]);
+          }])
+          .select();
       
         if (error) {
           console.error("Error inserting task:", error);
@@ -33,19 +34,30 @@ module.exports = {
         console.log("Inserted task:", data);
         return data;
     },
-
-    async getTasksRelatedToUser(user_id){
-      const { data, error } = await supabase
+    
+    async getTasksPerUser(userId) {
+      // Get tasks where user is owner
+      const { data: ownerTasks, error: ownerError } = await supabase
         .from(taskTable)
-        .select()
-        .contains('collaborators', [user_id])
+        .select('*')
+        .eq('owner', userId);
+      if (ownerError) throw new Error(ownerError.message);
 
-      if (error) {
-        console.error("Error getting task related to user:", error);
-        throw error;
-      }
-      
-      return data || [];
+      // Get tasks where user is a collaborator
+      const { data: collabTasks, error: collabError } = await supabase
+        .from(taskTable)
+        .select('*')
+        .contains('collaborators', [userId]);
+      if (collabError) throw new Error(collabError.message);
+
+      const allTasks = [...ownerTasks, ...collabTasks];
+      const uniqueTasks = Object.values(
+        allTasks.reduce((acc, task) => {
+          acc[task.id] = task;
+          return acc;
+        }, {})
+      );
+      return uniqueTasks;
     },
 
     async updateTask(taskId, updatedTask) {
