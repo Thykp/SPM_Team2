@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task as TaskType, Task } from "@/lib/api"; // Import Task type and service
+import { Task } from "@/lib/api"; // Import Task type and service
 import { X } from "lucide-react";
 
 interface LocalTask {
