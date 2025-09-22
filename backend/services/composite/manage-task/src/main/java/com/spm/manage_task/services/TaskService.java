@@ -50,4 +50,10 @@ public class TaskService {
         return (tasks != null && tasks.length > 0) ? tasks[0] : null;
     }
 
+    public TaskDto getTaskById(String taskId) {
+        ResponseEntity<TaskDto> responseEntity = restTemplate.getForEntity(taskUrl + "/id/" + taskId, TaskDto.class);
+        return responseEntity.getBody();
+    }
+    
+
 }
