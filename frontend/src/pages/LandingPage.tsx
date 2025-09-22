@@ -4,6 +4,7 @@ import { Hero } from "@/components/sections/Hero"
 import { Features } from "@/components/sections/Features"
 import { HowItWorks } from "@/components/sections/HowItWorks"
 import { Contact } from "@/components/sections/Contact"
+// import { SocialProof } from "@/components/sections/SocialProof"
 
 export function LandingPage() {
   return (
@@ -11,6 +12,7 @@ export function LandingPage() {
       <Navbar variant="landing" />
       <main>
         <Hero />
+        {/* <SocialProof /> */}
         <Features />
         <HowItWorks />
         <Contact />

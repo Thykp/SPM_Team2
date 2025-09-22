@@ -4,23 +4,23 @@ import { ArrowRight } from "lucide-react"
 const steps = [
   {
     step: "01",
-    title: "Sign Up",
-    description: "Create your account in seconds and get access to all features.",
+    title: "Create Projects",
+    description: "Set up your projects and organize them into workspaces for different teams or initiatives.",
   },
   {
     step: "02",
-    title: "Configure",
-    description: "Set up your project with our intuitive configuration wizard.",
+    title: "Add Tasks",
+    description: "Break down work into manageable tasks with priorities, assignees, and due dates.",
   },
   {
     step: "03",
-    title: "Deploy",
-    description: "Push your code and watch it deploy automatically to production.",
+    title: "Track Progress",
+    description: "Move tasks through your workflow stages and monitor real-time progress across your team.",
   },
   {
     step: "04",
-    title: "Scale",
-    description: "Monitor performance and scale seamlessly as your app grows.",
+    title: "Collaborate",
+    description: "Share updates, comment on tasks, and keep everyone aligned with built-in communication tools.",
   },
 ]
 
@@ -31,7 +31,7 @@ export function HowItWorks() {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">How it works</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
-            Get started in minutes with our streamlined workflow designed for developers.
+            Streamline your team's workflow with our intuitive task management system designed for productivity.
           </p>
         </div>
 
