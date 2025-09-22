@@ -21,7 +21,8 @@ module.exports = {
             description: task.description,
             status: task.status,
             collaborators: task.collaborators,
-            owner: task.owner
+            owner: task.owner,
+            parent: task.parent
           }])
           .select();
       
@@ -59,6 +60,43 @@ module.exports = {
       return uniqueTasks;
     },
 
+    async updateTask(taskId, updatedTask) {
+        const { data, error } = await supabase
+            .from(taskTable)
+            .update({
+                title: updatedTask.title,
+                deadline: updatedTask.deadline,
+                description: updatedTask.description,
+                status: updatedTask.status,
+                collaborators: updatedTask.collaborators,
+                owner: updatedTask.owner,
+                parent: updatedTask.parent
+            })
+            .eq('id', taskId); // Match the row where the id equals taskId
+
+        if (error) {
+            console.error("Error updating task:", error);
+            throw error;
+        }
+
+        console.log("Updated task:", data);
+        return data;
+    },
+
+    async getTaskById(taskId) {
+        const { data, error } = await supabase
+          .from(taskTable)
+          .select("*")
+          .eq("id", taskId)
+          .single(); 
+
+        if (error) {
+          console.error("Error fetching task:", error);
+          return null;
+        }
+
+        return data;
+    }
 
 }
 
