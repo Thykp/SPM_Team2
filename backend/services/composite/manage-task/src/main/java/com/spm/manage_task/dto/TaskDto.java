@@ -2,6 +2,8 @@ package com.spm.manage_task.dto;
 
 import java.util.ArrayList;
 
+import org.springframework.http.ResponseEntity;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TaskDto {
@@ -53,6 +55,5 @@ public class TaskDto {
                 ", taskCollaborators=" + taskCollaborators +
                 '}';
     }
-    
     
 }
