@@ -28,4 +28,17 @@ router.get("/dropdown", async (_req, res) => {
   }
 });
 
+// filter staff by department and role :)
+// GET /user/staff?department=Engineering&role=staff
+router.get("/staff", async (req, res) => {
+  try {
+    const department = req.query.department || null;
+    const role = req.query.role || "staff";
+    const rows = await user.getStaffByDepartment(department, role);
+    res.status(200).json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
