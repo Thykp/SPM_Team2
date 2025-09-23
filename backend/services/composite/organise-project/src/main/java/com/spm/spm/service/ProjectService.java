@@ -43,6 +43,13 @@ public class ProjectService {
         return body == null ? List.of() : Arrays.asList(body);
     }
 
+    public List<ProjectDto> getProjectsByUser(UUID userId) {
+        ResponseEntity<ProjectDto[]> resp =
+                restTemplate.getForEntity(baseUrl + "/project/user/" + userId.toString(), ProjectDto[].class);
+        ProjectDto[] body = resp.getBody();
+        return body == null ? List.of() : Arrays.asList(body);
+    }
+
     public ProjectDto create(NewProjectRequest req) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
