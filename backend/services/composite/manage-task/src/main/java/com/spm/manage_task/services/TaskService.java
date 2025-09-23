@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.spm.manage_task.dto.TaskDto;
+import com.spm.manage_task.dto.UserDto;
 import com.spm.manage_task.dto.TaskPostRequestDto;
 
 @Service
@@ -24,6 +25,9 @@ public class TaskService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private ProfileService profileService;
 
     public List<TaskDto> getAllTasks(){
         ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/all", TaskDto[].class);
@@ -53,6 +57,32 @@ public class TaskService {
     public TaskDto getTaskById(String taskId) {
         ResponseEntity<TaskDto> responseEntity = restTemplate.getForEntity(taskUrl + "/id/" + taskId, TaskDto.class);
         return responseEntity.getBody();
+    }
+
+    public TaskDto getTaskByIdWithOwner(String taskId) {
+        ResponseEntity<TaskDto> responseEntity = restTemplate.getForEntity(taskUrl + "/id/" + taskId, TaskDto.class);
+        TaskDto task = responseEntity.getBody();
+
+        if (task == null) {
+            throw new RuntimeException("Task not found for ID: " + taskId);
+        }
+
+        if (task != null) {
+            // Fetch owner details from the atomic profile microservice
+            UserDto ownerDetails = profileService.getUserById(task.getTaskOwner());
+
+            if (ownerDetails == null) {
+                task.setTaskOwnerName("Unknown");
+                task.setTaskOwnerDepartment("Unknown");
+            }
+
+            if (ownerDetails != null) {
+                task.setTaskOwnerName(ownerDetails.getDisplayName()); // Populate owner's name
+                task.setTaskOwnerDepartment(ownerDetails.getDepartment()); // Populate owner's department
+            }
+        }
+
+        return task;
     }
     
 

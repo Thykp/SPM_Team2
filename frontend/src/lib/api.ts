@@ -99,6 +99,12 @@ export const Task = {
     const { data } = await api.get<Task>(url);
     return data;
   },
+
+  getTaskByIdWithOwner: async (taskId: string): Promise<Task & { ownerName: string; ownerDepartment: string }> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
+    const { data } = await api.get<Task & { ownerName: string; ownerDepartment: string }>(url);
+    return data;
+  },
   
   createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task`;

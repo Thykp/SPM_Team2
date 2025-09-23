@@ -48,7 +48,7 @@ public class TaskController {
     // GET based on task id
     @GetMapping("/id/{taskId}")
     public ResponseEntity<TaskDto> getTaskById(@PathVariable String taskId) {
-        TaskDto task = taskService.getTaskById(taskId);
+        TaskDto task = taskService.getTaskByIdWithOwner(taskId);
         return ResponseEntity.ok(task);
     }
 

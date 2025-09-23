@@ -41,4 +41,17 @@ router.get("/staff", async (req, res) => {
   }
 });
 
+// Fetch user details by ID
+router.get("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const userDetails = await user.getUserDetailsById(id); // Call the model function
+    res.status(200).json(userDetails);
+  } catch (err) {
+    console.error("Error fetching user details:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
