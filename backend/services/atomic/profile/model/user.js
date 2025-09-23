@@ -20,7 +20,23 @@ async function getAllUsers() {
   return data || [];
 }
 
+async function getStaffByDepartment(department, role = "staff") {
+  let query = supabase
+    .from(profileTable)
+    .select("id, display_name, role, department")
+    .eq("role", role);
+
+  if (department) {
+    query = query.eq("department", department);
+  }
+
+  const { data, error } = await query.order("display_name", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,
+  getStaffByDepartment,
 };

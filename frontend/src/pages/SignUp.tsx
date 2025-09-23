@@ -135,6 +135,10 @@ export default function SignUp() {
               {loading ? "Creating…" : "Create account"}
             </Button>
 
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/">Back to Home</Link>
+            </Button>
+
             <p className="text-sm text-muted-foreground text-center">
               Already have an account?{" "}
               <Link to="/signin" className="underline">

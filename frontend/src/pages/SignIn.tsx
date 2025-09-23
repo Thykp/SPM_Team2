@@ -49,6 +49,10 @@ export default function SignIn() {
               {loading ? "Signing in…" : "Sign in"}
             </Button>
 
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/">Back to Home</Link>
+            </Button>
+
             <p className="text-sm text-muted-foreground text-center">
               No account?{" "}
               <Link to="/signup" className="underline">
