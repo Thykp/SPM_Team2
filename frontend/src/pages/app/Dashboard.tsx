@@ -16,7 +16,7 @@ export function Dashboard() {
       if (!profile?.id) return;
       setLoading(true);
       try {
-        const data = await Task.getAllTask();
+        const data = await Task.getTasksByUserId(profile.id);
         setTasks(data || []);
       } catch (err) {
         console.error("Error fetching tasks:", err);
