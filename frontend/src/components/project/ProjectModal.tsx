@@ -67,7 +67,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
             description: newProject.description,
             owner: currentUserId,
             collaborators: selectedCollaborators,
-            task_list: []
+            tasklist: []
         };
 
         await onCreateProject(projectData);

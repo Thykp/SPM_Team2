@@ -1,13 +1,23 @@
 package com.spm.spm.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.UUID;
 
 public class NewProjectRequest {
+    @JsonProperty("title")
     private String title;
+    
+    @JsonProperty("description")
     private String description;
+    
+    @JsonProperty("tasklist")
     private List<UUID> taskList;
+    
+    @JsonProperty("owner")
     private UUID owner;
+    
+    @JsonProperty("collaborators")
     private List<UUID> collaborators;
 
     public NewProjectRequest() {}

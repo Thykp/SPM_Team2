@@ -41,9 +41,9 @@ export const Profile = {
 // Project API types
 export type ProjectDto = {
   id: string;
-  created_at: string | null;
+  createdat: string | null;
   title: string;
-  task_list: string[] | null;
+  tasklist: string[] | null;
   description: string;
   owner: string;
   collaborators: string[];
@@ -52,7 +52,7 @@ export type ProjectDto = {
 export type NewProjectRequest = {
   title: string;
   description: string;
-  task_list?: string[];
+  tasklist?: string[];
   owner: string;
   collaborators?: string[];
 };
@@ -60,7 +60,7 @@ export type NewProjectRequest = {
 export const Project = {
 
   updateCollaborators: async (projectId: string, collaborators: string[]): Promise<{ success: boolean; project: any }> => {
-    const url = `${KONG_BASE_URL}/project/project/${projectId}/collaborators`;
+    const url = `${KONG_BASE_URL}/organise-project/projects/${projectId}/collaborators`;
     const { data } = await api.put<{ success: boolean; project: any }>(url, {
       collaborators,
     });
