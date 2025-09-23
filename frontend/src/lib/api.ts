@@ -88,6 +88,13 @@ export const Project = {
 };
 
 export const Task = {
+
+  getAllTask: async (): Promise<Task[]> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/`;
+    const { data } = await api.get<Task[]>(url);
+    return data;
+  },
+
   getTasksByUserId: async (userId: string): Promise<Task[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/${userId}`;
     const { data } = await api.get<Task[]>(url);
