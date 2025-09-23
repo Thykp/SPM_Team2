@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Calendar, Users, Plus, Search, MoreHorizontal, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Project as ProjectAPI, Profile, type ProjectDto, type NewProjectRequest, type LiteUser } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import ProjectHeader from '@/components/project/ProjectHeader';
+import ProjectSearch from '@/components/project/ProjectSearch';
+import ProjectModal from '@/components/project/ProjectModal';
+import ProjectGrid from '@/components/project/ProjectGrid';
 
-// Updated interface for project list display
 interface Project {
     id: string;
     title: string;
@@ -16,67 +16,71 @@ interface Project {
 }
 
 const Projects: React.FC = () => {
+    const { user } = useAuth();
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
-    const [newProject, setNewProject] = useState({
-        title: '',
-        description: '',
-        collaborators: ''
-    });
+    const [isCreating, setIsCreating] = useState(false);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchProjects = async () => {
+            if (!user?.id) {
+                setLoading(false);
+                return;
+            }
+
             try {
-                // Replace with your actual API call to get user's projects
-                const response = await fetch('/api/user/projects');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch projects');
+                setLoading(true);
+                setError(null);
+                
+                // Load users first for collaborator name mapping
+                let allUsers: LiteUser[] = [];
+                try {
+                    allUsers = await Profile.getAllUsers();
+                } catch (userErr) {
+                    console.error('Error loading users for name mapping:', userErr);
                 }
-                const data = await response.json();
-                setProjects(data);
+                
+                // Use the new endpoint to get projects for the specific user
+                const apiProjects = await ProjectAPI.getByUser(user.id);
+                
+                // Transform API response to component format
+                const transformedProjects: Project[] = apiProjects.map((apiProject: ProjectDto) => {
+                    // Convert collaborator UUIDs to display names
+                    const collaboratorUUIDs = apiProject.collaborators || [];
+                    const collaboratorNames = collaboratorUUIDs.map(uuid => {
+                        const foundUser = allUsers.find(u => u.id === uuid);
+                        if (foundUser) {
+                            // Use display_name if available, otherwise use the role and truncated UUID
+                            return foundUser.display_name || `${foundUser.role} (${uuid.slice(0, 8)}...)`;
+                        }
+                        return `User ${uuid.slice(0, 8)}...`;
+                    });
+                    
+                    return {
+                        id: apiProject.id,
+                        title: apiProject.title || 'Untitled Project',
+                        description: apiProject.description || 'No description available',
+                        startDate: apiProject.created_at || new Date().toISOString(),
+                        members: collaboratorNames
+                    };
+                });
+                
+                setProjects(transformedProjects);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
-                // Mock data for development
-                setProjects([
-                    {
-                        id: '1',
-                        title: 'E-Commerce Platform',
-                        description: 'Building a modern e-commerce platform with React and Node.js',
-                        startDate: '2024-01-15',
-                        members: ['John Doe', 'Jane Smith', 'Mike Johnson']
-                    },
-                    {
-                        id: '2',
-                        title: 'Mobile App Development',
-                        description: 'Cross-platform mobile app using React Native',
-                        startDate: '2024-03-01',
-                        members: ['Sarah Wilson', 'Tom Brown']
-                    },
-                    {
-                        id: '3',
-                        title: 'Data Analytics Dashboard',
-                        description: 'Real-time analytics dashboard for business intelligence',
-                        startDate: '2023-09-01',
-                        members: ['Alice Cooper', 'Bob Smith', 'Carol Davis', 'David Lee']
-                    },
-                    {
-                        id: '4',
-                        title: 'API Documentation',
-                        description: 'Comprehensive API documentation and developer guides',
-                        startDate: '2024-02-01',
-                        members: ['Emma White', 'Frank Miller']
-                    }
-                ]);
+                console.error('Error fetching projects:', err);
+                setError(err instanceof Error ? err.message : 'Failed to fetch projects');
+                setProjects([]); // Set empty projects array on error
             } finally {
                 setLoading(false);
             }
         };
 
         fetchProjects();
-    }, []);
+    }, [user?.id]);
 
     const filteredProjects = projects.filter(project => {
         const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,45 +88,61 @@ const Projects: React.FC = () => {
         return matchesSearch;
     });
 
-    const handleCreateProject = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        // Parse collaborators from comma-separated string
-        const collaboratorsList = newProject.collaborators
-            .split(',')
-            .map(name => name.trim())
-            .filter(name => name.length > 0);
-
-        const projectData = {
-            id: Date.now().toString(), // Simple ID generation
-            title: newProject.title,
-            description: newProject.description,
-            startDate: new Date().toISOString().split('T')[0],
-            members: collaboratorsList
-        };
+    const handleCreateProject = async (projectData: NewProjectRequest) => {
+        setIsCreating(true);
+        setError(null);
 
         try {
-            // Here you would normally make an API call to create the project
-            // const response = await fetch('/api/projects', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(projectData)
-            // });
+            const createdProject = await ProjectAPI.create(projectData);
             
-            // For now, just add to the local state
-            setProjects(prev => [projectData, ...prev]);
+            // Load users to map collaborator UUIDs to names
+            let collaboratorNames: string[] = [];
+            const collaborators = projectData.collaborators || [];
             
-            // Reset form and close modal
-            setNewProject({ title: '', description: '', collaborators: '' });
-            setShowModal(false);
+            if (collaborators.length > 0) {
+                try {
+                    const allUsers = await Profile.getAllUsers();
+                    collaboratorNames = collaborators.map(uuid => {
+                        const foundUser = allUsers.find(u => u.id === uuid);
+                        if (foundUser) {
+                            return foundUser.display_name || `${foundUser.role} (${uuid.slice(0, 8)}...)`;
+                        }
+                        return `User ${uuid.slice(0, 8)}...`;
+                    });
+                } catch (userErr) {
+                    console.error('Error loading users for collaborator names:', userErr);
+                    // Fallback to just showing UUIDs
+                    collaboratorNames = collaborators.map(uuid => `User ${uuid.slice(0, 8)}...`);
+                }
+            }
+            
+            // Transform API response to component format and add to local state
+            const newProjectForState: Project = {
+                id: createdProject.id,
+                title: createdProject.title || projectData.title,
+                description: createdProject.description || projectData.description,
+                startDate: createdProject.created_at || new Date().toISOString(),
+                members: collaboratorNames
+            };
+
+            setProjects(prev => [newProjectForState, ...prev]);
+            
+            // Show success message
+            setSuccessMessage('Project created successfully!');
+            setTimeout(() => setSuccessMessage(null), 3000);
         } catch (error) {
             console.error('Failed to create project:', error);
+            setError(error instanceof Error ? error.message : 'Failed to create project');
+            throw error; // Re-throw so modal can handle it
+        } finally {
+            setIsCreating(false);
         }
     };
 
     const handleModalClose = () => {
         setShowModal(false);
-        setNewProject({ title: '', description: '', collaborators: '' });
+        setError(null);
+        setSuccessMessage(null);
     };
 
     if (loading) {
@@ -135,202 +155,40 @@ const Projects: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">My Projects</h1>
-                    <p className="text-muted-foreground">Manage and track your project progress</p>
-                </div>
-                <Button onClick={() => setShowModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Project
-                </Button>
-            </div>
+            <ProjectHeader onNewProjectClick={() => setShowModal(true)} />
+            
+            <ProjectSearch 
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+            />
 
-            {/* Search */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search projects..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                    />
+            {/* Success Message */}
+            {successMessage && (
+                <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <p className="text-green-800">{successMessage}</p>
                 </div>
-            </div>
+            )}
 
             {/* Error State */}
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
                     <p className="text-red-800">{error}</p>
-                    <p className="text-sm text-red-600 mt-1">Showing sample data for demonstration</p>
                 </div>
             )}
 
-            {/* Projects Grid */}
-            {filteredProjects.length === 0 ? (
-                <div className="text-center py-12">
-                    <h3 className="text-lg font-medium text-muted-foreground">No projects found</h3>
-                    <p className="text-muted-foreground">Try adjusting your search or filter criteria</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.map((project) => (
-                        <Card key={project.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                            <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between">
-                                    <div className="space-y-1 flex-1">
-                                        <CardTitle className="text-lg line-clamp-2">
-                                            <Link 
-                                                to={`/app/project/${project.id}`}
-                                                className="hover:text-primary transition-colors"
-                                            >
-                                                {project.title}
-                                            </Link>
-                                        </CardTitle>
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {project.description}
-                                </p>
+            <ProjectGrid 
+                projects={filteredProjects} 
+                onCreateProject={() => setShowModal(true)}
+            />
 
-                                {/* Project Info */}
-                                <div className="space-y-2 text-sm text-muted-foreground">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        <span>Started: {new Date(project.startDate).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Users className="h-4 w-4" />
-                                        <span>{project.members.length} members</span>
-                                    </div>
-                                </div>
-
-                                {/* Team Members Preview */}
-                                <div className="flex items-center gap-2">
-                                    <div className="flex -space-x-2">
-                                        {project.members.slice(0, 3).map((member) => (
-                                            <div
-                                                key={member}
-                                                className="h-8 w-8 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-xs font-medium"
-                                                title={member}
-                                            >
-                                                {member.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                            </div>
-                                        ))}
-                                        {project.members.length > 3 && (
-                                            <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs font-medium">
-                                                +{project.members.length - 3}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
-
-            {/* New Project Overlay */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl shadow-2xl">
-                        <CardHeader className="pb-4">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle className="text-2xl">Create New Project</CardTitle>
-                                    <p className="text-muted-foreground mt-1">
-                                        Start a new project and invite your team to collaborate
-                                    </p>
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={handleModalClose}
-                                    className="h-8 w-8"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        
-                        <CardContent>
-                            <form onSubmit={handleCreateProject} className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="title" className="text-base font-medium">
-                                        Project Title
-                                    </Label>
-                                    <Input
-                                        id="title"
-                                        type="text"
-                                        placeholder="Enter a descriptive project title"
-                                        value={newProject.title}
-                                        onChange={(e) => setNewProject(prev => ({ ...prev, title: e.target.value }))}
-                                        className="h-11"
-                                        required
-                                    />
-                                </div>
-                                
-                                <div className="space-y-2">
-                                    <Label htmlFor="description" className="text-base font-medium">
-                                        Project Description
-                                    </Label>
-                                    <textarea
-                                        id="description"
-                                        className="w-full px-3 py-3 border border-input rounded-md bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent resize-none min-h-[100px]"
-                                        placeholder="Describe the project goals, scope, and key objectives..."
-                                        value={newProject.description}
-                                        onChange={(e) => setNewProject(prev => ({ ...prev, description: e.target.value }))}
-                                        required
-                                    />
-                                </div>
-                                
-                                <div className="space-y-2">
-                                    <Label htmlFor="collaborators" className="text-base font-medium">
-                                        Team Members
-                                    </Label>
-                                    <Input
-                                        id="collaborators"
-                                        type="text"
-                                        placeholder="John Doe, Jane Smith, Mike Johnson..."
-                                        value={newProject.collaborators}
-                                        onChange={(e) => setNewProject(prev => ({ ...prev, collaborators: e.target.value }))}
-                                        className="h-11"
-                                    />
-                                    <p className="text-sm text-muted-foreground">
-                                        Enter team member names separated by commas (optional)
-                                    </p>
-                                </div>
-                                
-                                <div className="flex gap-3 pt-6">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleModalClose}
-                                        className="flex-1 h-11"
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        className="flex-1 h-11"
-                                        disabled={!newProject.title.trim() || !newProject.description.trim()}
-                                    >
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Create Project
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+            <ProjectModal
+                show={showModal}
+                onClose={handleModalClose}
+                onCreateProject={handleCreateProject}
+                isCreating={isCreating}
+                error={error}
+                currentUserId={user?.id}
+            />
         </div>
     );
 };

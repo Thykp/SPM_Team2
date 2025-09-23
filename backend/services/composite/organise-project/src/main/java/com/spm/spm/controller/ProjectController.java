@@ -31,6 +31,12 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getAll());
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<ProjectDto>> getProjectsByUser(@PathVariable("userId") UUID userId) {
+        List<ProjectDto> projects = projectService.getProjectsByUser(userId);
+        return ResponseEntity.ok(projects);
+    }
+
     @PostMapping
     public ResponseEntity<ProjectDto> create(@RequestBody NewProjectRequest req) {
         ProjectDto created = projectService.create(req);

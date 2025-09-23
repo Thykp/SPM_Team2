@@ -27,6 +27,25 @@ export const Profile = {
 
 };
 
+// Project API types
+export type ProjectDto = {
+  id: string;
+  created_at: string | null;
+  title: string;
+  task_list: string[] | null;
+  description: string;
+  owner: string;
+  collaborators: string[];
+};
+
+export type NewProjectRequest = {
+  title: string;
+  description: string;
+  task_list?: string[];
+  owner: string;
+  collaborators?: string[];
+};
+
 export const Project = {
 
   updateCollaborators: async (projectId: string, collaborators: string[]): Promise<{ success: boolean; project: any }> => {
@@ -34,6 +53,24 @@ export const Project = {
     const { data } = await api.put<{ success: boolean; project: any }>(url, {
       collaborators,
     });
+    return data;
+  },
+
+  create: async (projectData: NewProjectRequest): Promise<ProjectDto> => {
+    const url = `${KONG_BASE_URL}/organise-project/projects`;
+    const { data } = await api.post<ProjectDto>(url, projectData);
+    return data;
+  },
+
+  getAll: async (): Promise<ProjectDto[]> => {
+    const url = `${KONG_BASE_URL}/organise-project/projects`;
+    const { data } = await api.get<ProjectDto[]>(url);
+    return data;
+  },
+
+  getByUser: async (userId: string): Promise<ProjectDto[]> => {
+    const url = `${KONG_BASE_URL}/organise-project/projects/user/${userId}`;
+    const { data } = await api.get<ProjectDto[]>(url);
     return data;
   },
   
