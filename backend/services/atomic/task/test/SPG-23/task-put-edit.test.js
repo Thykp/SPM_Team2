@@ -15,7 +15,7 @@ describe('PUT /edit/:taskId', () => {
     };
 
     const res = await request(app)
-      .put(`/edit/${taskId}`)
+      .put(`/task/edit/${taskId}`)
       .send(updatedTask)
       .set('Content-Type', 'application/json');
 
