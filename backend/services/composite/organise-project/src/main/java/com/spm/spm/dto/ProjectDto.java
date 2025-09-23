@@ -1,16 +1,30 @@
 package com.spm.spm.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 public class ProjectDto {
+    @JsonProperty("id")
     private UUID id;
+    
+    @JsonProperty("createdat")
     private OffsetDateTime createdAt;
+    
+    @JsonProperty("title")
     private String title;
+    
+    @JsonProperty("tasklist")
     private List<UUID> taskList;
+    
+    @JsonProperty("description")
     private String description;
+    
+    @JsonProperty("owner")
     private UUID owner;
+    
+    @JsonProperty("collaborators")
     private List<UUID> collaborators;
 
     public ProjectDto() {}

@@ -1,60 +1,115 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, Users, Edit, Trash2, ArrowLeft } from 'lucide-react';
-
-interface Project {
-    id: string;
-    title: string;
-    description: string;
-    startDate: string;
-    members: string[];
-}
+import { Loader2, ArrowLeft } from 'lucide-react';
+import { Project as ProjectAPI, Task as TaskAPI, type ProjectDto, type Task } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { ProjectHeader, ProjectInfo, KanbanBoard } from '@/components/project-details';
 
 const ProjectDetail: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
-    const [project, setProject] = useState<Project | null>(null);
+    const { user } = useAuth();
+    const [project, setProject] = useState<ProjectDto | null>(null);
+    const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchProject = async () => {
+    // Handler for when a new task is created
+    const handleTaskCreated = async (newTask: Task) => {
+        // Add the new task to the current list immediately for optimistic UI update
+        setTasks(prevTasks => [...prevTasks, newTask]);
+        
+        // Optionally, refetch all tasks to ensure consistency with the server
+        if (project?.tasklist) {
             try {
-                // Replace with your actual API call
-                const response = await fetch(`/api/projects/${projectId}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch project');
-                }
-                const data = await response.json();
-                setProject(data);
+                const updatedTasks = await fetchTasksByIds([...project.tasklist, newTask.id]);
+                setTasks(updatedTasks);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
-                // Mock data for development
-                setProject({
-                    id: projectId || '1',
-                    title: 'E-Commerce Platform',
-                    description: 'Building a modern e-commerce platform with React and Node.js. This project includes user authentication, product catalog, shopping cart, payment processing, and order management features.',
-                    startDate: '2024-01-15',
-                    members: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']
-                });
+                console.warn('Failed to refresh tasks after creation:', err);
+            }
+        }
+    };
+
+    // Fetch individual tasks based on task IDs
+    const fetchTasksByIds = async (taskIds: string[]): Promise<Task[]> => {
+        const taskPromises = taskIds.map(taskId => 
+            TaskAPI.getTasksById(taskId).catch(err => {
+                console.warn(`Failed to fetch task ${taskId}:`, err);
+                return null; // Return null for failed requests
+            })
+        );
+        
+        const taskResults = await Promise.all(taskPromises);
+        
+        // Filter out null results and sort by status priority
+        return taskResults
+            .filter((task): task is Task => task !== null)
+            .sort((a, b) => {
+                // Define status priority for sorting
+                const statusPriority: Record<string, number> = {
+                    'Unassigned': 1,
+                    'Ongoing': 2,
+                    'Under Review': 3,
+                    'Completed': 4,
+                    'Overdue': 5
+                };
+                
+                const priorityA = statusPriority[a.status] || 999;
+                const priorityB = statusPriority[b.status] || 999;
+                
+                return priorityA - priorityB;
+            });
+    };
+
+    useEffect(() => {
+        const fetchProjectData = async () => {
+            if (!projectId || !user?.id) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                setLoading(true);
+                setError(null);
+
+                // Fetch project details
+                const allProjects = await ProjectAPI.getByUser(user.id);
+                const foundProject = allProjects.find(p => p.id === projectId);
+                
+                if (!foundProject) {
+                    throw new Error('Project not found');
+                }
+
+                setProject(foundProject);
+                
+                // Fetch individual tasks based on project's tasklist
+                if (foundProject.tasklist && foundProject.tasklist.length > 0) {
+                    const projectTasks = await fetchTasksByIds(foundProject.tasklist);
+                    setTasks(projectTasks);
+                } else {
+                    setTasks([]);
+                }
+            } catch (err) {
+                console.error('Error fetching project data:', err);
+                setError(err instanceof Error ? err.message : 'Failed to fetch project data');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchProject();
-    }, [projectId]);
+        fetchProjectData();
+    }, [projectId, user?.id]);
 
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-96">
                 <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Loading project details...</span>
             </div>
         );
     }
 
-    if (error) {
+    if (error || !project) {
         return (
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -65,29 +120,13 @@ const ProjectDetail: React.FC = () => {
                         </Button>
                     </Link>
                 </div>
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold mb-2">Error</h1>
-                    <p className="text-muted-foreground">{error}</p>
-                    <p className="text-sm text-muted-foreground mt-2">Showing sample data for demonstration</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!project) {
-        return (
-            <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                    <Link to="/app/projects">
-                        <Button variant="outline" size="sm">
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back to Projects
-                        </Button>
-                    </Link>
-                </div>
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold mb-2">Project Not Found</h1>
-                    <p className="text-muted-foreground">The requested project could not be found.</p>
+                <div className="text-center py-12">
+                    <h1 className="text-2xl font-bold mb-2">
+                        {error ? 'Error Loading Project' : 'Project Not Found'}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        {error || 'The requested project could not be found.'}
+                    </p>
                 </div>
             </div>
         );
@@ -95,95 +134,17 @@ const ProjectDetail: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link to="/app/projects">
-                        <Button variant="outline" size="sm">
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back to Projects
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold">{project.title}</h1>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Project
-                    </Button>
-                    <Button variant="destructive" size="sm">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                    </Button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Project Overview</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-muted-foreground mb-6">{project.description}</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Users className="h-5 w-5" />
-                                Team Members
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {project.members.map((member) => (
-                                    <div key={member} className="flex items-center gap-3 p-3 border rounded-lg">
-                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                                            {member.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium">{member}</p>
-                                            <p className="text-sm text-muted-foreground">Team Member</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Project Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-medium">Start Date</span>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    {new Date(project.startDate).toLocaleDateString()}
-                                </p>
-                            </div>
-                            
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Users className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-medium">Team Size</span>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    {project.members.length} members
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+            <ProjectHeader 
+                project={project} 
+                userId={user?.id} 
+                onTaskCreated={handleTaskCreated} 
+            />
+            
+            <ProjectInfo 
+                project={project} 
+            />
+            
+            <KanbanBoard tasks={tasks} />
         </div>
     );
 };

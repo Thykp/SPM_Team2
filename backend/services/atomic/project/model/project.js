@@ -45,7 +45,7 @@ module.exports = {
             description: project.description,
             collaborators: project.collaborators,
             owner: project.owner,
-            task_list: project.task_list || project.taskList
+            tasklist: project.tasklist || project.task_list || project.taskList
           }])
           .select();
       
