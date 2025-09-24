@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+	profile_service "manage-account/service"
 	"net/http"
 	"strconv"
 
@@ -17,18 +19,14 @@ func GetUsers(c *gin.Context) {
 }
 
 func GetUserByID(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	userIdInput := c.Param("userId")
+	fmt.Println("User id is: " + userIdInput)
+	response, err := profile_service.UserDetailsBasedOnId(userIdInput)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
-	for _, u := range users {
-		if u["id"].(int) == id {
-			c.JSON(http.StatusOK, gin.H{"data": u})
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // CreateUser handles POST /api/users
