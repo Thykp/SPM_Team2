@@ -64,7 +64,7 @@ const Projects: React.FC = () => {
                         id: apiProject.id,
                         title: apiProject.title || 'Untitled Project',
                         description: apiProject.description || 'No description available',
-                        startDate: apiProject.created_at || new Date().toISOString(),
+                        startDate: apiProject.createdat || new Date().toISOString(),
                         members: collaboratorNames
                     };
                 });
@@ -121,7 +121,7 @@ const Projects: React.FC = () => {
                 id: createdProject.id,
                 title: createdProject.title || projectData.title,
                 description: createdProject.description || projectData.description,
-                startDate: createdProject.created_at || new Date().toISOString(),
+                startDate: createdProject.createdat || new Date().toISOString(),
                 members: collaboratorNames
             };
 

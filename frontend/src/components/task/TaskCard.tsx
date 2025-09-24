@@ -16,7 +16,7 @@ export function TaskCard({ tasks }: TaskCardProps) {
   return (
     <Card className="max-w-md">
       <CardHeader>
-        <CardTitle>My Tasks</CardTitle>
+        <CardTitle>All Tasks</CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="space-y-4">

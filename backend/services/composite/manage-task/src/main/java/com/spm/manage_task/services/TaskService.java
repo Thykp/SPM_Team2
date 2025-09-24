@@ -38,7 +38,7 @@ public class TaskService {
     }
 
     public List<TaskDto> getUserTask(String userId){
-        ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/"+userId, TaskDto[].class);
+        ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/by-user/"+userId, TaskDto[].class);
         TaskDto[] tasks = responseEntity.getBody();
         return tasks == null ? List.of() : Arrays.asList(tasks);
     }

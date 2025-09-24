@@ -24,7 +24,7 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    @GetMapping()
+    @GetMapping("/")
     public ResponseEntity<List<TaskDto>> getAllTasks(){
         List<TaskDto> respBody = taskService.getAllTasks();
         return ResponseEntity.ok(respBody);
@@ -36,7 +36,6 @@ public class TaskController {
         List<TaskDto> respBody = taskService.getUserTask(userId);
         return ResponseEntity.ok(respBody);
     }
-
 
     // POST for task
     @PostMapping("/new")
