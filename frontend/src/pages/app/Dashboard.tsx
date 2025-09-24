@@ -11,21 +11,21 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      if (!profile?.id) return;
-      setLoading(true);
-      try {
-        const data = await Task.getTasksByUserId(profile.id);
-        setTasks(data || []);
-      } catch (err) {
-        console.error("Error fetching tasks:", err);
-        setError("Failed to load tasks. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchTasks = async () => {
+    if (!profile?.id) return;
+    setLoading(true);
+    try {
+      const data = await Task.getTasksByUserId(profile.id);
+      setTasks(data || []);
+    } catch (err) {
+      console.error("Error fetching tasks:", err);
+      setError("Failed to load tasks. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchTasks();
   }, [profile?.id]); // Refetch tasks when the profile ID changes
 

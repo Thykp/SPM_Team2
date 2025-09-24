@@ -114,13 +114,13 @@ export const Task = {
   },
   
   createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task`;
+    const url = `${KONG_BASE_URL}/manage-task/api/task`; // might be "new" instead of "task", TBC
     const { data } = await api.post<Task>(url, newTask);
     return data;
   },
 
   updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task/${taskId}`;
+    const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
     const { data } = await api.put<Task>(url, updates);
     return data;
   },

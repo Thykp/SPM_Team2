@@ -8,8 +8,6 @@ type TaskProps = {
   title: string;
   description: string;
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
-  onTaskUpdated: (updatedTask: TaskProps) => void; // Callback for updating the task
-  onDelete: () => void; // Callback for deleting the task
 };
 
 export const Task: React.FC<TaskProps> = ({
@@ -17,8 +15,6 @@ export const Task: React.FC<TaskProps> = ({
   title,
   description,
   status,
-  onTaskUpdated,
-  onDelete,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editing, setEditing] = useState(false); // State to toggle the EditTask modal
@@ -76,7 +72,7 @@ export const Task: React.FC<TaskProps> = ({
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
-                    onDelete();
+                    // onDelete();
                   }}
                   className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
                 >
@@ -90,16 +86,8 @@ export const Task: React.FC<TaskProps> = ({
 
       {editing && (
         <EditTask
-        taskId={id} // Pass the task ID to the EditTask component
-        onTaskUpdated={(updatedTask) => {
-            onTaskUpdated({
-            ...updatedTask,
-            onTaskUpdated,
-            onDelete,
-            }); // Map Task to TaskProps
-            setEditing(false); // Close the modal after updating
-        }}
-        onClose={() => setEditing(false)} // Close the modal
+        taskId={id}
+        onClose={() => setEditing(false)}
         />
       )}
     </div>

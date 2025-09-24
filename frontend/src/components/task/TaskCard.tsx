@@ -27,14 +27,12 @@ export function TaskCard({ tasks }: TaskCardProps) {
                 title={task.title}
                 description={task.description}
                 status={task.status}
-                onTaskUpdated={(updatedTask) => {
-                  // Handle task update logic here
-                  console.log("Task updated:", updatedTask);
-                }}
-                onDelete={() => {
-                  // Handle task deletion logic here
-                  console.log("Task deleted:", task.id);
-                }}
+                // onTaskUpdated={(updatedTask) => {
+                //   console.log("Task updated:", updatedTask);
+                // }}
+                // onDelete={() => {
+                //   console.log("Task deleted:", task.id);
+                // }}
               />
             </li>
           ))}
