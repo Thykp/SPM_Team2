@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	profile_service "manage-account/service"
 	"net/http"
 	"strconv"
@@ -20,7 +19,6 @@ func GetUsers(c *gin.Context) {
 
 func GetUserByID(c *gin.Context) {
 	userIdInput := c.Param("userId")
-	fmt.Println("User id is: " + userIdInput)
 	response, err := profile_service.UserDetailsBasedOnId(userIdInput)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})

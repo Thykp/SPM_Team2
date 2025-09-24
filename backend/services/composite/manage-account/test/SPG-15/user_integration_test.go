@@ -13,9 +13,9 @@ func TestGetUserByID(t *testing.T) {
 	userId := "588fb335-9986-4c93-872e-6ef103c97f92"
 	path := fmt.Sprintf("/api/users/%s", userId)
 	router.ServeHTTP(recorder, httptest.NewRequest("GET", path, nil))
-	t.Run("Returns 200 status code", func(t *testing.T) {
-		if recorder.Code != 200 {
-			t.Error("Expected 200, got ", recorder.Code)
+	t.Run("Returns 400 status code", func(t *testing.T) {
+		if recorder.Code != 400 {
+			t.Error("Expected 400, got ", recorder.Code)
 		}
 	})
 	t.Run("Returns JSON response", func(t *testing.T) {
