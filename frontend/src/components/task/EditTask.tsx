@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task } from "@/lib/api"; // Import Task type and service
+import { Profile, Task, type LiteUser } from "@/lib/api"; // Import Task type and service
 import { X } from "lucide-react";
-import { CollaboratorPicker } from "@/components/CollaboratorPicker";
+import CollaboratorPickerNewProj from "@/components/project/CollaboratorPickerNewProj";
 import Select from "react-select";
 
 interface LocalTask {
@@ -39,6 +39,10 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
 
+  const [users, setUsers] = useState<LiteUser[]>([]); // List of all users
+  const [userSearchTerm, setUserSearchTerm] = useState(""); // Search term for filtering users
+  const [loadingUsers, setLoadingUsers] = useState(false); // Loading state for fetching users
+
   // Fetch the task details when the component is mounted
   useEffect(() => {
     const fetchTask = async () => {
@@ -46,6 +50,10 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
         const data = await Task.getTaskByIdWithOwner(taskId); // Use the new function
         console.log("Fetched task data:", data);
         setTask(data); // Set the fetched task
+
+        const allUsers = await Profile.getAllUsers(); // Replace with your API call
+        setUsers(allUsers);
+      
       } catch (error) {
         console.error("Error fetching task:", error);
       }
@@ -194,15 +202,21 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
 
             {/* Collaborators */}
             <div className="space-y-2">
-              <Label htmlFor="collaborators" className="text-base font-medium">
-                Collaborators
-              </Label>
-              <CollaboratorPicker
-                projectId={task.id} // Use the task ID as the project ID
-                initialSelected={task.collaborators} // Pass the initial collaborators
-                onSaved={(selected) =>
-                  setTask((prev) => ({ ...prev!, collaborators: selected }))
-                } // Update the collaborators in the task state
+              <CollaboratorPickerNewProj
+                users={users} // List of all users
+                userSearchTerm={userSearchTerm} // Current search term
+                onUserSearchChange={setUserSearchTerm} // Callback to update the search term
+                selectedCollaborators={task.collaborators} // List of selected collaborator IDs
+                onToggleCollaborator={(userId) => {
+                  setTask((prev) => ({
+                    ...prev!,
+                    collaborators: prev!.collaborators.includes(userId)
+                      ? prev!.collaborators.filter((id) => id !== userId)
+                      : [...prev!.collaborators, userId],
+                  }));
+                }} // Callback to toggle collaborator selection
+                loadingUsers={loadingUsers} // Boolean indicating if users are being loaded
+                currentUserId={task.owner} // Pass the current user ID if needed
               />
             </div>
 
