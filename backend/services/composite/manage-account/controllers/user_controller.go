@@ -18,12 +18,17 @@ func GetUsers(c *gin.Context) {
 }
 
 func GetUserByID(c *gin.Context) {
-	userIdInput := c.Param("userId")
-	response, err := profile_service.UserDetailsBasedOnId(userIdInput)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	var receivedUserArray []profile_service.User
+
+	if err := c.BindJSON(&receivedUserArray); err != nil {
 		return
 	}
+
+	response := profile_service.GetUserDetails(receivedUserArray)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	// 	return
+	// }
 	c.IndentedJSON(http.StatusOK, response)
 }
 
