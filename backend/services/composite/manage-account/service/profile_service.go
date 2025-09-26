@@ -14,8 +14,8 @@ type User struct {
 	UserName       *string `json:"display_name"`
 }
 
-const userServiceAddress = "http://profile"
-const userServicePort = 3030
+var userServiceAddress = "http://profile"
+var userServicePort = 3030
 
 func UserDetailsBasedOnId(userId string, ch chan<- []User, wg *sync.WaitGroup) ([]User, error) {
 	defer wg.Done()
