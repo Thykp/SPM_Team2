@@ -23,7 +23,7 @@ export function AppNavbar() {
 
   const email = user?.email ?? ""
   const initials = (email ? email[0] : "U").toUpperCase()
-  const canSeeSettings = profile?.role === "admin" || profile?.role === "staff"
+  const canSeeSettings = profile?.role === "Admin" || profile?.role === "Staff"
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -111,7 +111,7 @@ export function AppNavbar() {
               )}
               {/* Example: keep Billing visible to all, or gate it if needed */}
               <DropdownMenuItem asChild>
-                <Link to="/app/billing">Billing</Link>
+                <Link to="/app/setting">Billing</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>

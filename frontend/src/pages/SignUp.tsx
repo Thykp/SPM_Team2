@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Role } from "@/contexts/AuthContext"
 
-const ROLE_OPTIONS: Role[] = ["user", "staff", "admin"]
+const ROLE_OPTIONS: Role[] = ["User", "Staff", "Admin"]
 
 export default function SignUp() {
   const [firstName, setFirstName] = useState("")
@@ -18,7 +18,7 @@ export default function SignUp() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [role, setRole] = useState<Role>("user")
+  const [role, setRole] = useState<Role>("User")
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState(false)
   const [loading, setLoading] = useState(false)

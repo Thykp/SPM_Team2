@@ -25,7 +25,7 @@ function App() {
           <Route
             path="settings"
             element={
-              <RoleGate allow={["admin", "staff"]}>
+              <RoleGate allow={["Admin", "Staff"]}>
                 <Settings />
               </RoleGate>
             }
