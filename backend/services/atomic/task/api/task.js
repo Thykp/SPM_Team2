@@ -98,4 +98,20 @@ router.get("/id/:id", async (req, res) => {
     }
 });
 
+router.get("/subtask/:parentTaskId", async (req, res) =>{
+    try {
+        const parentTaskId = req.params.parentTaskId;
+        const subTasks = await task.getSubTasksByParent(parentTaskId);
+
+        if (!subTasks) {
+        return res.status(404).json({ error: "Sub Task not found" });
+        }
+
+        res.status(200).json(subTasks);
+    } catch (error) {
+        console.error("Error fetching sub tasks:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
 module.exports = router;
