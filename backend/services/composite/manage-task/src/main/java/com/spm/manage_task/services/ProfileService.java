@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
 import com.spm.manage_task.dto.UserDto;
 
 @Service
@@ -17,4 +18,15 @@ public class ProfileService {
         ResponseEntity<UserDto> responseEntity = restTemplate.getForEntity(profileUrl + "/" + userId, UserDto.class);
         return responseEntity.getBody();
     }
+
+    // public List<UserDto> getSubordinatesUnderManager(String managerId) {
+    //     String url = profileUrl + "/" + managerId + "/subordinates";
+    //     ResponseEntity<UserDto[]> responseEntity = restTemplate.getForEntity(url, UserDto[].class);
+
+    //     if (responseEntity.getStatusCode().is2xxSuccessful()) {
+    //         return Arrays.asList(responseEntity.getBody());
+    //     } else {
+    //         throw new RuntimeException("Failed to fetch subordinates from profile service");
+    //     }
+    // }
 }

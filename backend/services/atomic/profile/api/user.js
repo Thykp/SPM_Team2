@@ -54,4 +54,17 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// For Manager to fetch subordinates
+router.get("/:id/subordinates", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const subordinates = await user.getSubordinatesUnderManager(id); // Call the model function
+    res.status(200).json(subordinates);
+  } catch (err) {
+    console.error("Error fetching subordinates:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
