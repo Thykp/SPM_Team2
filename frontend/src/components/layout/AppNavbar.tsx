@@ -109,10 +109,6 @@ export function AppNavbar() {
                   <Link to="/app/settings">Settings</Link>
                 </DropdownMenuItem>
               )}
-              {/* Example: keep Billing visible to all, or gate it if needed */}
-              <DropdownMenuItem asChild>
-                <Link to="/app/setting">Billing</Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>
