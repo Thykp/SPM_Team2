@@ -112,6 +112,12 @@ export const Task = {
     const { data } = await api.get<Task & { ownerName: string; ownerDepartment: string }>(url);
     return data;
   },
+
+  getSubTaskOfTask: async (taskId: string): Promise<Task[]> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/subtask/${taskId}`;
+    const { data } = await api.get<Task[]>(url);
+    return data;
+  },
   
   createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task`; // might be "new" instead of "task", TBC

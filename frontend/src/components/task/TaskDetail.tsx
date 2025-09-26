@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Task } from "@/lib/api";
+import { Task as taskType, Task as taskAPI } from "@/lib/api";
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
@@ -83,13 +83,13 @@ async function mockSubTasks(): Promise<Task[]> {
 }
 
 type TaskDetailProps = {
-    currentTask: Task;
+    currentTask: taskType;
     isOpen: boolean;
     onClose: () => void;
 }
 
 export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
-    const [subTasks, setSubTasks] = useState<Task[]>([]);
+    const [subTasks, setSubTasks] = useState<taskType[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -103,8 +103,9 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
     const getSubTasks = async() => {
         setLoading(true);
         try {
-            const subTasks = await mockSubTasks();
+            const subTasks = await taskAPI.getSubTaskOfTask(currentTask.id);
             setSubTasks(subTasks);
+            console.log(subTasks)
         } catch (error) {
             console.error("Error fetching subtasks:", error);
         } finally {
