@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.spm.manage_task.dto.TaskDto;
-import com.spm.manage_task.dto.UserDto;
 import com.spm.manage_task.dto.TaskPostRequestDto;
 
 @Service
@@ -98,6 +97,12 @@ public class TaskService {
         }
 
         return task;
+    }
+
+    public List<TaskDto> getSubTaskByTaskId(String taskId){
+        ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/subtask/"+taskId, TaskDto[].class);
+        TaskDto[] tasks = responseEntity.getBody();
+        return tasks == null ? List.of() : Arrays.asList(tasks);
     }
     
 

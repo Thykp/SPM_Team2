@@ -59,5 +59,11 @@ public class TaskController {
         return ResponseEntity.ok(updatedTaskResponse);
     }
 
+    // GET subtasks related to current task id
+    @GetMapping("/subtask/{taskId}")
+    public ResponseEntity<List<TaskDto>> getSubTaskByTaskId(@PathVariable String taskId) {
+        List<TaskDto> tasks = taskService.getSubTaskByTaskId(taskId);
+        return ResponseEntity.ok(tasks);
+    }
     
 }
