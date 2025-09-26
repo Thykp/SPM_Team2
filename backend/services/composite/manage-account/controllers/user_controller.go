@@ -1,8 +1,8 @@
 package controllers
 
 import (
+	profile_service "manage-account/service"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,18 +17,18 @@ func GetUsers(c *gin.Context) {
 }
 
 func GetUserByID(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+	var receivedUserArray []profile_service.User
+
+	if err := c.BindJSON(&receivedUserArray); err != nil {
 		return
 	}
-	for _, u := range users {
-		if u["id"].(int) == id {
-			c.JSON(http.StatusOK, gin.H{"data": u})
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+
+	response := profile_service.GetUserDetails(receivedUserArray)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	// 	return
+	// }
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // CreateUser handles POST /api/users
@@ -47,42 +47,42 @@ func CreateUser(c *gin.Context) {
 }
 
 // UpdateUser handles PUT /api/users/:id
-func UpdateUser(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
-		return
-	}
-	var payload struct {
-		Name string `json:"name" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	for i, u := range users {
-		if u["id"].(int) == id {
-			users[i]["name"] = payload.Name
-			c.JSON(http.StatusOK, gin.H{"data": users[i]})
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-}
+// func UpdateUser(c *gin.Context) {
+// 	id, err := strconv.Atoi(c.Param("id"))
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+// 		return
+// 	}
+// 	var payload struct {
+// 		Name string `json:"name" binding:"required"`
+// 	}
+// 	if err := c.ShouldBindJSON(&payload); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// 	for i, u := range users {
+// 		if u["id"].(int) == id {
+// 			users[i]["name"] = payload.Name
+// 			c.JSON(http.StatusOK, gin.H{"data": users[i]})
+// 			return
+// 		}
+// 	}
+// 	c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+// }
 
 // DeleteUser handles DELETE /api/users/:id
-func DeleteUser(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
-		return
-	}
-	for i, u := range users {
-		if u["id"].(int) == id {
-			users = append(users[:i], users[i+1:]...)
-			c.Status(http.StatusNoContent)
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-}
+// func DeleteUser(c *gin.Context) {
+// 	id, err := strconv.Atoi(c.Param("id"))
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+// 		return
+// 	}
+// 	for i, u := range users {
+// 		if u["id"].(int) == id {
+// 			users = append(users[:i], users[i+1:]...)
+// 			c.Status(http.StatusNoContent)
+// 			return
+// 		}
+// 	}
+// 	c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+// }
