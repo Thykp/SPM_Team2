@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Task as taskType, Task as taskAPI } from "@/lib/api";
+import { Task as taskType, Task as taskAPI, Profile as profileType, Profile as profileAPI } from "@/lib/api";
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { User, Calendar, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 type TaskDetailProps = {
@@ -18,13 +19,24 @@ type TaskDetailProps = {
 }
 
 export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigateToSubTask, onNavigateBack}: TaskDetailProps){
+    const { user } = useAuth();
     const [subTasks, setSubTasks] = useState<taskType[]>([]);
     const [loading, setLoading] = useState(false);
+    const [userLoading, setUserLoading] = useState(false);
+    const [userProfiles, setUserProfiles] = useState<{[key: string]: profileType}>({});
 
+    // Helper function to display user name or "You"
+    const getDisplayName = (userId: string): string => {
+        if (user?.id === userId) {
+            return "You";
+        }
+        return userProfiles[userId]?.display_name || userId;
+    };
 
     useEffect(() => {
         if (isOpen && currentTask){
             getSubTasks();
+            getUserProfiles();
         }
     },
     [isOpen, currentTask]
@@ -39,6 +51,31 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
             console.error("Error fetching subtasks:", error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    const getUserProfiles = async() => {
+        setUserLoading(true);
+        try {
+            // Concatenate owner and collaborators into a single array of user IDs
+            const allUserIds = !currentTask.collaborators ? [currentTask.owner] : [currentTask.owner, ...currentTask.collaborators];
+            
+            // Format user IDs as objects with "id" property for the API
+            const userIdObjects = allUserIds.map(userId => ({ id: userId }));
+            
+            const profiles = await profileAPI.getProfileDetailsWithId(userIdObjects);
+            
+            // Create a mapping of user ID to profile for easy lookup
+            const profileMap: {[key: string]: profileType} = {};
+            profiles.forEach((profile, index) => {
+                profileMap[allUserIds[index]] = profile;
+            });
+            
+            setUserProfiles(profileMap);
+        } catch (error) {
+            console.error("Error fetching user profiles:", error);
+        } finally {
+            setUserLoading(false);
         }
     }
 
@@ -114,7 +151,20 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                     <User className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Owner</p>
-                      <p className="text-sm text-muted-foreground">{currentTask.owner}</p>
+                      {userLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {getDisplayName(currentTask.owner) === "You" ? (
+                            <span className="font-bold">You</span>
+                          ) : (
+                            getDisplayName(currentTask.owner)
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -132,11 +182,20 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                     <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-sm font-medium">Collaborators</p>
-                      {currentTask.collaborators && currentTask.collaborators.length > 0 ? (
+                      {userLoading ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                      ) : currentTask.collaborators && currentTask.collaborators.length > 0 ? (
                         <div className="space-y-1 mt-1">
                           {currentTask.collaborators.map((collaborator, index) => (
                             <p key={index} className="text-sm text-muted-foreground">
-                              {collaborator}
+                              {getDisplayName(collaborator) === "You" ? (
+                                <span className="font-bold">You</span>
+                              ) : (
+                                getDisplayName(collaborator)
+                              )}
                             </p>
                           ))}
                         </div>
