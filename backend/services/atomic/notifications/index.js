@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const Redis = require('ioredis');
 const { supabase } = require('./db/supabase');
-const { WebSocketServer, WebSocket } = require('ws');
+const { WebSocketServer } = require('ws');
 const notifRoutes = require('./api/notifications');
 
 const app = express();
@@ -47,9 +47,7 @@ function addClient(userId, ws) {
   clients.get(userId).add(ws);
 
   ws.isAlive = true;
-  ws.on('pong', () => {
-    ws.isAlive = true;
-  });
+  ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('close', () => {
     clients.get(userId).delete(ws);
@@ -83,14 +81,11 @@ wss.on('connection', (ws, req) => {
 // ----- Heartbeat to prevent idle disconnects -----
 setInterval(() => {
   wss.clients.forEach((ws) => {
-    if (ws.isAlive === false) {
-      console.log('[ws] Terminating dead connection');
-      return ws.terminate();
-    }
+    if (!ws.isAlive) return ws.terminate();
     ws.isAlive = false;
     ws.ping();
   });
-}, 30000); // every 30s
+}, 30000);
 
 // ----- Notification flow -----
 async function sendNotification(notif) {
@@ -106,17 +101,29 @@ async function sendNotification(notif) {
       console.error('[worker] Supabase insert error:', error);
       return;
     }
-    console.log('[worker] Notification saved:', data);
 
-    // 2. Broadcast via WebSocket
+    // 2. Enrich notification with from_username
+    let from_username = "Unknown";
+    if (data.from_user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', data.from_user)
+        .single();
+      if (profile) from_username = profile.display_name;
+    }
+
+    const enriched = { ...data, from_username };
+
+    console.log('[worker] Notification saved & enriched:', enriched);
+
+    // 3. Broadcast via WebSocket
     const sockets = clients.get(notif.to_user);
     if (sockets) {
       for (const ws of sockets) {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(data));
-          console.log(`[ws] Sent notification to ${notif.to_user}`);
-        }
+        if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(enriched));
       }
+      console.log(`[ws] Sent notification to ${notif.to_user}`);
     }
   } catch (err) {
     console.error('[worker] Error sending notification:', err);
@@ -130,8 +137,8 @@ redisSub.subscribe(CHANNEL, (err, count) => {
 });
 
 redisSub.on('message', async (_channel, message) => {
-  console.log(`[worker] Received message: ${message}`);
   const notif = JSON.parse(message);
+  console.log(`[worker] Received message: ${message}`);
   await sendNotification(notif);
 });
 

@@ -1,10 +1,12 @@
 import { Outlet } from "react-router-dom"
 import { AppNavbar } from "@/components/layout/AppNavbar"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { ToastContainer } from "@/components/ui/toast-container"
 
 export function AppLayout() {
   return (
     <div className="min-h-screen bg-background">
+      <ToastContainer />
       <div className="flex h-screen overflow-hidden">
         {/* Desktop sidebar */}
         <aside className="hidden md:flex flex-shrink-0">

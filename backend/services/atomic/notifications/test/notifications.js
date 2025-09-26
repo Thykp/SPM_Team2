@@ -16,7 +16,7 @@ const notification = {
   project_id: "e9cd9203-e8d2-42fa-a081-b2db6bc443a5",
   priority: "normal",
   delivery_channels: ["in_app"],
-  metadata: {},
+  read: false
 };
 
 async function sendImmediate() {
