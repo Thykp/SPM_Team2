@@ -3,94 +3,24 @@ import { Task as taskType, Task as taskAPI } from "@/lib/api";
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
-import { User, Calendar, Users } from "lucide-react";
+import { User, Calendar, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-async function mockSubTasks(): Promise<Task[]> {
-    // To be replaced by actual calls
-    return [
-        {
-        id: `sub-1`,
-        title: "Subtask 1: Research Phase",
-        description: "Gather requirements and analyze current system",
-        status: "Completed" as const,
-        owner: "jane.smith@company.com",
-        collaborators: ["john.doe@company.com"],
-        deadline: "2024-11-15T23:59:59Z",
-        parent: "taskId",
-        },
-        {
-        id: `stuff-sub-2`,
-        title: "Subtask 2: Development Phase",
-        description: "Implement core functionality based on requirements",
-        status: "Ongoing" as const,
-        owner: "bob.johnson@company.com",
-        collaborators: ["jane.smith@company.com", "john.doe@company.com"],
-        deadline: "2024-12-15T23:59:59Z",
-        parent: "taskId",
-        },
-        {
-        id: `stuff-sub-3`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-4`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-5`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-6`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-7`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        }
-    ];
-}
 
 type TaskDetailProps = {
     currentTask: taskType;
     isOpen: boolean;
     onClose: () => void;
+
+    parentTask?: taskType;
+    onNavigateToSubTask?: (subTask: taskType) => void;
+    onNavigateBack?: () => void;
 }
 
-export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
+export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigateToSubTask, onNavigateBack}: TaskDetailProps){
     const [subTasks, setSubTasks] = useState<taskType[]>([]);
     const [loading, setLoading] = useState(false);
+
 
     useEffect(() => {
         if (isOpen && currentTask){
@@ -105,7 +35,6 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
         try {
             const subTasks = await taskAPI.getSubTaskOfTask(currentTask.id);
             setSubTasks(subTasks);
-            console.log(subTasks)
         } catch (error) {
             console.error("Error fetching subtasks:", error);
         } finally {
@@ -142,6 +71,17 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="pb-6">
+            {/* Breadcrumb Navigation */}
+            {parentTask && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hover:text-foreground cursor-pointer" onClick={onNavigateBack}>
+                  {parentTask.title}
+                </span>
+                <ChevronRight className="h-3 w-3" />
+                <span className="text-foreground font-medium">{currentTask.title}</span>
+              </div>
+            )}
             <SheetTitle className="text-xl font-semibold">
               {currentTask.title}
             </SheetTitle>
@@ -212,7 +152,7 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
 
               {/* Subtasks Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between ">
                   <h4 className="text-lg font-semibold">Subtasks</h4>
                   <Badge variant="outline" className="text-xs">
                     {subTasks.length} {subTasks.length === 1 ? 'task' : 'tasks'}
@@ -230,7 +170,9 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
                 ) : subTasks.length > 0 ? (
                   <div className="space-y-3">
                     {subTasks.map((subTask) => (
-                      <Card key={subTask.id} className="p-4">
+                      <Card key={subTask.id} className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => onNavigateToSubTask?.(subTask)}
+                      >
                         <div className="space-y-3">
                           <div>
                             <h5 className="font-medium text-sm">{subTask.title}</h5>
