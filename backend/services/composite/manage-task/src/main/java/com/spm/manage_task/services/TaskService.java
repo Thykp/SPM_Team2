@@ -100,5 +100,11 @@ public class TaskService {
         return task;
     }
     
+    public List<TaskDto> getSubTaskByTaskId(String taskId){
+        ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/subtask/"+taskId, TaskDto[].class);
+        TaskDto[] tasks = responseEntity.getBody();
+        return tasks == null ? List.of() : Arrays.asList(tasks);
+    }
+    
 
 }
