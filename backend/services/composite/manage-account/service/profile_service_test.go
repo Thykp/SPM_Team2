@@ -1,4 +1,4 @@
-package manage_account_test
+package profile_service
 
 import (
 	"encoding/json"
@@ -7,12 +7,10 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
-
-	profile_service "manage-account/service"
 )
 
 // Create a mock HTTP server that mimics your profile service
-func createMockProfileServer(responses map[string][]profile_service.User) *httptest.Server {
+func createMockProfileServer(responses map[string][]User) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Extract user ID from path /user/{id}
 		userId := r.URL.Path[len("/user/"):]
@@ -23,14 +21,14 @@ func createMockProfileServer(responses map[string][]profile_service.User) *httpt
 			json.NewEncoder(w).Encode(users)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode([]profile_service.User{})
+			json.NewEncoder(w).Encode([]User{})
 		}
 	}))
 }
 
 // Test helper to create sample users
-func createTestUser(id, name, dept, role string) profile_service.User {
-	return profile_service.User{
+func createTestUser(id, name, dept, role string) User {
+	return User{
 		UserId:         id,
 		UserName:       &name,
 		UserDepartment: &dept,
@@ -43,14 +41,14 @@ func createTestUser(id, name, dept, role string) profile_service.User {
 func TestGetUserDetails_WithMockData(t *testing.T) {
 	t.Run("Should process multiple users correctly", func(t *testing.T) {
 		// Create test input - array of User structs with just UserIds
-		inputUsers := []profile_service.User{
+		inputUsers := []User{
 			{UserId: "user1"},
 			{UserId: "user2"},
 			{UserId: "user3"},
 		}
 
 		// Call the actual method
-		result := profile_service.GetUserDetails(inputUsers)
+		result := GetUserDetails(inputUsers)
 
 		// Verify the method was called and returned something
 		// Note: This will fail against the real HTTP endpoint, but demonstrates proper testing structure
@@ -72,10 +70,10 @@ func TestGetUserDetails_WithMockData(t *testing.T) {
 func TestGetUserDetails_EmptyInput(t *testing.T) {
 	t.Run("Should handle empty input gracefully", func(t *testing.T) {
 		// Test with empty input
-		inputUsers := []profile_service.User{}
+		inputUsers := []User{}
 
 		// Call the actual method
-		result := profile_service.GetUserDetails(inputUsers)
+		result := GetUserDetails(inputUsers)
 
 		// Should return empty slice
 		if result == nil {
@@ -92,12 +90,12 @@ func TestUserDetailsBasedOnId_DirectCall(t *testing.T) {
 	t.Run("Should call UserDetailsBasedOnId method directly", func(t *testing.T) {
 		// Setup for actual method call
 		var wg sync.WaitGroup
-		ch := make(chan []profile_service.User, 1)
+		ch := make(chan []User, 1)
 
 		wg.Add(1)
 
 		// Call the ACTUAL method - this will make real HTTP request
-		result, err := profile_service.UserDetailsBasedOnId("test-user-123", ch, &wg)
+		result, err := UserDetailsBasedOnId("test-user-123", ch, &wg)
 
 		// Wait for goroutine to complete
 		wg.Wait()
@@ -117,7 +115,7 @@ func TestUserDetailsBasedOnId_DirectCall(t *testing.T) {
 		}
 
 		// Verify channel received data (or didn't due to error)
-		channelResults := make([]profile_service.User, 0)
+		channelResults := make([]User, 0)
 		for users := range ch {
 			channelResults = append(channelResults, users...)
 		}
@@ -129,12 +127,12 @@ func TestUserDetailsBasedOnId_DirectCall(t *testing.T) {
 func TestGetUserDetails_SingleUser(t *testing.T) {
 	t.Run("Should call GetUserDetails with single user", func(t *testing.T) {
 		// Create actual input
-		inputUsers := []profile_service.User{
+		inputUsers := []User{
 			{UserId: "single-test-user"},
 		}
 
 		// Call the ACTUAL method
-		result := profile_service.GetUserDetails(inputUsers)
+		result := GetUserDetails(inputUsers)
 
 		// Verify method was called and handled gracefully
 		if result == nil {
@@ -155,7 +153,7 @@ func TestGetUserDetails_SingleUser(t *testing.T) {
 func TestConcurrentAccess(t *testing.T) {
 	t.Run("Handles concurrent goroutines safely", func(t *testing.T) {
 		numGoroutines := 10
-		ch := make(chan []profile_service.User, numGoroutines)
+		ch := make(chan []User, numGoroutines)
 		var wg sync.WaitGroup
 
 		// Launch multiple goroutines concurrently
@@ -168,14 +166,14 @@ func TestConcurrentAccess(t *testing.T) {
 				dept := "Testing"
 				role := "Tester"
 
-				user := profile_service.User{
+				user := User{
 					UserId:         fmt.Sprintf("concurrent_user_%d", index),
 					UserName:       &name,
 					UserDepartment: &dept,
 					UserRole:       &role,
 				}
 
-				ch <- []profile_service.User{user}
+				ch <- []User{user}
 			}(i)
 		}
 
@@ -183,7 +181,7 @@ func TestConcurrentAccess(t *testing.T) {
 		close(ch)
 
 		// Collect and verify results
-		var results []profile_service.User
+		var results []User
 		for users := range ch {
 			results = append(results, users...)
 		}
@@ -205,7 +203,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 // Benchmark test for performance
 func BenchmarkGetUserDetails(b *testing.B) {
-	inputUsers := []profile_service.User{
+	inputUsers := []User{
 		{UserId: "bench_user_1"},
 		{UserId: "bench_user_2"},
 		{UserId: "bench_user_3"},
@@ -213,7 +211,7 @@ func BenchmarkGetUserDetails(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ch := make(chan []profile_service.User, len(inputUsers))
+		ch := make(chan []User, len(inputUsers))
 		var wg sync.WaitGroup
 
 		for _, user := range inputUsers {
@@ -222,17 +220,17 @@ func BenchmarkGetUserDetails(b *testing.B) {
 				defer wg.Done()
 
 				// Simulate lightweight processing
-				mockUser := profile_service.User{
+				mockUser := User{
 					UserId: userId,
 				}
-				ch <- []profile_service.User{mockUser}
+				ch <- []User{mockUser}
 			}(user.UserId)
 		}
 
 		wg.Wait()
 		close(ch)
 
-		var resBody []profile_service.User
+		var resBody []User
 		for res := range ch {
 			resBody = append(resBody, res...)
 		}
