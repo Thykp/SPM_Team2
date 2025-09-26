@@ -41,17 +41,17 @@ router.get("/staff", async (req, res) => {
   }
 });
 
-// Fetch user details by ID
-router.get("/:id", async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const userDetails = await user.getUserDetailsById(id); // Call the model function
-    res.status(200).json(userDetails);
-  } catch (err) {
-    console.error("Error fetching user details:", err);
-    res.status(500).json({ error: err.message });
+router.get("/:userId", async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
+      return res.status(400).json({ error: "Missing user ID" });
   }
-});
+  try {
+      const profile = await user.getUserDetailsWithId(userId);
+      res.status(200).json(profile);
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+})
 
 module.exports = router;

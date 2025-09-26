@@ -10,13 +10,15 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Role } from "@/contexts/AuthContext"
 
-const ROLE_OPTIONS: Role[] = ["user", "staff", "admin"]
+const ROLE_OPTIONS: Role[] = ["User", "Staff", "Admin"]
 
 export default function SignUp() {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [role, setRole] = useState<Role>("user")
+  const [role, setRole] = useState<Role>("User")
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -27,7 +29,7 @@ export default function SignUp() {
     setError(null)
     setOk(false)
 
-    // client-side validation
+    // basic validation
     if (password !== confirmPassword) {
       setError("Passwords do not match.")
       return
@@ -37,28 +39,40 @@ export default function SignUp() {
       return
     }
 
+    const first = firstName.trim()
+    const last = lastName.trim()
+    const displayName = [first, last].filter(Boolean).join(" ")
+
     setLoading(true)
 
-    // 1) Sign up and stash chosen role in user metadata (read by your SQL trigger)
+    // 1) Sign up: stash role + names in user metadata (read by SQL trigger)
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { initial_role: role } },
+      options: {
+        data: {
+          initial_role: role,      // for your trigger to coerce role
+          first_name: first,       // for your trigger to build display_name
+          last_name: last,         // for your trigger to build display_name
+          display_name: displayName, // optional convenience copy
+        },
+      },
     })
     if (error) {
       setLoading(false)
       return setError(error.message)
     }
 
-    // 2) If a session exists immediately, set profiles.role now (demo-friendly)
+    // 2) If a session exists immediately (no email confirm), also update profiles now
+    //    This keeps the app "demo-friendly" and consistent even if trigger already ran.
     const { data: sess } = await supabase.auth.getSession()
     if (sess.session?.user?.id) {
       await supabase
         .from("profiles")
-        .update({ role })
+        .update({ role, display_name: displayName })
         .eq("id", sess.session.user.id)
         .then(({ error }) => {
-          if (error) console.warn("Profile role update failed:", error.message)
+          if (error) console.warn("Profile update failed:", error.message)
         })
     }
 
@@ -80,6 +94,29 @@ export default function SignUp() {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First name</Label>
+                <Input
+                  id="firstName"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  autoComplete="given-name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input
+                  id="lastName"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  autoComplete="family-name"
+                  required
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
@@ -94,6 +131,7 @@ export default function SignUp() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 aria-invalid={!!error && password !== confirmPassword}
+                autoComplete="new-password"
               />
             </div>
 
@@ -106,6 +144,7 @@ export default function SignUp() {
                 onChange={e => setConfirmPassword(e.target.value)}
                 required
                 aria-invalid={!!error && password !== confirmPassword}
+                autoComplete="new-password"
               />
             </div>
 
