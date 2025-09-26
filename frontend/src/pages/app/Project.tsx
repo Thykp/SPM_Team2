@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import Loader from '@/components/layout/Loader';
 import { Project as ProjectAPI, Profile, type ProjectDto, type NewProjectRequest, type LiteUser } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProjectHeader from '@/components/project/ProjectHeader';
@@ -147,9 +147,9 @@ const Projects: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-96">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+        <div className="flex items-center justify-center min-h-[60vh]" aria-busy="true" aria-live="polite">
+            <Loader />
+        </div>
         );
     }
 

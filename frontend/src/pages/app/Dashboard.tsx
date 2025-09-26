@@ -1,13 +1,14 @@
 import { CollaboratorPicker } from "@/components/CollaboratorPicker";
+import Loader from "@/components/layout/Loader";
 import { useEffect, useState } from "react";
 import { TaskCard } from "@/components/task/TaskCard";
 import { useAuth } from "@/contexts/AuthContext";
 import CreateTask from "@/components/task/CreateTask";
-import { Task as TaskType, Task } from "@/lib/api"; // Import Task type and service
+import { Task as TaskType, Task } from "@/lib/api";
 
 export function Dashboard() {
   const { profile, authLoading } = useAuth();
-  const [tasks, setTasks] = useState<TaskType[]>([]); // Use the imported Task type
+  const [tasks, setTasks] = useState<TaskType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,14 +28,18 @@ export function Dashboard() {
     };
 
     fetchTasks();
-  }, [profile?.id]); // Refetch tasks when the profile ID changes
+  }, [profile?.id]);
 
   const handleTaskCreated = (newTask: TaskType) => {
-    setTasks((prev) => [newTask, ...prev]); // Add the new task to the top of the list
+    setTasks((prev) => [newTask, ...prev]);
   };
 
   if (authLoading || loading) {
-    return <p>Loading tasks...</p>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]" aria-busy="true" aria-live="polite">
+        <Loader />
+      </div>
+    );
   }
 
   if (error) {
@@ -49,7 +54,6 @@ export function Dashboard() {
 
         <TaskCard tasks={tasks} />
 
-        {/* Create New Task Button */}
         <div className="mt-8">
           <CreateTask userId={profile?.id || ""}  onTaskCreated={handleTaskCreated} />
         </div>

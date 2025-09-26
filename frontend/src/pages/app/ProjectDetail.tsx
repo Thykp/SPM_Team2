@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import Loader from '@/components/layout/Loader';
+import { ArrowLeft } from 'lucide-react';
 import { Project as ProjectAPI, Task as TaskAPI, type ProjectDto, type Task } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProjectHeader, ProjectInfo, KanbanBoard } from '@/components/project-details';
@@ -102,10 +103,9 @@ const ProjectDetail: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-96">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="ml-2">Loading project details...</span>
-            </div>
+        <div className="flex items-center justify-center min-h-[60vh]" aria-busy="true" aria-live="polite">
+            <Loader />
+        </div>
         );
     }
 
