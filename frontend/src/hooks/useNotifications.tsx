@@ -32,7 +32,6 @@ export function useNotifications(userId: string) {
         if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data: Notification[] = await res.json();
         if (isMounted) setNotifications(data);
-        console.log(data);
       } catch (err) {
         console.error("❌ Failed to fetch notifications:", err);
       }
@@ -62,7 +61,6 @@ export function useNotifications(userId: string) {
             title,
             description: `${notif.from_username ?? "Unknown"}: ${notif.notif_text}`,
           });
-          console.log(notif)
           setLastToastId(notif.id);
         }
 
