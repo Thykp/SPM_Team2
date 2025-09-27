@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
