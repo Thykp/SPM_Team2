@@ -30,6 +30,3 @@ go run main.go
 mvn clean install
 mvn spring-boot:run
 ```
-
-
-
