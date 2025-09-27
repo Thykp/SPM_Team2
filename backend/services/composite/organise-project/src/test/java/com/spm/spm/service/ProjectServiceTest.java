@@ -2,6 +2,7 @@ package com.spm.spm.service;
 
 import com.spm.spm.dto.NewProjectRequest;
 import com.spm.spm.dto.ProjectDto;
+import com.spm.spm.dto.UpdateProjectRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,10 +15,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -414,5 +412,83 @@ class ProjectServiceTest {
         assertThat(result.getCollaborators()).hasSize(4);
         assertThat(result.getTaskList()).containsAll(largeTasks);
         assertThat(result.getCollaborators()).containsAll(largeCollaborators);
+    }
+
+    @Test
+    @DisplayName("Should successfully get project by ID")
+    void getProjectById_shouldReturnProjectDto() {
+        // Arrange
+        ProjectDto expectedResponse = new ProjectDto(
+            testProjectId,
+            OffsetDateTime.now(),
+            "Test Project",
+            Arrays.asList(testTaskId1, testTaskId2),
+            "Test Description",
+            testOwnerId,
+            Arrays.asList(testCollaboratorId)
+        );
+        
+        ResponseEntity<ProjectDto> responseEntity = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
+        
+        when(restTemplate.getForEntity(
+            eq(baseUrl + "/project/" + testProjectId.toString()),
+            eq(ProjectDto.class)
+        )).thenReturn(responseEntity);
+
+        // Act
+        ProjectDto result = projectService.getProjectById(testProjectId);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(testProjectId);
+        assertThat(result.getTitle()).isEqualTo("Test Project");
+        assertThat(result.getDescription()).isEqualTo("Test Description");
+    }
+
+    @Test
+    @DisplayName("Should successfully update project")
+    @SuppressWarnings("unchecked")
+    void updateProject_shouldReturnUpdatedProject() {
+        // Arrange
+        UpdateProjectRequest updateRequest = new UpdateProjectRequest();
+        updateRequest.setTitle("Updated Title");
+        updateRequest.setDescription("Updated Description");
+        
+        Map<String, Object> projectMap = new HashMap<>();
+        projectMap.put("id", testProjectId.toString());
+        projectMap.put("title", "Updated Title");
+        projectMap.put("description", "Updated Description");
+        
+        Map<String, Object> expectedResponse = new HashMap<>();
+        expectedResponse.put("success", true);
+        expectedResponse.put("project", projectMap);
+        
+        ResponseEntity<Map<String, Object>> responseEntity = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
+        
+        ArgumentCaptor<HttpEntity<UpdateProjectRequest>> httpEntityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        
+        when(restTemplate.exchange(
+            eq(baseUrl + "/project/" + testProjectId.toString()),
+            eq(HttpMethod.PUT),
+            httpEntityCaptor.capture(),
+            eq(Map.class)
+        )).thenReturn((ResponseEntity) responseEntity);
+
+        // Act
+        Map<String, Object> result = projectService.updateProject(testProjectId, updateRequest);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.get("success")).isEqualTo(true);
+        
+        // Verify headers
+        HttpEntity<UpdateProjectRequest> capturedEntity = httpEntityCaptor.getValue();
+        assertThat(capturedEntity.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        
+        // Verify request body
+        UpdateProjectRequest capturedBody = capturedEntity.getBody();
+        assertThat(capturedBody).isNotNull();
+        assertThat(capturedBody.getTitle()).isEqualTo("Updated Title");
+        assertThat(capturedBody.getDescription()).isEqualTo("Updated Description");
     }
 }

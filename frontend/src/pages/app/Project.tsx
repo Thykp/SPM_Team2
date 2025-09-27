@@ -13,6 +13,7 @@ interface Project {
     description: string;
     startDate: string;
     members: string[];
+    owner?: string;
 }
 
 const Projects: React.FC = () => {
@@ -59,13 +60,20 @@ const Projects: React.FC = () => {
                         }
                         return `User ${uuid.slice(0, 8)}...`;
                     });
+
+                    // Get owner display name
+                    const ownerUser = allUsers.find(u => u.id === apiProject.owner);
+                    const ownerName = ownerUser 
+                        ? (ownerUser.display_name || `${ownerUser.role} (${apiProject.owner.slice(0, 8)}...)`)
+                        : `User ${apiProject.owner.slice(0, 8)}...`;
                     
                     return {
                         id: apiProject.id,
                         title: apiProject.title || 'Untitled Project',
                         description: apiProject.description || 'No description available',
                         startDate: apiProject.createdat || new Date().toISOString(),
-                        members: collaboratorNames
+                        members: collaboratorNames,
+                        owner: ownerName
                     };
                 });
                 
@@ -116,13 +124,26 @@ const Projects: React.FC = () => {
                 }
             }
             
+            // Get owner display name
+            let ownerName = `User ${createdProject.owner.slice(0, 8)}...`;
+            try {
+                const allUsers = await Profile.getAllUsers();
+                const ownerUser = allUsers.find(u => u.id === createdProject.owner);
+                if (ownerUser) {
+                    ownerName = ownerUser.display_name || `${ownerUser.role} (${createdProject.owner.slice(0, 8)}...)`;
+                }
+            } catch (userErr) {
+                console.error('Error loading owner info:', userErr);
+            }
+
             // Transform API response to component format and add to local state
             const newProjectForState: Project = {
                 id: createdProject.id,
                 title: createdProject.title || projectData.title,
                 description: createdProject.description || projectData.description,
                 startDate: createdProject.createdat || new Date().toISOString(),
-                members: collaboratorNames
+                members: collaboratorNames,
+                owner: ownerName
             };
 
             setProjects(prev => [newProjectForState, ...prev]);

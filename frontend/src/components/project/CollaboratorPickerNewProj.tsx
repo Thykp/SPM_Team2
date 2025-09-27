@@ -25,7 +25,16 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
 }) => {
     // Filter users based on search and exclude current user
     const filteredUsers = users.filter(u => {
-        if (u.id === currentUserId) return false; // Exclude current user
+        // More robust owner exclusion - handle string comparison and null/undefined cases
+        const isOwner = currentUserId && u.id && (
+            u.id === currentUserId || 
+            u.id.toString() === currentUserId.toString()
+        );
+        
+        if (isOwner) {
+            return false; // Exclude current user
+        }
+        
         const searchLower = userSearchTerm.toLowerCase();
         return (
             u.display_name?.toLowerCase().includes(searchLower) ||

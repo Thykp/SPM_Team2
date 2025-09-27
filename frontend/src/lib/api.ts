@@ -57,6 +57,14 @@ export type NewProjectRequest = {
   collaborators?: string[];
 };
 
+export type UpdateProjectRequest = {
+  title?: string;
+  description?: string;
+  tasklist?: string[];
+  owner?: string;
+  collaborators?: string[];
+};
+
 export const Project = {
 
   updateCollaborators: async (projectId: string, collaborators: string[]): Promise<{ success: boolean; project: any }> => {
@@ -82,6 +90,18 @@ export const Project = {
   getByUser: async (userId: string): Promise<ProjectDto[]> => {
     const url = `${KONG_BASE_URL}/organise-project/projects/user/${userId}`;
     const { data } = await api.get<ProjectDto[]>(url);
+    return data;
+  },
+
+  getById: async (projectId: string): Promise<ProjectDto> => {
+    const url = `${KONG_BASE_URL}/organise-project/projects/${projectId}`;
+    const { data } = await api.get<ProjectDto>(url);
+    return data;
+  },
+
+  updateProject: async (projectId: string, updates: UpdateProjectRequest): Promise<{ success: boolean; project: any }> => {
+    const url = `${KONG_BASE_URL}/organise-project/projects/${projectId}`;
+    const { data } = await api.put<{ success: boolean; project: any }>(url, updates);
     return data;
   },
   
