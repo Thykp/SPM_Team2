@@ -7,6 +7,7 @@ import { Dashboard } from './pages/app/Dashboard'
 import { Settings } from './pages/app/Settings'
 import Project from './pages/app/Project'
 import ProjectDetail from './pages/app/ProjectDetail'
+import ManageUser from './pages/app/ManageUser'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import RoleGate from './components/auth/RoleGate'
 
@@ -25,8 +26,16 @@ function App() {
           <Route
             path="settings"
             element={
-              <RoleGate allow={["admin", "staff"]}>
+              <RoleGate allow={["Admin", "Staff"]}>
                 <Settings />
+              </RoleGate>
+            }
+          />
+          <Route
+            path="manage-users"
+            element={
+              <RoleGate allow={["Admin", "Staff"]}>
+                <ManageUser />
               </RoleGate>
             }
           />

@@ -1,37 +1,79 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
-import { Project as ProjectAPI, Profile, type ProjectDto, type NewProjectRequest, type LiteUser } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
-import ProjectHeader from '@/components/project/ProjectHeader';
-import ProjectSearch from '@/components/project/ProjectSearch';
-import ProjectModal from '@/components/project/ProjectModal';
-import ProjectGrid from '@/components/project/ProjectGrid';
+import React, { useState, useEffect, useMemo } from "react";
+import Loader from "@/components/layout/Loader";
+import {
+  Project as ProjectAPI,
+  Profile,
+  type ProjectDto,
+  type NewProjectRequest,
+} from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import ProjectHeader from "@/components/project/ProjectHeader";
+import ProjectSearch from "@/components/project/ProjectSearch";
+import ProjectModal from "@/components/project/ProjectModal";
+import ProjectGrid from "@/components/project/ProjectGrid";
 
 interface Project {
-    id: string;
-    title: string;
-    description: string;
-    startDate: string;
-    members: string[];
+  id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  members: string[];
     owner?: string;
 }
 
-const Projects: React.FC = () => {
-    const { user } = useAuth();
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [showModal, setShowModal] = useState(false);
-    const [isCreating, setIsCreating] = useState(false);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+// Inline user type (replaces removed LiteUser)
+type UserRow = {
+  id: string;
+  display_name: string;
+  role: string;
+  department: string;
+};
 
-    useEffect(() => {
-        const fetchProjects = async () => {
-            if (!user?.id) {
-                setLoading(false);
-                return;
-            }
+// Helper: make a map { userId -> { display_name, role } }
+function buildUserMap(users: UserRow[]) {
+  const map: Record<string, { display_name: string; role: string }> = {};
+  for (const u of users) {
+    map[u.id] = { display_name: u.display_name, role: u.role };
+  }
+  return map;
+}
+
+// Helper: convert collaborator UUIDs to display labels using a cached map
+function idsToNames(
+  ids: string[] | null | undefined,
+  map: Record<string, { display_name: string; role: string }>
+) {
+  const arr = ids ?? [];
+  return arr.map((uuid) => {
+    const u = map[uuid];
+    if (u) {
+      return u.display_name || `${u.role} (${uuid.slice(0, 8)}...)`;
+    }
+    return `User ${uuid.slice(0, 8)}...`;
+  });
+}
+
+const Projects: React.FC = () => {
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Cache users for UUID→name mapping
+  const [userMap, setUserMap] = useState<
+    Record<string, { display_name: string; role: string }>
+  >({});
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
 
             try {
                 setLoading(true);
@@ -87,18 +129,23 @@ const Projects: React.FC = () => {
             }
         };
 
-        fetchProjects();
-    }, [user?.id]);
+    fetchProjects();
+    // We intentionally omit userMap from deps; we want a single load pass.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
-    const filteredProjects = projects.filter(project => {
-        const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            project.description.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesSearch;
+  const filteredProjects = useMemo(() => {
+    const q = (searchTerm || "").toLowerCase();
+    return projects.filter((p) => {
+      const t = p.title.toLowerCase();
+      const d = p.description.toLowerCase();
+      return t.includes(q) || d.includes(q);
     });
+  }, [projects, searchTerm]);
 
-    const handleCreateProject = async (projectData: NewProjectRequest) => {
-        setIsCreating(true);
-        setError(null);
+  const handleCreateProject = async (projectData: NewProjectRequest) => {
+    setIsCreating(true);
+    setError(null);
 
         try {
             const createdProject = await ProjectAPI.create(projectData);
@@ -146,72 +193,76 @@ const Projects: React.FC = () => {
                 owner: ownerName
             };
 
-            setProjects(prev => [newProjectForState, ...prev]);
-            
-            // Show success message
-            setSuccessMessage('Project created successfully!');
-            setTimeout(() => setSuccessMessage(null), 3000);
-        } catch (error) {
-            console.error('Failed to create project:', error);
-            setError(error instanceof Error ? error.message : 'Failed to create project');
-            throw error; // Re-throw so modal can handle it
-        } finally {
-            setIsCreating(false);
-        }
-    };
+      setProjects((prev) => [newProjectForState, ...prev]);
 
-    const handleModalClose = () => {
-        setShowModal(false);
-        setError(null);
-        setSuccessMessage(null);
-    };
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        );
+      // Success toast
+      setSuccessMessage("Project created successfully!");
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error("Failed to create project:", err);
+      setError(err instanceof Error ? err.message : "Failed to create project");
+      throw err; // let modal handle it too
+    } finally {
+      setIsCreating(false);
     }
+  };
 
+  const handleModalClose = () => {
+    setShowModal(false);
+    setError(null);
+    setSuccessMessage(null);
+  };
+
+  if (loading) {
     return (
-        <div className="space-y-6">
-            <ProjectHeader onNewProjectClick={() => setShowModal(true)} />
-            
-            <ProjectSearch 
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-            />
-
-            {/* Success Message */}
-            {successMessage && (
-                <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                    <p className="text-green-800">{successMessage}</p>
-                </div>
-            )}
-
-            {/* Error State */}
-            {error && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                    <p className="text-red-800">{error}</p>
-                </div>
-            )}
-
-            <ProjectGrid 
-                projects={filteredProjects} 
-                onCreateProject={() => setShowModal(true)}
-            />
-
-            <ProjectModal
-                show={showModal}
-                onClose={handleModalClose}
-                onCreateProject={handleCreateProject}
-                isCreating={isCreating}
-                error={error}
-                currentUserId={user?.id}
-            />
-        </div>
+      <div
+        className="flex items-center justify-center min-h-[60vh]"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <Loader />
+      </div>
     );
+  }
+
+  return (
+    <div className="space-y-6">
+      <ProjectHeader onNewProjectClick={() => setShowModal(true)} />
+
+      <ProjectSearch
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <p className="text-green-800">{successMessage}</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
+
+      <ProjectGrid
+        projects={filteredProjects}
+        onCreateProject={() => setShowModal(true)}
+      />
+
+      <ProjectModal
+        show={showModal}
+        onClose={handleModalClose}
+        onCreateProject={handleCreateProject}
+        isCreating={isCreating}
+        error={error}
+        currentUserId={user?.id}
+      />
+    </div>
+  );
 };
 
 export default Projects;

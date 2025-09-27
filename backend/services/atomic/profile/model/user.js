@@ -35,8 +35,19 @@ async function getStaffByDepartment(department, role = "staff") {
   return data || [];
 }
 
+async function getUserDetailsWithId(user_id){
+  const { data, error } = await supabase
+  .from(profileTable)
+  .select("*")
+  .eq("id",user_id);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,
   getStaffByDepartment,
+  getUserDetailsWithId
 };

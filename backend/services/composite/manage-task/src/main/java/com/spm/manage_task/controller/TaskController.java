@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,7 +25,7 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    @GetMapping()
+    @GetMapping("/")
     public ResponseEntity<List<TaskDto>> getAllTasks(){
         List<TaskDto> respBody = taskService.getAllTasks();
         return ResponseEntity.ok(respBody);
@@ -37,7 +38,6 @@ public class TaskController {
         return ResponseEntity.ok(respBody);
     }
 
-
     // POST for task
     @PostMapping("/new")
     public ResponseEntity<TaskDto> createTask(@RequestBody TaskPostRequestDto taskReq){
@@ -48,9 +48,22 @@ public class TaskController {
     // GET based on task id
     @GetMapping("/id/{taskId}")
     public ResponseEntity<TaskDto> getTaskById(@PathVariable String taskId) {
-        TaskDto task = taskService.getTaskById(taskId);
+        TaskDto task = taskService.getTaskByIdWithOwner(taskId);
         return ResponseEntity.ok(task);
     }
+    
+    // PUT route to update a task (based on task id)
+    @PutMapping("/edit/{taskId}")
+    public ResponseEntity<TaskDto> updateTask(@PathVariable String taskId, @RequestBody TaskDto updatedTask) {
+        TaskDto updatedTaskResponse = taskService.updateTask(taskId, updatedTask);
+        return ResponseEntity.ok(updatedTaskResponse);
+    }
 
+    // GET subtasks related to current task id
+    @GetMapping("/subtask/{taskId}")
+    public ResponseEntity<List<TaskDto>> getSubTaskByTaskId(@PathVariable String taskId) {
+        List<TaskDto> tasks = taskService.getSubTaskByTaskId(taskId);
+        return ResponseEntity.ok(tasks);
+    }
     
 }

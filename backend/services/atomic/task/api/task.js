@@ -43,7 +43,7 @@ router.post("/new", async (req, res) => {
     }
   });
 
-router.get("/:user_id", async (req, res) => {
+  router.get("/by-user/:user_id", async (req, res) => {
     try {
         const inputUserId = req.params.user_id;
         const userTasks = await task.getTasksPerUser(inputUserId);
@@ -52,6 +52,20 @@ router.get("/:user_id", async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// POST /task/by-users { ids: ["u1","u2", ...] }
+router.post("/by-users", async (req, res) => {
+  try {
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ error: "ids must be an array" });
+    }
+    const rows = await task.getTasksByUsers(ids);
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.put("/edit/:task_id", async (req, res) => {
@@ -80,6 +94,22 @@ router.get("/id/:id", async (req, res) => {
         res.status(200).json(taskinfo);
     } catch (error) {
         console.error("Error fetching task:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+router.get("/subtask/:parentTaskId", async (req, res) =>{
+    try {
+        const parentTaskId = req.params.parentTaskId;
+        const subTasks = await task.getSubTasksByParent(parentTaskId);
+
+        if (!subTasks) {
+        return res.status(404).json({ error: "Sub Task not found" });
+        }
+
+        res.status(200).json(subTasks);
+    } catch (error) {
+        console.error("Error fetching sub tasks:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 });

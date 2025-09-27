@@ -7,7 +7,7 @@ describe("GET /task/:user_id", () => {
 
     test("should retreive tasks related to user", async () => {
         const res = await request(app)
-            .get(`/task/${reqUserId}`)
+            .get(`/task/by-user/${reqUserId}`)
             .expect('Content-Type', 'application/json; charset=utf-8');
         
         expect(res.status).toBe(200);
