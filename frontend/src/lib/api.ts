@@ -112,6 +112,12 @@ export const Task = {
     return data;
   },
 
+  getTaskByIdWithOwner: async (taskId: string): Promise<Task & { ownerName: string; ownerDepartment: string }> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
+    const { data } = await api.get<Task & { ownerName: string; ownerDepartment: string }>(url);
+    return data;
+  },
+
   getSubTaskOfTask: async (taskId: string): Promise<Task[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/subtask/${taskId}`;
     const { data } = await api.get<Task[]>(url);
