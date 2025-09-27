@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Task } from "@/lib/api"; // Import Task type and service
 import { X } from "lucide-react";
+import { CollaboratorPicker } from "@/components/CollaboratorPicker";
+import Select from "react-select";
 
 interface LocalTask {
   id: string;
@@ -14,16 +16,26 @@ interface LocalTask {
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
   collaborators: string[];
   owner: string;
+  ownerName?: string;
+  ownerDepartment?: string;
   parent?: string | null;
+  isEditingOwner?: boolean;
 }
+
+// Mock Data (to be replaced with actual API data)
+const ownerOptions = [
+  { value: "c0cd847d-8c61-45dd-8dda-ecffe214943e", label: "Yu Feng" },
+  { value: "588fb335-9986-4c93-872e-6ef103c97f92", label: "John Doe" },
+  { value: "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv", label: "Jane Smith" },
+];
 
 interface EditTaskProps {
   taskId: string; // The ID of the task to be edited
-  onTaskUpdated: (updatedTask: LocalTask) => void; // Callback to update the task in the parent component
-  onClose: () => void; // Callback to close the modal
+  onClose: () => void;
+  onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, onTaskUpdated, onClose }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +43,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onTaskUpdated, onClose }) =
   useEffect(() => {
     const fetchTask = async () => {
       try {
-        const data = await Task.getTasksById(taskId); // Use the new function
+        const data = await Task.getTaskByIdWithOwner(taskId); // Use the new function
         console.log("Fetched task data:", data);
         setTask(data); // Set the fetched task
       } catch (error) {
@@ -47,19 +59,31 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onTaskUpdated, onClose }) =
     setLoading(true);
 
     try {
-      const updatedTaskData = {
-        ...task,
-      };
+      if (!task) {
+        throw new Error("Task data is missing");
+      }
 
-      // Simulate an API call to update the task
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate delay
-      onTaskUpdated(updatedTaskData as LocalTask); // Notify the parent component
-      onClose(); // Close the modal
+      // Call the API to update the task
+      const updatedTask = await Task.updateTask(task.id, {
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        deadline: task.deadline,
+        collaborators: task.collaborators,
+        owner: task.owner,
+        parent: task.parent,
+      });
+
+      console.log("Task successfully updated:", updatedTask);
+
+      // Close the modal after updating
+      onClose();
     } catch (err) {
       console.error("Failed to update task:", err);
     } finally {
       setLoading(false);
     }
+
   };
 
   if (!task) {
@@ -170,25 +194,20 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onTaskUpdated, onClose }) =
 
             {/* Collaborators */}
             <div className="space-y-2">
-            <Label htmlFor="collaborators" className="text-base font-medium">
+              <Label htmlFor="collaborators" className="text-base font-medium">
                 Collaborators
-            </Label>
-            <textarea
-                id="collaborators"
-                placeholder="Enter collaborator IDs, separated by commas"
-                value={task.collaborators.join(", ")} // Convert array to comma-separated string
-                onChange={(e) =>
-                setTask((prev) => ({
-                    ...prev!,
-                    collaborators: e.target.value.split(",").map((id) => id.trim()), // Convert string back to array
-                }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-            />
+              </Label>
+              <CollaboratorPicker
+                projectId={task.id} // Use the task ID as the project ID
+                initialSelected={task.collaborators} // Pass the initial collaborators
+                onSaved={(selected) =>
+                  setTask((prev) => ({ ...prev!, collaborators: selected }))
+                } // Update the collaborators in the task state
+              />
             </div>
 
             {/* Owner */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
             <Label htmlFor="owner" className="text-base font-medium">
                 Owner
             </Label>
@@ -196,17 +215,84 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onTaskUpdated, onClose }) =
                 id="owner"
                 type="text"
                 placeholder="Enter the owner ID"
-                value={task.owner}
+                value={task.ownerName + " (" + task.ownerDepartment + ")" || ""}
                 onChange={(e) =>
-                setTask((prev) => ({ ...prev!, owner: e.target.value }))
+                setTask((prev) => ({ ...prev!, ownerName: e.target.value }))
                 }
                 className="h-11"
                 required
             />
+            </div> */}
+
+            {/* Owner Dropdown Mock*/}
+            {/* <Select
+              options={ownerOptions}
+              value={ownerOptions.find((option) => option.value === task.owner) || null}
+              onChange={(selectedOption) =>
+                setTask((prev) => ({
+                  ...prev!,
+                  owner: selectedOption?.value || "",
+                  ownerName: selectedOption?.label || "",
+                }))
+              }
+              placeholder="Select an owner"
+              isSearchable
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  height: "44px", // Adjust height
+                  borderColor: "gray",
+                  boxShadow: "none",
+                  "&:hover": { borderColor: "black" },
+                }),
+              }}
+            /> */}
+
+            {/* Owner Field with Dropdown */}
+            <div className="space-y-2">
+              <Label htmlFor="owner" className="text-base font-medium">
+                Owner
+              </Label>
+              {task.isEditingOwner ? (
+                // Show the dropdown when in editing mode
+                <Select
+                  options={ownerOptions}
+                  value={ownerOptions.find((option) => option.value === task.owner) || null}
+                  onChange={(selectedOption) => {
+                    setTask((prev) => ({
+                      ...prev!,
+                      owner: selectedOption?.value || "",
+                      ownerName: selectedOption?.label || "",
+                      isEditingOwner: false, // Exit editing mode after selection
+                    }));
+                  }}
+                  placeholder="Select an owner"
+                  isSearchable
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      height: "44px",
+                      borderColor: "gray",
+                      boxShadow: "none",
+                      "&:hover": { borderColor: "black" },
+                    }),
+                  }}
+                />
+              ) : (
+                // Show the plain text when not in editing mode
+                <div
+                  className="cursor-pointer"
+                  onClick={() => setTask((prev) => ({ ...prev!, isEditingOwner: true }))}
+                >
+                  <span>
+                    {task.ownerName} {task.ownerDepartment ? `(${task.ownerDepartment})` : ""}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Parent Task */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
             <Label htmlFor="parent" className="text-base font-medium">
                 Parent Task
             </Label>
@@ -220,7 +306,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onTaskUpdated, onClose }) =
                 }
                 className="h-11"
             />
-            </div>
+            </div> */}
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
             <Button

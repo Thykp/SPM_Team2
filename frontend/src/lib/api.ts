@@ -38,6 +38,17 @@ export type NewProjectRequest = {
   collaborators?: string[];
 };
 
+export type Profile = {
+  department: string;
+  role: string;
+  display_name?: string;
+  teams?: string[];
+};
+
+export type ProfileRequestDetailsDto = {
+  id:string;
+}
+
 // ----- Services -----
 export const Profile = {
   getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
@@ -45,6 +56,12 @@ export const Profile = {
     const { data } = await api.get<Array<{ id: string; display_name: string; role: string; department: string }>>(url);
     return data;
   },
+
+  getProfileDetailsWithId: async (listOfUserIds: ProfileRequestDetailsDto[]): Promise<Profile[]> =>{
+    const url = `${KONG_BASE_URL}/manage-account/api/users/getUserDetails`;
+    const { data } = await api.post<Profile[]>(url, listOfUserIds);
+    return data;
+  }
 };
 
 export const Project = {
@@ -95,14 +112,26 @@ export const Task = {
     return data;
   },
 
+  getTaskByIdWithOwner: async (taskId: string): Promise<Task & { ownerName: string; ownerDepartment: string }> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
+    const { data } = await api.get<Task & { ownerName: string; ownerDepartment: string }>(url);
+    return data;
+  },
+
+  getSubTaskOfTask: async (taskId: string): Promise<Task[]> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/subtask/${taskId}`;
+    const { data } = await api.get<Task[]>(url);
+    return data;
+  },
+
   createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task`;
+    const url = `${KONG_BASE_URL}/manage-task/api/task`; // might be "new" instead of "task", TBC
     const { data } = await api.post<Task>(url, newTask);
     return data;
   },
 
   updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task/${taskId}`;
+    const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
     const { data } = await api.put<Task>(url, updates);
     return data;
   },
