@@ -22,36 +22,34 @@ export function AppNavbar() {
 
   const email = user?.email ?? ""
   const initials = (email ? email[0] : "U").toUpperCase()
-  const canSeeSettings = profile?.role === "admin" || profile?.role === "staff"
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center gap-4 px-4 md:px-6">
-        {/* Mobile Sidebar Toggle */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle sidebar</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <Sidebar />
-          </SheetContent>
-        </Sheet>
+      <div className="grid grid-cols-[auto_1fr_auto] items-center h-16 gap-4 px-4 md:px-6">
+        <div className="flex items-center gap-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle sidebar</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-64">
+              <Sidebar />
+            </SheetContent>
+          </Sheet>
 
-        {/* Brand (mobile only) */}
-        <Link to="/app" className="flex items-center space-x-2 md:hidden">
-          <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xs">A</span>
-          </div>
-          <span className="font-semibold">AppName</span>
-        </Link>
+          <Link to="/app" className="flex items-center space-x-2 md:hidden">
+            <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs">A</span>
+            </div>
+            <span className="font-semibold">AppName</span>
+          </Link>
+        </div>
 
-        {/* Search */}
-        <div className={`flex-1 max-w-md ${showMobileSearch ? "block" : "hidden md:block"}`}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className={`min-w-0 ${showMobileSearch ? "block" : "hidden md:block"}`}>
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="search"
               placeholder="Search..."
@@ -61,8 +59,7 @@ export function AppNavbar() {
           </div>
         </div>
 
-        {/* Right side actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-end">
           <Button
             variant="ghost"
             size="icon"
@@ -75,12 +72,10 @@ export function AppNavbar() {
 
           <NotificationsPanel userId={user?.id ?? "e9cd9203-e8d2-42fa-a081-b2db6bc443a5"} />
 
-          {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  {/* If you store an avatar URL in profile later, place it here */}
                   <AvatarImage src="/diverse-user-avatars.png" alt={email || "User"} />
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
@@ -97,15 +92,11 @@ export function AppNavbar() {
               <DropdownMenuItem asChild>
                 <Link to="/app/profile">Profile</Link>
               </DropdownMenuItem>
-              {canSeeSettings && (
+              {(profile?.role === "Admin" || profile?.role === "Staff") && (
                 <DropdownMenuItem asChild>
                   <Link to="/app/settings">Settings</Link>
                 </DropdownMenuItem>
               )}
-              {/* Example: keep Billing visible to all, or gate it if needed */}
-              <DropdownMenuItem asChild>
-                <Link to="/app/billing">Billing</Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>

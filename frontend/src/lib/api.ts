@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const KONG_BASE_URL = import.meta.env.VITE_KONG_BASE_URL || 'http://localhost:8000';
+const KONG_BASE_URL = import.meta.env.VITE_KONG_BASE_URL || "http://localhost:8000";
 
 const api = axios.create({
   baseURL: KONG_BASE_URL,
@@ -8,14 +8,7 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// Types
-export type LiteUser = {
-  id: string;
-  display_name: string;
-  role: string;
-  department: string;
-};
-
+// ----- Types -----
 export type Task = {
   id: string;
   title: string;
@@ -27,18 +20,6 @@ export type Task = {
   parent?: string | null;
 };
 
-// Services
-export const Profile = {
-
-  getAllUsers: async (): Promise<LiteUser[]> => {
-    const url = `${KONG_BASE_URL}/profile/user/all`;
-    const { data } = await api.get<LiteUser[]>(url);
-    return data;
-  },
-
-};
-
-// Project API types
 export type ProjectDto = {
   id: string;
   createdat: string | null;
@@ -57,13 +38,39 @@ export type NewProjectRequest = {
   collaborators?: string[];
 };
 
-export const Project = {
+export type Profile = {
+  department: string;
+  role: string;
+  display_name?: string;
+  teams?: string[];
+};
 
-  updateCollaborators: async (projectId: string, collaborators: string[]): Promise<{ success: boolean; project: any }> => {
+export type ProfileRequestDetailsDto = {
+  id:string;
+}
+
+// ----- Services -----
+export const Profile = {
+  getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
+    const url = `${KONG_BASE_URL}/profile/user/all`;
+    const { data } = await api.get<Array<{ id: string; display_name: string; role: string; department: string }>>(url);
+    return data;
+  },
+
+  getProfileDetailsWithId: async (listOfUserIds: ProfileRequestDetailsDto[]): Promise<Profile[]> =>{
+    const url = `${KONG_BASE_URL}/manage-account/api/users/getUserDetails`;
+    const { data } = await api.post<Profile[]>(url, listOfUserIds);
+    return data;
+  }
+};
+
+export const Project = {
+  updateCollaborators: async (
+    projectId: string,
+    collaborators: string[]
+  ): Promise<{ success: boolean; project: any }> => {
     const url = `${KONG_BASE_URL}/organise-project/projects/${projectId}/collaborators`;
-    const { data } = await api.put<{ success: boolean; project: any }>(url, {
-      collaborators,
-    });
+    const { data } = await api.put<{ success: boolean; project: any }>(url, { collaborators });
     return data;
   },
 
@@ -84,11 +91,9 @@ export const Project = {
     const { data } = await api.get<ProjectDto[]>(url);
     return data;
   },
-  
 };
 
 export const Task = {
-
   getAllTask: async (): Promise<Task[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/`;
     const { data } = await api.get<Task[]>(url);
@@ -106,15 +111,27 @@ export const Task = {
     const { data } = await api.get<Task>(url);
     return data;
   },
-  
+
+  getTaskByIdWithOwner: async (taskId: string): Promise<Task & { ownerName: string; ownerDepartment: string }> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
+    const { data } = await api.get<Task & { ownerName: string; ownerDepartment: string }>(url);
+    return data;
+  },
+
+  getSubTaskOfTask: async (taskId: string): Promise<Task[]> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/subtask/${taskId}`;
+    const { data } = await api.get<Task[]>(url);
+    return data;
+  },
+
   createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task`;
+    const url = `${KONG_BASE_URL}/manage-task/api/task`; // might be "new" instead of "task", TBC
     const { data } = await api.post<Task>(url, newTask);
     return data;
   },
 
   updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task/${taskId}`;
+    const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
     const { data } = await api.put<Task>(url, updates);
     return data;
   },

@@ -147,6 +147,20 @@ module.exports = {
 
         return data;
     },
+
     getTasksByUsers,
+
+    async getSubTasksByParent(taskId){
+        const { data, error } = await supabase
+          .from(taskTable)
+          .select("*")
+          .eq("parent", taskId);
+
+        if (error) {
+          console.error("Error fetching task:", error);
+          return null;
+        }
+        return data;
+    }
 }
 

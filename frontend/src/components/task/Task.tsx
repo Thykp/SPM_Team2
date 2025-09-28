@@ -2,26 +2,20 @@ import React, { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EditTask from "./EditTask"; // Import the EditTask component
+import { Task as apiTask } from "@/lib/api";
+import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
+ 
 
 type TaskProps = {
-  id: string;
-  title: string;
-  description: string;
-  status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
-  onTaskUpdated: (updatedTask: TaskProps) => void; // Callback for updating the task
-  onDelete: () => void; // Callback for deleting the task
+  taskContent: apiTask;
 };
 
 export const Task: React.FC<TaskProps> = ({
-  id,
-  title,
-  description,
-  status,
-  onTaskUpdated,
-  onDelete,
+  taskContent
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editing, setEditing] = useState(false); // State to toggle the EditTask modal
+  const [showDetails, setShowDetails] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -41,11 +35,14 @@ export const Task: React.FC<TaskProps> = ({
   };
 
   return (
-    <div className={`p-4 rounded relative ${getStatusColor(status)}`}>
-      <div>
-        <h3 className="text-lg font-bold">{title}</h3>
-        <p className="text-sm text-gray-600">{description}</p>
-        <span className="text-xs capitalize">{status}</span>
+    <div className={`p-4 rounded relative ${getStatusColor(taskContent.status)}`}>
+      <div 
+        className="cursor-pointer"
+        onClick={() => setShowDetails(true)}
+      >
+        <h3 className="text-lg font-bold">{taskContent.title}</h3>
+        <p className="text-sm text-gray-600">{taskContent.description}</p>
+        <span className="text-xs capitalize">{taskContent.status}</span>
       </div>
 
       <div className="absolute top-2 right-2">
@@ -76,7 +73,7 @@ export const Task: React.FC<TaskProps> = ({
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
-                    onDelete();
+                    // onDelete();
                   }}
                   className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
                 >
@@ -90,18 +87,17 @@ export const Task: React.FC<TaskProps> = ({
 
       {editing && (
         <EditTask
-        taskId={id} // Pass the task ID to the EditTask component
-        onTaskUpdated={(updatedTask) => {
-            onTaskUpdated({
-            ...updatedTask,
-            onTaskUpdated,
-            onDelete,
-            }); // Map Task to TaskProps
-            setEditing(false); // Close the modal after updating
-        }}
-        onClose={() => setEditing(false)} // Close the modal
+        taskId={taskContent.id}
+        onClose={() => setEditing(false)}
         />
       )}
+
+      <TaskDetailNavigator
+        initialTask ={taskContent}
+        isOpen = {showDetails}
+        onClose = {() => setShowDetails(false)}
+      />
+
     </div>
   );
 };
