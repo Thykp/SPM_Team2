@@ -21,7 +21,7 @@ interface Project {
     owner?: string;
 }
 
-// Inline user type (replaces removed LiteUser)
+// User type for API response
 type UserRow = {
   id: string;
   display_name: string;
@@ -29,29 +29,18 @@ type UserRow = {
   department: string;
 };
 
-// Helper: make a map { userId -> { display_name, role } }
-function buildUserMap(users: UserRow[]) {
-  const map: Record<string, { display_name: string; role: string }> = {};
-  for (const u of users) {
-    map[u.id] = { display_name: u.display_name, role: u.role };
+// Helper functions to reduce nesting
+const getUserDisplayName = (userId: string, users: UserRow[]): string => {
+  const foundUser = users.find(u => u.id === userId);
+  if (foundUser) {
+    return foundUser.display_name || `${foundUser.role} (${userId.slice(0, 8)}...)`;
   }
-  return map;
-}
+  return `User ${userId.slice(0, 8)}...`;
+};
 
-// Helper: convert collaborator UUIDs to display labels using a cached map
-function idsToNames(
-  ids: string[] | null | undefined,
-  map: Record<string, { display_name: string; role: string }>
-) {
-  const arr = ids ?? [];
-  return arr.map((uuid) => {
-    const u = map[uuid];
-    if (u) {
-      return u.display_name || `${u.role} (${uuid.slice(0, 8)}...)`;
-    }
-    return `User ${uuid.slice(0, 8)}...`;
-  });
-}
+const getCollaboratorNames = (collaboratorUUIDs: string[], users: UserRow[]): string[] => {
+  return collaboratorUUIDs.map(uuid => getUserDisplayName(uuid, users));
+};
 
 const Projects: React.FC = () => {
   const { user } = useAuth();
@@ -62,11 +51,6 @@ const Projects: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Cache users for UUID→name mapping
-  const [userMap, setUserMap] = useState<
-    Record<string, { display_name: string; role: string }>
-  >({});
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -80,7 +64,7 @@ const Projects: React.FC = () => {
                 setError(null);
                 
                 // Load users first for collaborator name mapping
-                let allUsers: LiteUser[] = [];
+                let allUsers: UserRow[] = [];
                 try {
                     allUsers = await Profile.getAllUsers();
                 } catch (userErr) {
@@ -94,20 +78,10 @@ const Projects: React.FC = () => {
                 const transformedProjects: Project[] = apiProjects.map((apiProject: ProjectDto) => {
                     // Convert collaborator UUIDs to display names
                     const collaboratorUUIDs = apiProject.collaborators || [];
-                    const collaboratorNames = collaboratorUUIDs.map(uuid => {
-                        const foundUser = allUsers.find(u => u.id === uuid);
-                        if (foundUser) {
-                            // Use display_name if available, otherwise use the role and truncated UUID
-                            return foundUser.display_name || `${foundUser.role} (${uuid.slice(0, 8)}...)`;
-                        }
-                        return `User ${uuid.slice(0, 8)}...`;
-                    });
+                    const collaboratorNames = getCollaboratorNames(collaboratorUUIDs, allUsers);
 
                     // Get owner display name
-                    const ownerUser = allUsers.find(u => u.id === apiProject.owner);
-                    const ownerName = ownerUser 
-                        ? (ownerUser.display_name || `${ownerUser.role} (${apiProject.owner.slice(0, 8)}...)`)
-                        : `User ${apiProject.owner.slice(0, 8)}...`;
+                    const ownerName = getUserDisplayName(apiProject.owner, allUsers);
                     
                     return {
                         id: apiProject.id,
@@ -130,8 +104,6 @@ const Projects: React.FC = () => {
         };
 
     fetchProjects();
-    // We intentionally omit userMap from deps; we want a single load pass.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const filteredProjects = useMemo(() => {
@@ -157,13 +129,7 @@ const Projects: React.FC = () => {
             if (collaborators.length > 0) {
                 try {
                     const allUsers = await Profile.getAllUsers();
-                    collaboratorNames = collaborators.map(uuid => {
-                        const foundUser = allUsers.find(u => u.id === uuid);
-                        if (foundUser) {
-                            return foundUser.display_name || `${foundUser.role} (${uuid.slice(0, 8)}...)`;
-                        }
-                        return `User ${uuid.slice(0, 8)}...`;
-                    });
+                    collaboratorNames = getCollaboratorNames(collaborators, allUsers);
                 } catch (userErr) {
                     console.error('Error loading users for collaborator names:', userErr);
                     // Fallback to just showing UUIDs
@@ -175,10 +141,7 @@ const Projects: React.FC = () => {
             let ownerName = `User ${createdProject.owner.slice(0, 8)}...`;
             try {
                 const allUsers = await Profile.getAllUsers();
-                const ownerUser = allUsers.find(u => u.id === createdProject.owner);
-                if (ownerUser) {
-                    ownerName = ownerUser.display_name || `${ownerUser.role} (${createdProject.owner.slice(0, 8)}...)`;
-                }
+                ownerName = getUserDisplayName(createdProject.owner, allUsers);
             } catch (userErr) {
                 console.error('Error loading owner info:', userErr);
             }

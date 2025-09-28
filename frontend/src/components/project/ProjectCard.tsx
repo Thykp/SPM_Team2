@@ -20,9 +20,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
-import { Project, Profile, type UpdateProjectRequest, type LiteUser } from '@/lib/api';
+import { Project, Profile, type UpdateProjectRequest } from '@/lib/api';
 
-interface Project {
+// Define LiteUser type based on the API response structure
+type LiteUser = {
+    id: string;
+    display_name: string;
+    role: string;
+    department: string;
+};
+
+// Define the Project interface for the UI component
+interface ProjectUIData {
     id: string;
     title: string;
     description: string;
@@ -32,8 +41,8 @@ interface Project {
 }
 
 interface ProjectCardProps {
-    project: Project;
-    onProjectUpdate?: (updatedProject: Project) => void;
+    project: ProjectUIData;
+    onProjectUpdate?: (updatedProject: ProjectUIData) => void;
     onProjectDelete?: (projectId: string) => void;
 }
 
@@ -42,7 +51,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingEdit, setIsLoadingEdit] = useState(false);
-    const [localProject, setLocalProject] = useState(project);
+    const [localProject, setLocalProject] = useState<ProjectUIData>(project);
     const [editForm, setEditForm] = useState({
         title: project.title,
         description: project.description,
@@ -142,7 +151,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                 console.log('Project updated successfully:', result);
                 
                 // Get the updated project data from the API response or fetch fresh data
-                let updatedProjectData;
+                let updatedProjectData: ProjectUIData;
                 if (result.project) {
                     // Use the returned data from the update API
                     updatedProjectData = {

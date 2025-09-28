@@ -74,8 +74,14 @@ module.exports = {
         }
       
         console.log("Inserted project:", data);
-        // Return the first project from the array
-        return data && data[0] ? data[0] : data;
+        // Return the expected response format
+        const projectData = data && data[0] ? data[0] : data;
+        return {
+          success: true,
+          message: 'Project created successfully',
+          data: projectData,
+          timestamp: new Date().toISOString()
+        };
     },
 
     async updateProject(projectId, updateData) {

@@ -46,9 +46,9 @@ router.post("/new", async (req, res) => {
     try {
       const newProjData = req.body;
   
-      const insertedProj = await project.addNewProj(newProjData);
+      const result = await project.addNewProj(newProjData);
   
-      res.status(201).json(insertedProj);
+      res.status(201).json(result);
   
     } catch (error) {
       res.status(500).json({ error: error.message });
