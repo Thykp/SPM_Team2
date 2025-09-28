@@ -71,7 +71,7 @@ export function AppNavbar() {
           </Button>
 
           <NotificationsPanel userId={user?.id ?? "e9cd9203-e8d2-42fa-a081-b2db6bc443a5"} />
-
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
