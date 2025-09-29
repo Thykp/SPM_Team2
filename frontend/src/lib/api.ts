@@ -36,6 +36,19 @@ export const Profile = {
     return data;
   },
 
+  getSubordinatesUnderManager: async (managerId: string): Promise<LiteUser[]> => {
+    const url = `${KONG_BASE_URL}/profile/user/${managerId}/subordinates`;
+    const response = await api.get(url);
+
+    // Extract and return the data property
+    if (!Array.isArray(response.data)) {
+      console.error("Invalid API response: expected an array", response.data);
+      return [];
+    }
+
+    return response.data;
+  },
+
 };
 
 // Project API types

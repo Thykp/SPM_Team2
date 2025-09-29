@@ -73,7 +73,7 @@ async function getSubordinatesUnderManager(userId) {
   // Step 2: Fetch subordinates whose teams overlap with the manager's teams
   const { data: subordinates, error: subordinatesError } = await supabase
     .from("profiles")
-    .select("display_name")
+    .select("id, display_name")
     .eq("role", "Staff")
     .overlaps("teams", managerTeams);
 

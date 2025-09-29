@@ -4,9 +4,10 @@ import { Task as TaskBody } from "@/components/task/Task";
 
 type TaskCardProps = {
   tasks: apiTask[];
+  role: "Staff" | "Manager" | "Director" | "Senior Management";
 };
 
-export function TaskCard({ tasks }: TaskCardProps) {
+export function TaskCard({ tasks, role }: TaskCardProps) {
   return (
     <Card className="max-w-md">
       <CardHeader>
@@ -22,6 +23,7 @@ export function TaskCard({ tasks }: TaskCardProps) {
                 // description={task.description}
                 // status={task.status}
                 taskContent = {task}
+                role={role}
                 // onTaskUpdated={(updatedTask) => {
                 //   console.log("Task updated:", updatedTask);
                 // }}

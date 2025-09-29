@@ -23,37 +23,36 @@ interface LocalTask {
 }
 
 // Mock Data (to be replaced with actual API data)
-const ownerOptions = [
-  { value: "c0cd847d-8c61-45dd-8dda-ecffe214943e", label: "Yu Feng" },
-  { value: "588fb335-9986-4c93-872e-6ef103c97f92", label: "John Doe" },
-  { value: "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv", label: "Jane Smith" },
-];
+// const ownerOptions = [
+//   { value: "c0cd847d-8c61-45dd-8dda-ecffe214943e", label: "Yu Feng" },
+//   { value: "588fb335-9986-4c93-872e-6ef103c97f92", label: "John Doe" },
+//   { value: "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv", label: "Jane Smith" },
+// ];
 
 interface EditTaskProps {
   taskId: string; // The ID of the task to be edited
+  role: "Staff" | "Manager" | "Director" | "Senior Management";
   onClose: () => void;
   onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, role, onClose }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
 
   const [users, setUsers] = useState<LiteUser[]>([]); // List of all users
   const [userSearchTerm, setUserSearchTerm] = useState(""); // Search term for filtering users
   const [loadingUsers, setLoadingUsers] = useState(false); // Loading state for fetching users
+  const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]); // Options for owner dropdown
+  const [originalOwnerId, setOriginalOwnerId] = useState<string | null>(null); // Store the original manager's ID
 
-  // Fetch the task details when the component is mounted
   useEffect(() => {
     const fetchTask = async () => {
       try {
-        const data = await Task.getTaskByIdWithOwner(taskId); // Use the new function
+        const data = await Task.getTaskByIdWithOwner(taskId); // Fetch task data
         console.log("Fetched task data:", data);
         setTask(data); // Set the fetched task
-
-        const allUsers = await Profile.getAllUsers(); // Replace with your API call
-        setUsers(allUsers);
-      
+        setOriginalOwnerId(data.owner); // Store the original manager's ID
       } catch (error) {
         console.error("Error fetching task:", error);
       }
@@ -61,6 +60,48 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
 
     fetchTask();
   }, [taskId]);
+
+  useEffect(() => {
+    const fetchOwnerOptions = async () => {
+      try {
+        if (!originalOwnerId) {
+          console.error("Original owner ID is missing.");
+          return;
+        }
+
+        // Use the original manager's ID to fetch subordinates
+        const subordinates = await Profile.getSubordinatesUnderManager(originalOwnerId);
+
+        // Ensure subordinates is an array
+        if (!Array.isArray(subordinates)) {
+          console.error("Invalid response: subordinates is not an array", subordinates);
+          return;
+        }
+
+        // Map the response to the format required by the dropdown
+        const options = subordinates.map((subordinate) => ({
+          value: subordinate.id,
+          label: subordinate.display_name,
+        }));
+
+        // Add the manager's own name to the options
+        if (task?.ownerName) {
+          options.push({
+            value: originalOwnerId,
+            label: task.ownerName,
+          });
+        }
+
+        setOwnerOptions(options);
+      } catch (error) {
+        console.error("Error fetching owner options:", error);
+      }
+    };
+
+    if (task) {
+      fetchOwnerOptions();
+    }
+  }, [task]);
 
   const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,7 +303,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
               }}
             /> */}
 
-            {/* Owner Field with Dropdown */}
+            {/* Owner Field with Conditional Dropdown */}
             <div className="space-y-2">
               <Label htmlFor="owner" className="text-base font-medium">
                 Owner
@@ -270,7 +311,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
               {task.isEditingOwner ? (
                 // Show the dropdown when in editing mode
                 <Select
-                  options={ownerOptions}
+                  options={ownerOptions} // Use the dynamically fetched options
                   value={ownerOptions.find((option) => option.value === task.owner) || null}
                   onChange={(selectedOption) => {
                     setTask((prev) => ({
@@ -293,10 +334,33 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
                   }}
                 />
               ) : (
-                // Show the plain text when not in editing mode
+                // Show plain text when not in editing mode
                 <div
-                  className="cursor-pointer"
-                  onClick={() => setTask((prev) => ({ ...prev!, isEditingOwner: true }))}
+                  className={`cursor-pointer ${
+                    role === "Staff" ? "cursor-not-allowed text-gray-500" : ""
+                  }`}
+                  onClick={() => {
+                    if (role !== "Staff") {
+                      // Dynamically add the current owner to the dropdown options
+                      setOwnerOptions((prevOptions) => {
+                        const isCurrentOwnerIncluded = prevOptions.some(
+                          (option) => option.value === task.owner
+                        );
+
+                        // Only add the current owner if it's not already in the options
+                        if (!isCurrentOwnerIncluded && task.ownerName) {
+                          return [
+                            ...prevOptions,
+                            { value: task.owner, label: task.ownerName },
+                          ];
+                        }
+
+                        return prevOptions;
+                      });
+
+                      setTask((prev) => ({ ...prev!, isEditingOwner: true }));
+                    }
+                  }}
                 >
                   <span>
                     {task.ownerName} {task.ownerDepartment ? `(${task.ownerDepartment})` : ""}

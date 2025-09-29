@@ -12,6 +12,11 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const mapRoleToAllowedValues = (role: string | undefined): "Staff" | "Manager" | "Director" | "Senior Management" => {
+    const allowedRoles = ["Staff", "Manager", "Director", "Senior Management"];
+    return allowedRoles.includes(role || "") ? (role as "Staff" | "Manager" | "Director" | "Senior Management") : "Staff";
+  };
+
   const fetchTasks = async () => {
     if (!profile?.id) return;
     setLoading(true);
@@ -52,7 +57,7 @@ export function Dashboard() {
         <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
         <p className="text-muted-foreground mb-6">Welcome to your dashboard!</p>
 
-        <TaskCard tasks={tasks} />
+        <TaskCard tasks={tasks} role={mapRoleToAllowedValues(profile?.role)} />
 
         <div className="mt-8">
           <CreateTask userId={profile?.id || ""}  onTaskCreated={handleTaskCreated} />

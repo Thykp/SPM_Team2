@@ -8,10 +8,12 @@ import { TaskDetail } from "@/components/task/TaskDetail";
 
 type TaskProps = {
   taskContent: apiTask;
+  role: "Staff" | "Manager" | "Director" | "Senior Management";
 };
 
 export const Task: React.FC<TaskProps> = ({
-  taskContent
+  taskContent,
+  role
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editing, setEditing] = useState(false); // State to toggle the EditTask modal
@@ -88,6 +90,7 @@ export const Task: React.FC<TaskProps> = ({
       {editing && (
         <EditTask
         taskId={taskContent.id}
+        role={role}
         onClose={() => setEditing(false)}
         />
       )}
