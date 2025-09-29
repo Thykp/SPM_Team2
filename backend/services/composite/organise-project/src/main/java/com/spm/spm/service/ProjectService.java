@@ -3,6 +3,7 @@ package com.spm.spm.service;
 import com.spm.spm.dto.NewProjectRequest;
 import com.spm.spm.dto.ProjectDto;
 import com.spm.spm.dto.UpdateCollaboratorsRequest;
+import com.spm.spm.dto.UpdateProjectRequest;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -66,6 +67,26 @@ public class ProjectService {
         HttpEntity<UpdateCollaboratorsRequest> entity = new HttpEntity<>(req, headers);
         ResponseEntity<Map> resp = restTemplate.exchange(
                 baseUrl + "/project/" + projectId.toString() + "/collaborators",
+                HttpMethod.PUT,
+                entity,
+                Map.class
+        );
+        return resp.getBody();
+    }
+
+    public ProjectDto getProjectById(UUID projectId) {
+        ResponseEntity<ProjectDto> resp =
+                restTemplate.getForEntity(baseUrl + "/project/" + projectId.toString(), ProjectDto.class);
+        return resp.getBody();
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> updateProject(UUID projectId, UpdateProjectRequest req) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<UpdateProjectRequest> entity = new HttpEntity<>(req, headers);
+        ResponseEntity<Map> resp = restTemplate.exchange(
+                baseUrl + "/project/" + projectId.toString(),
                 HttpMethod.PUT,
                 entity,
                 Map.class

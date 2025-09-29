@@ -1,13 +1,14 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Users } from 'lucide-react';
+import { Calendar, Users, Crown } from 'lucide-react';
 import { type ProjectDto } from '@/lib/api';
 
 interface ProjectInfoProps {
     project: ProjectDto;
+    ownerName?: string | null;
 }
 
-const ProjectInfo: React.FC<ProjectInfoProps> = ({ project }) => {
+const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, ownerName }) => {
     const createdDate = project.createdat ? new Date(project.createdat) : new Date();
     return (
         <Card>
@@ -19,6 +20,12 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project }) => {
                     {project.description || 'No description provided'}
                 </p>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    {ownerName && (
+                        <div className="flex items-center gap-2">
+                            <Crown className="h-4 w-4 text-yellow-500" />
+                            <span>Owner: {ownerName}</span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
                         <span>{(project.collaborators?.length || 0) + 1} members</span>

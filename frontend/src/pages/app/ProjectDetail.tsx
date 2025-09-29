@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/layout/Loader';
 import { ArrowLeft } from 'lucide-react';
-import { Project as ProjectAPI, Task as TaskAPI, type ProjectDto, type Task } from '@/lib/api';
+import { Project as ProjectAPI, Task as TaskAPI, Profile, type ProjectDto, type Task } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProjectHeader, ProjectInfo, KanbanBoard } from '@/components/project-details';
 
@@ -14,6 +14,7 @@ const ProjectDetail: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [ownerName, setOwnerName] = useState<string | null>(null);
 
     // Handler for when a new task is created
     const handleTaskCreated = async (newTask: Task) => {
@@ -73,15 +74,36 @@ const ProjectDetail: React.FC = () => {
                 setLoading(true);
                 setError(null);
 
-                // Fetch project details
-                const allProjects = await ProjectAPI.getByUser(user.id);
-                const foundProject = allProjects.find(p => p.id === projectId);
+                // Fetch project details directly by ID
+                let foundProject;
+                try {
+                    foundProject = await ProjectAPI.getById(projectId);
+                } catch (getByIdError) {
+                    console.error('Error fetching project by ID:', getByIdError);
+                    // Fallback to searching in user projects
+                    const allProjects = await ProjectAPI.getByUser(user.id);
+                    foundProject = allProjects.find(p => p.id === projectId);
+                }
                 
                 if (!foundProject) {
                     throw new Error('Project not found');
                 }
 
                 setProject(foundProject);
+                
+                // Fetch owner information
+                try {
+                    const allUsers = await Profile.getAllUsers();
+                    const ownerUser = allUsers.find(u => u.id === foundProject.owner);
+                    if (ownerUser) {
+                        setOwnerName(ownerUser.display_name || `${ownerUser.role} (${foundProject.owner.slice(0, 8)}...)`);
+                    } else {
+                        setOwnerName(`User ${foundProject.owner.slice(0, 8)}...`);
+                    }
+                } catch (ownerErr) {
+                    console.warn('Failed to fetch owner information:', ownerErr);
+                    setOwnerName(`User ${foundProject.owner.slice(0, 8)}...`);
+                }
                 
                 // Fetch individual tasks based on project's tasklist
                 if (foundProject.tasklist && foundProject.tasklist.length > 0) {
@@ -142,6 +164,7 @@ const ProjectDetail: React.FC = () => {
             
             <ProjectInfo 
                 project={project} 
+                ownerName={ownerName}
             />
             
             <KanbanBoard tasks={tasks} />

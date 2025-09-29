@@ -3,6 +3,7 @@ package com.spm.spm.controller;
 import com.spm.spm.dto.NewProjectRequest;
 import com.spm.spm.dto.ProjectDto;
 import com.spm.spm.dto.UpdateCollaboratorsRequest;
+import com.spm.spm.dto.UpdateProjectRequest;
 import com.spm.spm.service.ProjectService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -49,6 +50,24 @@ public class ProjectController {
             @RequestBody UpdateCollaboratorsRequest req
     ) {
         Map<String, Object> result = projectService.updateCollaborators(id, req);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ProjectDto> getProjectById(@PathVariable("id") UUID id) {
+        ProjectDto project = projectService.getProjectById(id);
+        if (project == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(project);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> updateProject(
+            @PathVariable("id") UUID id,
+            @RequestBody UpdateProjectRequest req
+    ) {
+        Map<String, Object> result = projectService.updateProject(id, req);
         return ResponseEntity.ok(result);
     }
 }

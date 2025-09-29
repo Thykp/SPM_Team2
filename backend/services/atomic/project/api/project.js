@@ -46,9 +46,9 @@ router.post("/new", async (req, res) => {
     try {
       const newProjData = req.body;
   
-      const insertedProj = await project.addNewProj(newProjData);
+      const result = await project.addNewProj(newProjData);
   
-      res.status(201).json(insertedProj);
+      res.status(201).json(result);
   
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -67,6 +67,66 @@ router.put("/:id/collaborators", async (req, res) => {
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
-  });  
+  });
+
+// Get project by ID
+router.get("/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+
+      const projectData = await project.getProjectById(id);
+      
+      if (!projectData) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      res.status(200).json(projectData);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+});
+
+// Update project
+router.put("/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+
+      // Check if project exists
+      const existingProject = await project.getProjectById(id);
+      if (!existingProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Validate input data
+      if (!updateData || Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "Update data is required" });
+      }
+
+      // Validate collaborators if provided
+      if (updateData.collaborators && !Array.isArray(updateData.collaborators)) {
+        return res.status(400).json({ error: "collaborators must be an array of UUIDs" });
+      }
+
+      // Validate tasklist if provided
+      if ((updateData.tasklist || updateData.task_list || updateData.taskList) && 
+          !Array.isArray(updateData.tasklist || updateData.task_list || updateData.taskList)) {
+        return res.status(400).json({ error: "tasklist must be an array of task IDs" });
+      }
+
+      const result = await project.updateProject(id, updateData);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+});
 
 module.exports = router;

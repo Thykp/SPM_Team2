@@ -18,9 +18,10 @@ interface Project {
   description: string;
   startDate: string;
   members: string[];
+    owner?: string;
 }
 
-// Inline user type (replaces removed LiteUser)
+// User type for API response
 type UserRow = {
   id: string;
   display_name: string;
@@ -28,29 +29,18 @@ type UserRow = {
   department: string;
 };
 
-// Helper: make a map { userId -> { display_name, role } }
-function buildUserMap(users: UserRow[]) {
-  const map: Record<string, { display_name: string; role: string }> = {};
-  for (const u of users) {
-    map[u.id] = { display_name: u.display_name, role: u.role };
+// Helper functions to reduce nesting
+const getUserDisplayName = (userId: string, users: UserRow[]): string => {
+  const foundUser = users.find(u => u.id === userId);
+  if (foundUser) {
+    return foundUser.display_name || `${foundUser.role} (${userId.slice(0, 8)}...)`;
   }
-  return map;
-}
+  return `User ${userId.slice(0, 8)}...`;
+};
 
-// Helper: convert collaborator UUIDs to display labels using a cached map
-function idsToNames(
-  ids: string[] | null | undefined,
-  map: Record<string, { display_name: string; role: string }>
-) {
-  const arr = ids ?? [];
-  return arr.map((uuid) => {
-    const u = map[uuid];
-    if (u) {
-      return u.display_name || `${u.role} (${uuid.slice(0, 8)}...)`;
-    }
-    return `User ${uuid.slice(0, 8)}...`;
-  });
-}
+const getCollaboratorNames = (collaboratorUUIDs: string[], users: UserRow[]): string[] => {
+  return collaboratorUUIDs.map(uuid => getUserDisplayName(uuid, users));
+};
 
 const Projects: React.FC = () => {
   const { user } = useAuth();
@@ -62,11 +52,6 @@ const Projects: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Cache users for UUID→name mapping
-  const [userMap, setUserMap] = useState<
-    Record<string, { display_name: string; role: string }>
-  >({});
-
   useEffect(() => {
     const fetchProjects = async () => {
       if (!user?.id) {
@@ -74,46 +59,51 @@ const Projects: React.FC = () => {
         return;
       }
 
-      try {
-        setLoading(true);
-        setError(null);
+            try {
+                setLoading(true);
+                setError(null);
+                
+                // Load users first for collaborator name mapping
+                let allUsers: UserRow[] = [];
+                try {
+                    allUsers = await Profile.getAllUsers();
+                } catch (userErr) {
+                    console.error('Error loading users for name mapping:', userErr);
+                }
+                
+                // Use the new endpoint to get projects for the specific user
+                const apiProjects = await ProjectAPI.getByUser(user.id);
+                
+                // Transform API response to component format
+                const transformedProjects: Project[] = apiProjects.map((apiProject: ProjectDto) => {
+                    // Convert collaborator UUIDs to display names
+                    const collaboratorUUIDs = apiProject.collaborators || [];
+                    const collaboratorNames = getCollaboratorNames(collaboratorUUIDs, allUsers);
 
-        // Load users first for collaborator name mapping (safe even if it fails)
-        try {
-          const allUsers = (await Profile.getAllUsers()) as UserRow[];
-          setUserMap(buildUserMap(allUsers));
-        } catch (userErr) {
-          console.error("Error loading users for name mapping:", userErr);
-          setUserMap({});
-        }
-
-        // Get projects for the specific user
-        const apiProjects = await ProjectAPI.getByUser(user.id);
-
-        // Transform API response to component format
-        const transformed: Project[] = apiProjects.map((apiProject: ProjectDto) => ({
-          id: apiProject.id,
-          title: apiProject.title || "Untitled Project",
-          description: apiProject.description || "No description available",
-          startDate: apiProject.createdat || new Date().toISOString(),
-          members: idsToNames(apiProject.collaborators, userMap),
-        }));
-
-        setProjects(transformed);
-      } catch (err) {
-        console.error("Error fetching projects:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch projects"
-        );
-        setProjects([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+                    // Get owner display name
+                    const ownerName = getUserDisplayName(apiProject.owner, allUsers);
+                    
+                    return {
+                        id: apiProject.id,
+                        title: apiProject.title || 'Untitled Project',
+                        description: apiProject.description || 'No description available',
+                        startDate: apiProject.createdat || new Date().toISOString(),
+                        members: collaboratorNames,
+                        owner: ownerName
+                    };
+                });
+                
+                setProjects(transformedProjects);
+            } catch (err) {
+                console.error('Error fetching projects:', err);
+                setError(err instanceof Error ? err.message : 'Failed to fetch projects');
+                setProjects([]); // Set empty projects array on error
+            } finally {
+                setLoading(false);
+            }
+        };
 
     fetchProjects();
-    // We intentionally omit userMap from deps; we want a single load pass.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const filteredProjects = useMemo(() => {
@@ -129,34 +119,42 @@ const Projects: React.FC = () => {
     setIsCreating(true);
     setError(null);
 
-    try {
-      const createdProject = await ProjectAPI.create(projectData);
-
-      // Prefer cached userMap; if empty and we have collaborators, try fetching users once
-      let map = userMap;
-      if (
-        (!map || Object.keys(map).length === 0) &&
-        (projectData.collaborators?.length ?? 0) > 0
-      ) {
         try {
-          const allUsers = (await Profile.getAllUsers()) as UserRow[];
-          map = buildUserMap(allUsers);
-          setUserMap(map);
-        } catch (userErr) {
-          console.error("Error loading users for collaborator names:", userErr);
-        }
-      }
+            const createdProject = await ProjectAPI.create(projectData);
+            
+            // Load users to map collaborator UUIDs to names
+            let collaboratorNames: string[] = [];
+            const collaborators = projectData.collaborators || [];
+            
+            if (collaborators.length > 0) {
+                try {
+                    const allUsers = await Profile.getAllUsers();
+                    collaboratorNames = getCollaboratorNames(collaborators, allUsers);
+                } catch (userErr) {
+                    console.error('Error loading users for collaborator names:', userErr);
+                    // Fallback to just showing UUIDs
+                    collaboratorNames = collaborators.map(uuid => `User ${uuid.slice(0, 8)}...`);
+                }
+            }
+            
+            // Get owner display name
+            let ownerName = `User ${createdProject.owner.slice(0, 8)}...`;
+            try {
+                const allUsers = await Profile.getAllUsers();
+                ownerName = getUserDisplayName(createdProject.owner, allUsers);
+            } catch (userErr) {
+                console.error('Error loading owner info:', userErr);
+            }
 
-      const collaboratorNames = idsToNames(projectData.collaborators, map);
-
-      // Transform API response to component format and add to local state
-      const newProjectForState: Project = {
-        id: createdProject.id,
-        title: createdProject.title || projectData.title,
-        description: createdProject.description || projectData.description,
-        startDate: createdProject.createdat || new Date().toISOString(),
-        members: collaboratorNames,
-      };
+            // Transform API response to component format and add to local state
+            const newProjectForState: Project = {
+                id: createdProject.id,
+                title: createdProject.title || projectData.title,
+                description: createdProject.description || projectData.description,
+                startDate: createdProject.createdat || new Date().toISOString(),
+                members: collaboratorNames,
+                owner: ownerName
+            };
 
       setProjects((prev) => [newProjectForState, ...prev]);
 

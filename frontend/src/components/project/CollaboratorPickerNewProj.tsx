@@ -30,16 +30,25 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
   loadingUsers,
   currentUserId,
 }) => {
-  // Filter users based on search and exclude current user
-  const filteredUsers = users.filter((u) => {
-    if (u.id === currentUserId) return false; // Exclude current user
-    const searchLower = userSearchTerm.toLowerCase();
-    return (
-      u.display_name?.toLowerCase().includes(searchLower) ||
-      u.role?.toLowerCase().includes(searchLower) ||
-      u.department?.toLowerCase().includes(searchLower)
-    );
-  });
+    // Filter users based on search and exclude current user
+    const filteredUsers = users.filter(u => {
+        // More robust owner exclusion - handle string comparison and null/undefined cases
+        const isOwner = currentUserId && u.id && (
+            u.id === currentUserId || 
+            u.id.toString() === currentUserId.toString()
+        );
+        
+        if (isOwner) {
+            return false; // Exclude current user
+        }
+        
+        const searchLower = userSearchTerm.toLowerCase();
+        return (
+            u.display_name?.toLowerCase().includes(searchLower) ||
+            u.role?.toLowerCase().includes(searchLower) ||
+            u.department?.toLowerCase().includes(searchLower)
+        );
+    });
 
   return (
     <div className="space-y-2">

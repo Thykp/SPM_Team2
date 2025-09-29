@@ -9,6 +9,7 @@ interface Project {
     description: string;
     startDate: string;
     members: string[];
+    owner?: string;
 }
 
 interface ProjectGridProps {
