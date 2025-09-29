@@ -20,7 +20,7 @@ func SetupRouter() *gin.Engine {
 			// // users.POST("", controllers.CreateUser)
 			// // users.PUT("/:id", controllers.UpdateUser)
 			// // users.DELETE("/:id", controllers.DeleteUser)
-			users.GET("/:id/subordinates", controllers.FetchSubordinates)
+			// users.GET("/:id/subordinates", controllers.FetchSubordinates)
 		}
 	}
 

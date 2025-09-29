@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Profile, Task, type LiteUser } from "@/lib/api"; // Import Task type and service
+import { Profile, Task } from "@/lib/api"; // Import Task type and service
 import { X } from "lucide-react";
 import CollaboratorPickerNewProj from "@/components/project/CollaboratorPickerNewProj";
 import Select from "react-select";
@@ -36,11 +36,18 @@ interface EditTaskProps {
   onTaskUpdated?: () => void;
 }
 
+type UserRow = {
+  id: string;
+  display_name: string;
+  role: string;
+  department: string;
+};
+
 const EditTask: React.FC<EditTaskProps> = ({ taskId, role, onClose }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
 
-  const [users, setUsers] = useState<LiteUser[]>([]); // List of all users
+  const [users, setUsers] = useState<UserRow[]>([]); // List of all users
   const [userSearchTerm, setUserSearchTerm] = useState(""); // Search term for filtering users
   const [loadingUsers, setLoadingUsers] = useState(false); // Loading state for fetching users
   const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]); // Options for owner dropdown
@@ -70,7 +77,11 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, role, onClose }) => {
         }
 
         // Use the original manager's ID to fetch subordinates
-        const subordinates = await Profile.getSubordinatesUnderManager(originalOwnerId);
+        // const subordinates = await Profile.getSubordinatesUnderManager(originalOwnerId);
+        const subordinates = [
+          { id: "588fb335-9986-4c93-872e-6ef103c97f92", display_name: "John Doe" },
+          { id: "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv", display_name: "Jane Smith" },
+        ]; // Mock data before replacing with new API
 
         // Ensure subordinates is an array
         if (!Array.isArray(subordinates)) {
@@ -102,6 +113,28 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, role, onClose }) => {
       fetchOwnerOptions();
     }
   }, [task]);
+
+  useEffect(() => {
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await Profile.getAllUsers();
+      const mappedUsers: UserRow[] = response.map((user: any) => ({
+        id: user.id,
+        display_name: user.display_name,
+        role: user.role,
+        department: user.department,
+      }));
+      setUsers(mappedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  fetchUsers();
+}, []);
 
   const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
