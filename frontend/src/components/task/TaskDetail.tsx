@@ -35,11 +35,13 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
 
     useEffect(() => {
         if (isOpen && currentTask){
+          if (!parentTask){
             getSubTasks();
-            getUserProfiles();
+          }
+          getUserProfiles();
         }
     },
-    [isOpen, currentTask]
+    [isOpen, currentTask, parentTask]
     );
 
     const getSubTasks = async() => {
@@ -207,8 +209,10 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                 </div>
               </div>
 
-              <Separator />
-
+              {/* Only show Subtasks section if current task is not a subtask */}
+              {!parentTask && (
+                <>
+                  <Separator />
               {/* Subtasks Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between ">
@@ -265,6 +269,8 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                 )}
                 </div>
               </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center py-8">
