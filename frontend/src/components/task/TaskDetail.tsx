@@ -1,100 +1,42 @@
 import { useEffect, useState } from "react";
-import { Task } from "@/lib/api";
+import { Task as taskType, Task as taskAPI, Profile as profileType, Profile as profileAPI } from "@/lib/api";
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
-import { User, Calendar, Users } from "lucide-react";
+import { User, Calendar, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
-async function mockSubTasks(): Promise<Task[]> {
-    // To be replaced by actual calls
-    return [
-        {
-        id: `sub-1`,
-        title: "Subtask 1: Research Phase",
-        description: "Gather requirements and analyze current system",
-        status: "Completed" as const,
-        owner: "jane.smith@company.com",
-        collaborators: ["john.doe@company.com"],
-        deadline: "2024-11-15T23:59:59Z",
-        parent: "taskId",
-        },
-        {
-        id: `stuff-sub-2`,
-        title: "Subtask 2: Development Phase",
-        description: "Implement core functionality based on requirements",
-        status: "Ongoing" as const,
-        owner: "bob.johnson@company.com",
-        collaborators: ["jane.smith@company.com", "john.doe@company.com"],
-        deadline: "2024-12-15T23:59:59Z",
-        parent: "taskId",
-        },
-        {
-        id: `stuff-sub-3`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-4`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-5`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-6`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        },
-        {
-        id: `stuff-sub-7`,
-        title: "Subtask 3: Testing Phase",
-        description: "Conduct thorough testing and quality assurance",
-        status: "Unassigned" as const,
-        owner: "john.doe@company.com",
-        collaborators: [],
-        deadline: "2024-12-30T23:59:59Z",
-        parent: "yuup",
-        }
-    ];
-}
 
 type TaskDetailProps = {
-    currentTask: Task;
+    currentTask: taskType;
     isOpen: boolean;
     onClose: () => void;
+
+    parentTask?: taskType;
+    onNavigateToSubTask?: (subTask: taskType) => void;
+    onNavigateBack?: () => void;
 }
 
-export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
-    const [subTasks, setSubTasks] = useState<Task[]>([]);
+export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigateToSubTask, onNavigateBack}: TaskDetailProps){
+    const { user } = useAuth();
+    const [subTasks, setSubTasks] = useState<taskType[]>([]);
     const [loading, setLoading] = useState(false);
+    const [userLoading, setUserLoading] = useState(false);
+    const [userProfiles, setUserProfiles] = useState<{[key: string]: profileType}>({});
+
+    // Helper function to display user name or "You"
+    const getDisplayName = (userId: string): string => {
+        if (user?.id === userId) {
+            return "You";
+        }
+        return userProfiles[userId]?.display_name || userId;
+    };
 
     useEffect(() => {
         if (isOpen && currentTask){
             getSubTasks();
+            getUserProfiles();
         }
     },
     [isOpen, currentTask]
@@ -103,12 +45,37 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
     const getSubTasks = async() => {
         setLoading(true);
         try {
-            const subTasks = await mockSubTasks();
+            const subTasks = await taskAPI.getSubTaskOfTask(currentTask.id);
             setSubTasks(subTasks);
         } catch (error) {
             console.error("Error fetching subtasks:", error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    const getUserProfiles = async() => {
+        setUserLoading(true);
+        try {
+            // Concatenate owner and collaborators into a single array of user IDs
+            const allUserIds = !currentTask.collaborators ? [currentTask.owner] : [currentTask.owner, ...currentTask.collaborators];
+            
+            // Format user IDs as objects with "id" property for the API
+            const userIdObjects = allUserIds.map(userId => ({ id: userId }));
+            
+            const profiles = await profileAPI.getProfileDetailsWithId(userIdObjects);
+            
+            // Create a mapping of user ID to profile for easy lookup
+            const profileMap: {[key: string]: profileType} = {};
+            profiles.forEach((profile, index) => {
+                profileMap[allUserIds[index]] = profile;
+            });
+            
+            setUserProfiles(profileMap);
+        } catch (error) {
+            console.error("Error fetching user profiles:", error);
+        } finally {
+            setUserLoading(false);
         }
     }
 
@@ -141,6 +108,17 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="pb-6">
+            {/* Breadcrumb Navigation */}
+            {parentTask && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hover:text-foreground cursor-pointer" onClick={onNavigateBack}>
+                  {parentTask.title}
+                </span>
+                <ChevronRight className="h-3 w-3" />
+                <span className="text-foreground font-medium">{currentTask.title}</span>
+              </div>
+            )}
             <SheetTitle className="text-xl font-semibold">
               {currentTask.title}
             </SheetTitle>
@@ -173,7 +151,20 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
                     <User className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Owner</p>
-                      <p className="text-sm text-muted-foreground">{currentTask.owner}</p>
+                      {userLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {getDisplayName(currentTask.owner) === "You" ? (
+                            <span className="font-bold">You</span>
+                          ) : (
+                            getDisplayName(currentTask.owner)
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -191,11 +182,20 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
                     <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-sm font-medium">Collaborators</p>
-                      {currentTask.collaborators && currentTask.collaborators.length > 0 ? (
+                      {userLoading ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                      ) : currentTask.collaborators && currentTask.collaborators.length > 0 ? (
                         <div className="space-y-1 mt-1">
                           {currentTask.collaborators.map((collaborator, index) => (
                             <p key={index} className="text-sm text-muted-foreground">
-                              {collaborator}
+                              {getDisplayName(collaborator) === "You" ? (
+                                <span className="font-bold">You</span>
+                              ) : (
+                                getDisplayName(collaborator)
+                              )}
                             </p>
                           ))}
                         </div>
@@ -211,7 +211,7 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
 
               {/* Subtasks Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between ">
                   <h4 className="text-lg font-semibold">Subtasks</h4>
                   <Badge variant="outline" className="text-xs">
                     {subTasks.length} {subTasks.length === 1 ? 'task' : 'tasks'}
@@ -229,7 +229,9 @@ export function TaskDetail({currentTask, isOpen, onClose}: TaskDetailProps){
                 ) : subTasks.length > 0 ? (
                   <div className="space-y-3">
                     {subTasks.map((subTask) => (
-                      <Card key={subTask.id} className="p-4">
+                      <Card key={subTask.id} className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => onNavigateToSubTask?.(subTask)}
+                      >
                         <div className="space-y-3">
                           <div>
                             <h5 className="font-medium text-sm">{subTask.title}</h5>

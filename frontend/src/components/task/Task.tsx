@@ -3,7 +3,7 @@ import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EditTask from "./EditTask"; // Import the EditTask component
 import { Task as apiTask } from "@/lib/api";
-import { TaskDetail } from "@/components/task/TaskDetail";
+import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
  
 
 type TaskProps = {
@@ -95,10 +95,10 @@ export const Task: React.FC<TaskProps> = ({
         />
       )}
 
-      <TaskDetail 
-        currentTask={taskContent}
+      <TaskDetailNavigator
+        initialTask ={taskContent}
         isOpen = {showDetails}
-        onClose={() => setShowDetails(false)}
+        onClose = {() => setShowDetails(false)}
       />
 
     </div>

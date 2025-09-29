@@ -5,7 +5,6 @@ export function Footer() {
     <footer className="border-t bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          {/* Brand */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-xs">A</span>
@@ -13,7 +12,6 @@ export function Footer() {
             <span className="font-semibold">AppName</span>
           </Link>
 
-          {/* Links */}
           <div className="flex items-center space-x-6">
             <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Privacy
@@ -26,7 +24,6 @@ export function Footer() {
             </Link>
           </div>
 
-          {/* Copyright */}
           <p className="text-sm text-muted-foreground">© 2024 AppName. All rights reserved.</p>
         </div>
       </div>

@@ -1,0 +1,27 @@
+mode: set
+manage-account/main.go:7.13,10.42 2 0
+manage-account/main.go:10.42,11.19 1 0
+manage-account/controllers/health_controller.go:10.34,14.2 1 0
+manage-account/controllers/user_controller.go:15.31,17.2 1 1
+manage-account/controllers/user_controller.go:19.34,22.55 2 1
+manage-account/controllers/user_controller.go:22.55,24.3 1 0
+manage-account/controllers/user_controller.go:26.2,31.41 2 1
+manage-account/controllers/user_controller.go:35.33,39.51 2 1
+manage-account/controllers/user_controller.go:39.51,42.3 2 1
+manage-account/controllers/user_controller.go:43.2,46.49 4 1
+manage-account/routers/router.go:9.32,15.2 4 0
+manage-account/routers/router.go:15.2,17.3 2 0
+manage-account/routers/router.go:17.3,23.4 2 0
+manage-account/routers/router.go:26.2,26.10 1 0
+manage-account/service/profile_service.go:20.96,26.16 4 1
+manage-account/service/profile_service.go:26.16,28.3 1 1
+manage-account/service/profile_service.go:30.2,32.38 2 1
+manage-account/service/profile_service.go:32.38,37.17 4 1
+manage-account/service/profile_service.go:37.17,39.4 1 1
+manage-account/service/profile_service.go:41.3,45.18 3 1
+manage-account/service/profile_service.go:47.2,47.17 1 1
+manage-account/service/profile_service.go:50.47,54.38 3 1
+manage-account/service/profile_service.go:54.38,59.3 3 1
+manage-account/service/profile_service.go:60.2,65.22 4 1
+manage-account/service/profile_service.go:65.22,67.3 1 0
+manage-account/service/profile_service.go:69.2,69.16 1 1

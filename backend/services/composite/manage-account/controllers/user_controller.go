@@ -1,8 +1,8 @@
 package controllers
 
 import (
+	profile_service "manage-account/service"
 	"net/http"
-	"encoding/json"
 
 	"github.com/gin-gonic/gin"
 )
@@ -39,29 +39,18 @@ func GetUsers(c *gin.Context) {
 }
 
 func GetUserByID(c *gin.Context) {
-    userID := c.Param("id")
-    profileServiceURL := "http://profile:3030/user/" + userID
+	var receivedUserArray []profile_service.User
 
-    // Call the profile microservice to fetch the user by ID
-    resp, err := http.Get(profileServiceURL)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user"})
-        return
-    }
-    defer resp.Body.Close()
-
-    if resp.StatusCode != http.StatusOK {
-        c.JSON(resp.StatusCode, gin.H{"error": "failed to fetch user from profile service"})
-        return
-    }
-
-    var user map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse response"})
+	if err := c.BindJSON(&receivedUserArray); err != nil {
 		return
 	}
 
-    c.JSON(http.StatusOK, gin.H{"data": user})
+	response := profile_service.GetUserDetails(receivedUserArray)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	// 	return
+	// }
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // CreateUser handles POST /api/users
@@ -119,30 +108,3 @@ func GetUserByID(c *gin.Context) {
 // 	}
 // 	c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 // }
-
-// FetchSubordinates handles GET /api/users/:id/subordinates
-func FetchSubordinates(c *gin.Context) {
-    managerID := c.Param("id")
-
-    // Call the profile microservice to fetch subordinates
-    profileServiceURL := "http://profile:3030/user/" + managerID + "/subordinates"
-    resp, err := http.Get(profileServiceURL)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch subordinates"})
-        return
-    }
-    defer resp.Body.Close()
-
-    if resp.StatusCode != http.StatusOK {
-        c.JSON(resp.StatusCode, gin.H{"error": "failed to fetch subordinates from profile service"})
-        return
-    }
-
-    var subordinates []map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&subordinates); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse response"})
-		return
-	}
-
-    c.JSON(http.StatusOK, gin.H{"data": subordinates})
-}

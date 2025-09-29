@@ -1,10 +1,15 @@
-name: Backend Unit Tests
+name: Backend Unit and Integration Tests
 
 on:
   pull_request:
     branches: [main]
     paths:
       - 'backend/**'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -24,6 +29,38 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: backend/services/atomic/profile/package-lock.json
+      - run: npm ci
+      - run: npm test -- --coverage
+
+  project_tests:
+    name: Node — atomic/project tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/project
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/project/package-lock.json
+      - run: npm ci
+      - run: npm test -- --coverage
+
+  task_tests:
+    name: Node — atomic/task tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/task
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/task/package-lock.json
       - run: npm ci
       - run: npm test -- --coverage
 
