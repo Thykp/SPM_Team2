@@ -2,6 +2,17 @@ create extension if not exists moddatetime with schema extensions;
 create extension if not exists "uuid-ossp";
 
 -- =========================
+-- enums
+-- =========================
+
+create type public.revamped_user_role as enum (
+    'Staff',
+    'Manager',
+    'Director',
+    'Senior Management'
+);
+
+-- =========================
 -- departments
 -- =========================
 
@@ -61,12 +72,12 @@ for each row execute procedure extensions.moddatetime(updated_at);
 -- =========================
 -- Profile: J edit the columns cause got some triggers in place idk if the ones here are the latest ones
 -- =========================
-create table public.profiles (
+create table public.revamped_profiles (
     id uuid not null,
     department_id uuid null,
     team_id uuid null,
     display_name text not null,
-    role text not null,
+    role public.revamped_user_role null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
 
@@ -75,10 +86,16 @@ create table public.profiles (
     constraint fk_profile_team_id_team foreign key (team_id) references public.revamped_teams(id) on delete set null
 );
 
-drop trigger if exists profile_set_updated_at on public.profiles;
+drop trigger if exists profile_set_updated_at on public.revamped_profiles;
 create trigger profile_set_updated_at
-before update on public.profiles
+before update on public.revamped_profiles
 for each row execute procedure extensions.moddatetime(updated_at);
+
+
+drop trigger if exists revamped_on_auth_user_created on auth.users;
+create trigger revamped_on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
 
 -- =========================
 -- task
@@ -116,7 +133,7 @@ create table public.revamped_task_participant (
 
     constraint pk_task_participant primary key (task_id, profile_id),
     constraint fk_task_participant_task_id_task foreign key (task_id) references public.revamped_task(id) on delete cascade,
-    constraint fk_task_participant_profile_id_profile foreign key (profile_id) references public.profiles(id) on delete restrict
+    constraint fk_task_participant_profile_id_profile foreign key (profile_id) references public.revamped_profiles(id) on delete restrict
 );
 
 
@@ -131,7 +148,7 @@ create table public.revamped_project_participant (
 
     constraint pk_project_participant primary key (project_id, profile_id),
     constraint fk_project_participant_project_id_project foreign key (project_id) references public.revamped_project(id) on delete cascade,
-    constraint fk_project_participant_profile_id_profile foreign key (profile_id) references public.profiles(id) on delete restrict
+    constraint fk_project_participant_profile_id_profile foreign key (profile_id) references public.revamped_profiles(id) on delete restrict
 );
 
 -- =========================
@@ -139,8 +156,8 @@ create table public.revamped_project_participant (
 -- =========================
 
 -- Profiles: Finding users by department/team for project assignment
-create index idx_profiles_department_id on public.profiles(department_id);
-create index idx_profiles_team_id on public.profiles(team_id);
+create index idx_profiles_department_id on public.revamped_profiles(department_id);
+create index idx_profiles_team_id on public.revamped_profiles(team_id);
 
 -- Departments: Finding by name for user management
 create index idx_departments_name on public.revamped_departments(name);
@@ -171,8 +188,3 @@ create index idx_task_participant_profile_owner on public.revamped_task_particip
 create index idx_project_participant_profile_id on public.revamped_project_participant(profile_id);
 -- Finding project owners vs collaborators
 create index idx_project_participant_profile_owner on public.revamped_project_participant(profile_id, is_owner);
-
-
-
-
-
