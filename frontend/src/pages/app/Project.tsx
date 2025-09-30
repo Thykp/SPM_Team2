@@ -161,6 +161,29 @@ const Projects: React.FC = () => {
       // Success toast
       setSuccessMessage("Project created successfully!");
       setTimeout(() => setSuccessMessage(null), 3000);
+      
+      // notify collaborators
+      if (createdProject.collaborators.length !== 0) {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/notifications/project-collaborators`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "create",
+            projectId: createdProject.id,
+            collaborators: createdProject.collaborators,
+            owner: createdProject.owner,
+            title: createdProject.title,
+            description: createdProject.description,
+          }),
+        });
+
+        if (!res.ok) {
+          throw Error (`Unable to send notification to collaborators: ${res.status}`);
+        }
+      }
+
     } catch (err) {
       console.error("Failed to create project:", err);
       setError(err instanceof Error ? err.message : "Failed to create project");

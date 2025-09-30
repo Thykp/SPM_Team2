@@ -11,5 +11,4 @@ export type Notification = {
   project_id?: string;
   priority?: number;
   read: boolean;
-  delivery_channels?: string[];
 };
