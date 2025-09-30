@@ -86,16 +86,48 @@ create table public.revamped_profiles (
     constraint fk_profile_team_id_team foreign key (team_id) references public.revamped_teams(id) on delete set null
 );
 
-drop trigger if exists profile_set_updated_at on public.revamped_profiles;
-create trigger profile_set_updated_at
+drop trigger if exists revamped_profile_set_updated_at on public.revamped_profiles;
+create trigger revamped_profile_set_updated_at
 before update on public.revamped_profiles
 for each row execute procedure extensions.moddatetime(updated_at);
+
+-- =========================
+-- Function & Trigger to handle new user creation in auth.users
+-- =========================
+
+create or replace function public.revamped_handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare 
+  first_name   text := nullif(trim(new.raw_user_meta_data->>'first_name'), ''); 
+  last_name    text := nullif(trim(new.raw_user_meta_data->>'last_name'), ''); 
+  meta_display text := nullif(trim(new.raw_user_meta_data->>'display_name'), ''); 
+  full_name    text := coalesce(trim(concat_ws(' ', first_name, last_name)), meta_display); 
+  user_role    public.revamped_user_role := (new.raw_user_meta_data->>'initial_role')::public.revamped_user_role; 
+begin 
+  if full_name is not null and full_name <> '' then 
+    insert into public.revamped_profiles (id, display_name,role) 
+    values (new.id, full_name, user_role) 
+    on conflict (id) do update 
+      set display_name = excluded.display_name; 
+  else 
+    insert into public.revamped_profiles (id) 
+    values (new.id) 
+    on conflict (id) do nothing; 
+  end if; 
+ 
+  return new; 
+end;
+$$;
 
 
 drop trigger if exists revamped_on_auth_user_created on auth.users;
 create trigger revamped_on_auth_user_created
 after insert on auth.users
-for each row execute function public.handle_new_user();
+for each row execute function public.revamped_handle_new_user();
 
 -- =========================
 -- task
