@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNotifications } from "../../hooks/useNotifications";
+import { useNotifications } from "./useNotifications";
 
 export function NotificationsPanel({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
@@ -41,7 +41,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
 
   const hasGlobalBadge = localNotifs.some(n => !n.read);
   return (
-    <div className="relative">  
+    <div className="relative">
       <Button
         variant="ghost"
         size="icon"

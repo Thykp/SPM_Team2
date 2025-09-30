@@ -26,7 +26,7 @@ ENV JAVA_OPTS=""
 EXPOSE 8091
 
 # Copy the fat jar from build stage (updated for manage-task project)
-COPY --from=build /app/target/manage_task-0.0.1-SNAPSHOT.jar /app/app.jar
+COPY --from=build /app/target/manage-task.jar /app/app.jar
 
 # (optional) simple TCP healthcheck without curl/wget
 # If you prefer an HTTP check, install curl/wget or point Kong at your / endpoint.

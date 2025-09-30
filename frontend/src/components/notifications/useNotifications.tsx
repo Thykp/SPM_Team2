@@ -1,20 +1,5 @@
 import { useEffect, useState } from "react";
-
-export type Notification = {
-  id: string;
-  notif_text: string;
-  notif_type: string;
-  from_user: string;
-  from_username?: string;
-  to_user: string;
-  created_at?: string;
-  resource_type?: string;
-  resource_id?: string;
-  project_id?: string;
-  priority?: string;
-  read: boolean;
-  delivery_channels?: string[];
-};
+import type { Notification } from "./notification";
 
 export function useNotifications(userId: string) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -28,6 +13,7 @@ export function useNotifications(userId: string) {
 
     const fetchAll = async () => {
       try {
+
         const res = await fetch(`${import.meta.env.VITE_API_URL}/notifications/${userId}`);
         if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data: Notification[] = await res.json();

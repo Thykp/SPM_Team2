@@ -4,6 +4,7 @@ const { supabase } = require("../db/supabase");
 
 router.get("/:userId", async (req, res) => {
   const { userId } = req.params;
+  console.log("notifications ms accessed" + userId)
 
   try {
     const { data, error } = await supabase
