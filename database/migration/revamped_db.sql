@@ -1,7 +1,62 @@
--- =========================
--- Auto-update updated_at on UPDATE
--- =========================
 create extension if not exists moddatetime with schema extensions;
+create extension if not exists "uuid-ossp";
+
+-- =========================
+-- departments
+-- =========================
+
+create table public.revamped_departments (
+    id uuid not null default uuid_generate_v4(),
+    name text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    constraint pk_department primary key (id)
+);
+
+drop trigger if exists revamped_departments_set_updated_at on public.revamped_departments;
+create trigger revamped_departments_set_updated_at
+before update on public.revamped_departments
+for each row execute procedure extensions.moddatetime(updated_at);
+
+-- =========================
+-- teams
+-- =========================
+
+create table public.revamped_teams (
+    id uuid not null default uuid_generate_v4(),
+    department_id uuid not null,
+    name text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    constraint pk_team primary key (id),
+    constraint fk_team_department_id_department foreign key (department_id) references public.revamped_departments(id) on delete cascade
+);
+
+drop trigger if exists revamped_teams_set_updated_at on public.revamped_teams;
+create trigger revamped_teams_set_updated_at
+before update on public.revamped_teams
+for each row execute procedure extensions.moddatetime(updated_at);
+
+-- =========================
+-- project
+-- =========================
+create table public.revamped_project (
+    id uuid not null default uuid_generate_v4(),
+    display_name text not null,
+    title text not null,
+    description text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    constraint pk_project primary key (id)
+);
+
+drop trigger if exists revamped_project_set_updated_at on public.revamped_project;
+create trigger revamped_project_set_updated_at
+before update on public.revamped_project
+for each row execute procedure extensions.moddatetime(updated_at);
 
 -- =========================
 -- Profile: J edit the columns cause got some triggers in place idk if the ones here are the latest ones
@@ -26,44 +81,6 @@ before update on public.profiles
 for each row execute procedure extensions.moddatetime(updated_at);
 
 -- =========================
--- departments
--- =========================
-
-create table public.revamped_departments (
-    id uuid not null default uuid_generate_v4(),
-    name not null text,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
-
-    constraint pk_department primary key (id)
-)
-
-drop trigger if exists revamped_department_set_updated_at on public.revamped_department;
-create trigger revamped_department_set_updated_at
-before update on public.revamped_department
-for each row execute procedure extensions.moddatetime(updated_at);
-
--- =========================
--- teams
--- =========================
-
-create table public.revamped_teams (
-    id uuid not null default uuid_generate_v4(),
-    department_id uuid not null,
-    name text not null,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
-
-    constraint pk_team primary key (id, department_id)
-    constraint fk_team_department_id_department foreign key (department_id) references public.revamped_departments(id) on delete cascade
-)
-
-drop trigger if exists revamped_team_set_updated_at on public.revamped_team;
-create trigger revamped_team_set_updated_at
-before update on public.revamped_team
-for each row execute procedure extensions.moddatetime(updated_at);
-
--- =========================
 -- task
 -- =========================
 create table public.revamped_task (
@@ -76,12 +93,12 @@ create table public.revamped_task (
     status public.task_status not null,
 
     created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
+    updated_at timestamptz not null default now(),
 
-    constraint pk_task primary key (id)
+    constraint pk_task primary key (id),
     constraint fk_task_parent_task_id_tas foreign key (parent_task_id) references public.revamped_task(id) on delete cascade,
     constraint fk_task_project_id_project foreign key (project_id) references public.revamped_project(id) on delete set null
-)
+);
 
 drop trigger if exists revamped_task_set_updated_at on public.revamped_task;
 create trigger revamped_task_set_updated_at
@@ -95,33 +112,12 @@ create table public.revamped_task_participant (
     task_id uuid not null,
     profile_id uuid not null,
     is_owner boolean not null default false,
-    created_at timestamptz not null default now()
+    created_at timestamptz not null default now(),
 
     constraint pk_task_participant primary key (task_id, profile_id),
     constraint fk_task_participant_task_id_task foreign key (task_id) references public.revamped_task(id) on delete cascade,
-    constraint fk_task_participant_profile_id_profile foreign key (profile_id) references public.profiles(id) on delete restrict,
+    constraint fk_task_participant_profile_id_profile foreign key (profile_id) references public.profiles(id) on delete restrict
 );
-
-
-
--- =========================
--- project
--- =========================
-create table public.revamped_project (
-    id uuid not null default uuid_generate_v4(),
-    display_name text not null,
-    title text not null,
-    description text not null,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now(),
-
-    constraint pk_project primary key (id)
-);
-
-drop trigger if exists revamped_project_set_updated_at on public.revamped_project;
-create trigger revamped_project_set_updated_at
-before update on public.revamped_project
-for each row execute procedure extensions.moddatetime(updated_at);
 
 
 -- =========================
@@ -131,7 +127,7 @@ create table public.revamped_project_participant (
     project_id uuid not null,
     profile_id uuid not null,
     is_owner boolean not null default false,
-    created_at timestamptz not null default now()
+    created_at timestamptz not null default now(),
 
     constraint pk_project_participant primary key (project_id, profile_id),
     constraint fk_project_participant_project_id_project foreign key (project_id) references public.revamped_project(id) on delete cascade,
