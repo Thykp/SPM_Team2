@@ -67,7 +67,12 @@ module.exports = {
     return {
       success: true,
       message: "Project created successfully",
-      data: projectData,
+      data: {
+            id: projectData.id,
+            title: projectData.title,
+            display_name: projectData.display_name, // Include display_name
+            description: projectData.description,
+       },
       timestamp: new Date().toISOString(),
     };
   },

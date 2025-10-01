@@ -68,7 +68,7 @@ router.put("/:id/collaborators", async (req, res) => {
         return res.status(400).json({ error: "Collaborators must be an array of UUIDs" });
       }
       const updated = await project.updateCollaborators(id, collaborators);
-      res.status(200).json({ success: true, project: updated });
+      res.status(200).json({ success: true, message: "Collaborators updated successfully", project: updated });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
