@@ -101,6 +101,19 @@ module.exports = {
 
         }
 
+    },
+
+    async deleteTask(req, res){
+        try {
+            const taskObj = new Task({id:req.params.taskId});
+            await taskObj.deleteTask();
+            res.status(200).json({ message: "Successfully deleted task" });
+        } catch (error) {
+            if (error instanceof DatabaseError){
+                res.status(error.statusCode).json({ error: error.message })
+            };
+            res.status(500).json({ error: error.message })
+        }
     }
 
 }

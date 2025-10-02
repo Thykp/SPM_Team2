@@ -173,6 +173,18 @@ class Task {
         await this.addTaskParticipants();
     }
 
+    async deleteTask(){
+        const { data, error } = await supabase
+            .from('revamped_task')
+            .delete()
+            .eq('id', this.id)
+            .select()
+        if (error){
+            console.error("Error executing deleteTask: ")
+            throw new DatabaseError("Failure to execute deleteTask ", error)
+        }
+    }
+
     async addTaskParticipants(){
         const participantDetails = this.participants.map(participant => ({
             task_id: this.id,
