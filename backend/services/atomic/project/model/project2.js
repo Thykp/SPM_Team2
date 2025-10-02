@@ -51,7 +51,6 @@ module.exports = {
   async addNewProject(project) {
     const { data, error } = await supabase.from(PROJECT_TABLE).insert([{
       title: project.title,
-      display_name: project.display_name,
       description: project.description,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -70,7 +69,6 @@ module.exports = {
       data: {
             id: projectData.id,
             title: projectData.title,
-            display_name: projectData.display_name, // Include display_name
             description: projectData.description,
        },
       timestamp: new Date().toISOString(),
@@ -83,10 +81,6 @@ module.exports = {
 
     if (updateData.title !== undefined) {
       updateFields.title = updateData.title;
-    }
-
-    if (updateData.display_name !== undefined) {
-      updateFields.display_name = updateData.display_name;
     }
 
     if (updateData.description !== undefined) {

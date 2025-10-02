@@ -5,7 +5,6 @@ describe('Project API - Create New Project', () => {
   test('POST /project/new should create a new project', async () => {
     const newProject = {
       title: 'Test Project',
-      display_name: 'Test Display Name',
       description: 'Test Description',
     };
 
@@ -20,7 +19,6 @@ describe('Project API - Create New Project', () => {
     expect(response.body.message).toBe('Project created successfully');
     expect(response.body.data).toBeDefined();
     expect(response.body.data.title).toBe('Test Project');
-    expect(response.body.data.display_name).toBe('Test Display Name');
     expect(response.body.data.description).toBe('Test Description');
     expect(response.body.timestamp).toBeDefined();
   });

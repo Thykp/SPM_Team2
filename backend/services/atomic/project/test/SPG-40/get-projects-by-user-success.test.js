@@ -8,8 +8,8 @@ describe('GET /project/user/:uuid - Success Cases', () => {
     const endpoint = '/project/user';
     const testUuid = '11111111-1111-1111-1111-111111111111';
     const userProjects = [
-        { id: '11111111-1111-1111-1111-111111111111', title: 'Owner Project', display_name: 'Owner Display Name', description: 'Owner Description' },
-        { id: '33333333-3333-3333-3333-333333333333', title: 'Collab Project', display_name: 'Collab Display Name', description: 'Collab Description' },
+        { id: '11111111-1111-1111-1111-111111111111', title: 'Owner Project', description: 'Owner Description' },
+        { id: '33333333-3333-3333-3333-333333333333', title: 'Collab Project', description: 'Collab Description' },
     ];
 
     beforeEach(() => {

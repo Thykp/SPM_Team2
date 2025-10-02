@@ -47,8 +47,8 @@ router.post("/new", async (req, res) => {
       const newProjData = req.body;
   
       // Validate input
-      if (!newProjData.title || !newProjData.display_name || !newProjData.description) {
-        return res.status(400).json({ error: "Title, display name, and description are required" });
+      if (!newProjData.title || !newProjData.description) {
+        return res.status(400).json({ error: "Title and description are required" });
       }
 
       const result = await project.addNewProject(newProjData);

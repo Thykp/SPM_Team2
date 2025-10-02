@@ -7,10 +7,9 @@ describe('Project Model', () => {
     expect(result.length).toBeGreaterThanOrEqual(0);
   });
 
-  test('addNewProj should accept project data', async () => {
+  test('addNewProject should accept project data', async () => {
     const testProject = {
       title: 'Test Project',
-      display_name: 'Test Display Name',
       description: 'Test Description'
     };
 
@@ -21,7 +20,6 @@ describe('Project Model', () => {
     expect(result.message).toBe('Project created successfully');
     expect(result.data).toBeDefined();
     expect(result.data.title).toBe('Test Project');
-    expect(result.data.display_name).toBe('Test Display Name');
     expect(result.data.description).toBe('Test Description');
     expect(result.timestamp).toBeDefined();
   });
