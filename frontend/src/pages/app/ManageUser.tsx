@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Loader2 } from "lucide-react"
+import Loader from "@/components/layout/Loader"
 import { cn } from "@/lib/utils"
 
 // Inline user type (no LiteUser import)
@@ -158,7 +158,7 @@ export default function ManageUser() {
 
       {loading ? (
         <div className="flex items-center justify-center min-h-[40vh]" aria-busy="true" aria-live="polite">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader />
         </div>
       ) : error ? (
         <p className="text-red-500">{error}</p>
@@ -213,7 +213,7 @@ export default function ManageUser() {
             <div className="py-6 text-muted-foreground">Select a user to see tasks.</div>
           ) : tasksLoading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin" />
+              <Loader />
             </div>
           ) : tasks == null ? (
             <div className="py-6 text-muted-foreground">Loading…</div>
