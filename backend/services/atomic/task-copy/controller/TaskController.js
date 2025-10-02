@@ -63,7 +63,7 @@ module.exports = {
 
     async getSubTasks(req, res){
         try {
-            const parentTaskId = req.params.parentTaskId;
+            const parentTaskId = req.params.id;
             const subTasks = await Subtask.getSubTasksOfParent(parentTaskId);
             res.status(200).json(subTasks);
         } catch (error) {
@@ -77,7 +77,7 @@ module.exports = {
     async getTaskPerUser(req, res){
         try {
             const userId = !req.params.userId ? req.body : req.params.userId;
-            const tasks = await Task.getTasksByUsers([userId]);
+            const tasks = await Task.getTasksByUsers(userId);
             res.status(200).json(tasks);
         } catch (error) {
             if (error instanceof DatabaseError) {
@@ -89,7 +89,7 @@ module.exports = {
 
     async updateTask(req, res){
         try {
-            // const taskId = req.params.taskId;
+            // const taskId = req.params.id;
             const newtaskObj = new Task(req.body);
             await newtaskObj.updateTask();
             res.status(201).json({ message: "Successfully created task and task participants" });
@@ -98,9 +98,7 @@ module.exports = {
                 return res.status(error.statusCode).json({ error: error.message }); 
             }
             return res.status(500).json({ error: error.message });
-
         }
-
     },
 
     async deleteTask(req, res){
@@ -110,9 +108,9 @@ module.exports = {
             res.status(200).json({ message: "Successfully deleted task" });
         } catch (error) {
             if (error instanceof DatabaseError){
-                res.status(error.statusCode).json({ error: error.message })
+                return res.status(error.statusCode).json({ error: error.message })
             };
-            res.status(500).json({ error: error.message })
+            return res.status(500).json({ error: error.message })
         }
     }
 

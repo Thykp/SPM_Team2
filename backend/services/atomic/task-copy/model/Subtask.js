@@ -14,8 +14,8 @@ class Subtask extends Task{
             .eq("task_id", taskParentId);
 
         if (error){
-            console.error("Error with retreiving parent task participants", error);
-            throw new DatabaseError("Failed to fetch parent task participants", error);
+            console.error("Error in validateSubtaskParticipants:", error);
+            throw new DatabaseError("Failed to retrieve parent task participants", error);
         }
 
         const parentParticipantIds = taskParticipants.map(p => p.profile_id);
@@ -42,7 +42,7 @@ class Subtask extends Task{
             .eq('parent_task_id', parentTaskId);
         
         if (error){
-            console.error("Error in retreiving subtasks: ", error);
+            console.error("Error in getSubTasksOfParent:", error);
             throw new DatabaseError("Failed to retrieve subtasks", error);
         }
 

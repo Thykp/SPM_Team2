@@ -53,7 +53,8 @@ class Task {
             `)
             .in("participants.profile_id",userIdArray);
         if (error){
-            throw new DatabaseError("Failed to retrieve task details: ", error);
+            console.error("Error in getTasksByUsers:", error);
+            throw new DatabaseError("Failed to retrieve tasks by users", error);
         }
         return data;
     }
@@ -109,13 +110,13 @@ class Task {
             .from(Task.taskTable)
             .select(`
                 *,
-                participants:revamped_task_participant(profile_id, is_owner)
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
             `)
             .eq('id', this.id)
             .single()
 
         if (error){
-            console.error("Error with getTaskDetails: ", error);
+            console.error("Error in getTaskDetails:", error);
             if (error.code === 'PGRST116') {
                 throw new TaskNotFoundError(`Task with ID ${this.id} not found`);
             }
@@ -140,7 +141,7 @@ class Task {
         .single()
 
         if (error){
-            console.error("Error executing createTask: ", error);
+            console.error("Error in createTask:", error);
             throw new DatabaseError("Failed to create task", error);
         }
 
@@ -165,7 +166,7 @@ class Task {
             .eq('id', this.id)
         
         if (error){
-            console.error("Error executing updateTask: ", error);
+            console.error("Error in updateTask:", error);
             throw new DatabaseError("Failed to update task", error);
         }
 
@@ -175,13 +176,13 @@ class Task {
 
     async deleteTask(){
         const { data, error } = await supabase
-            .from('revamped_task')
+            .from(Task.taskTable)
             .delete()
             .eq('id', this.id)
             .select()
         if (error){
-            console.error("Error executing deleteTask: ")
-            throw new DatabaseError("Failure to execute deleteTask ", error)
+            console.error("Error in deleteTask:", error);
+            throw new DatabaseError("Failed to delete task", error);
         }
     }
 

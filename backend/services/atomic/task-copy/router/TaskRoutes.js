@@ -1,26 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const task = require("../model/task");
 const taskController = require("../controller/TaskController")
 
-router.get("/", taskController.taskServiceHealthCheck);
-
-router.post("/new", taskController.addTask);
-
-router.post("/by-users", taskController.getTaskPerUser);
-
-router.get("/all", taskController.getAllTasks);
-
-router.get("/id/:id", taskController.getTaskDetail);
-
-router.get("/subtask/:parentTaskId", taskController.getSubTasks);
-
-router.get("/by-user/:userId", taskController.getTaskPerUser);
-
-router.put("/edit/:taskId", taskController.updateTask);
-
-router.delete("/delete/:taskId", taskController.deleteTask)
+router.get("/health", taskController.taskServiceHealthCheck);
 
 
+router.get("/", taskController.getAllTasks);
+router.post("/", taskController.addTask);
+router.get("/:id", taskController.getTaskDetail);
+router.put("/:id", taskController.updateTask);
+router.delete("/:taskId", taskController.deleteTask);
+
+router.get("/:id/subtasks", taskController.getSubTasks);
+router.get("/users/:userId", taskController.getTaskPerUser);
+router.post("/users", taskController.getTaskPerUser);
 
 module.exports = router;
