@@ -1,8 +1,8 @@
 const request = require('supertest');
 const app = require('../../app');
-const projectModel = require('../../model/project');
+const projectModel = require('../../model/project2');
 
-jest.mock('../../model/project');
+jest.mock('../../model/project2');
 
 describe('GET /project/user/:uuid - Error Cases', () => {
     const endpoint = '/project/user';
@@ -18,7 +18,7 @@ describe('GET /project/user/:uuid - Error Cases', () => {
     });
 
     it('should handle server errors', async () => {
-        projectModel.getProjectsByOwner.mockRejectedValue(new Error('DB error'));
+        projectModel.getProjectsByUser.mockRejectedValue(new Error('DB error'));
         const res = await request(app).get(`${endpoint}/${testUuid}`);
         expect(res.statusCode).toBe(500);
         expect(res.body).toHaveProperty('error');

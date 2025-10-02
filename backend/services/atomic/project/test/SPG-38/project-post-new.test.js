@@ -5,10 +5,8 @@ describe('Project API - Create New Project', () => {
   test('POST /project/new should create a new project', async () => {
     const newProject = {
       title: 'Test Project',
+      display_name: 'Test Display Name',
       description: 'Test Description',
-      collaborators: ['588fb335-9986-4c93-872e-6ef103c97f92', 'c0cd847d-8c61-45dd-8dda-ecffe214943e'],
-      owner: 'testuser',
-      task_list: []
     };
 
     const response = await request(app)
@@ -21,6 +19,9 @@ describe('Project API - Create New Project', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Project created successfully');
     expect(response.body.data).toBeDefined();
+    expect(response.body.data.title).toBe('Test Project');
+    expect(response.body.data.display_name).toBe('Test Display Name');
+    expect(response.body.data.description).toBe('Test Description');
     expect(response.body.timestamp).toBeDefined();
   });
 
