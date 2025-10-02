@@ -1,39 +1,62 @@
-const { Task } = require("./task");
+const Task  = require("./task");
 const { supabase } = require("../db/supabase");
+const { ValidationError, DatabaseError } = require("./TaskError");
 
-class Subtasks extends Task{
-
-    // method to validate participants
-        // get the list of participants using taskParentId
-        // check the new one is a subset or equals to the parent's one
+class Subtask extends Task{
+    constructor(data){
+        super(data);
+    }
+    
     static async validateSubtaskParticipants(subTaskParticipants, taskParentId){
         const {data: taskParticipants, error} = await supabase
-            .from(this.taskParticipantTable)
+            .from(Task.taskParticipantTable)
             .select("profile_id")
-            .eq("id",taskParentId);
+            .eq("task_id", taskParentId);
 
         if (error){
-            console.error("Error with retreiving parent task participants");
+            console.error("Error with retreiving parent task participants", error);
+            throw new DatabaseError("Failed to fetch parent task participants", error);
         }
 
-        const participantList = subTaskParticipants.map((currParticipant) => currParticipant.profile_id)
+        const parentParticipantIds = taskParticipants.map(p => p.profile_id);
+        const subTaskParticipantIds = subTaskParticipants.map(p => p.profile_id);
+        const invalidParticipants = subTaskParticipantIds.filter(id => !parentParticipantIds.includes(id));
 
-        for (let subTaskParticipant of participantList) {
-            if (!taskParticipants.includes(subTaskParticipant)){
-                return false;
-            }
+        if (invalidParticipants.length > 0){
+            return {
+                valid: false,
+                errors: [`Subtask participants must be subset of parent. Invalid IDs: ${invalidParticipants.join(", ")}`]
+            };
         }
-        return true;
+
+        return {
+            valid: true,
+            errors: []
+        };
+    }
+
+    static async getSubTasksOfParent(parentTaskId){
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .select('*')
+            .eq('parent_task_id', parentTaskId);
+        
+        if (error){
+            console.error("Error in retreiving subtasks: ", error);
+            throw new DatabaseError("Failed to retrieve subtasks", error);
+        }
+
+        return data || [];
     }
 
     async validate(){
+        super.validate();
+        const validation = await Subtask.validateSubtaskParticipants(this.participants, this.parent_task_id);
 
+        if (!validation.valid){
+            throw new ValidationError(validation.errors);
+        }
     }
-    // method to validate participants
-        // run helper function to validate subtask participants
 
-    // static method to find all subtask of parent
-        // run thhe suspabase api
-        // map and wrap Subtask class
-        // return
 }
+module.exports = Subtask;

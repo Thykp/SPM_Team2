@@ -1,11 +1,10 @@
 const { supabase } = require("../db/supabase");
-
-
+const { TaskNotFoundError, ValidationError, DatabaseError } = require("./TaskError");
 
 class Task {
-    taskTable = "revamped_task";
-    taskParticipantTable = "revamped_task_participant";
-    
+    static taskTable = "revamped_task";
+    static taskParticipantTable = "revamped_task_participant";
+
     static normalizeStatus(input) {
         if (!input) return null;
 
@@ -30,14 +29,31 @@ class Task {
 
     static async getAllTasks(){
         const { data, error } = await supabase
-            .from(taskTable)
+            .from(Task.taskTable)
             .select(`
                 *,
-                participants:${taskParticipantTable}(profile_id, is_owner)
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
             `);
+        
         if (error){
             console.error("Error executing getAllTasks: ", error);
-            throw error;
+            throw new DatabaseError("Failed to retrieve tasks", error);
+        }
+        
+        return data;
+    }
+
+    static async getTasksByUsers(userId){
+        const userIdArray = !Array.isArray(userId) ? [userId]: userId;
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}!inner(profile_id, is_owner)
+            `)
+            .in("participants.profile_id",userIdArray);
+        if (error){
+            throw new DatabaseError("Failed to retrieve task details: ", error);
         }
         return data;
     }
@@ -50,12 +66,47 @@ class Task {
         this.deadline = data.deadline || null;
         this.description = data.description || null;
         this.status = Task.normalizeStatus(data.status) || null;
-        this.participants = data.participants || []
+        this.participants = data.participants || [];
+    }
+
+    async validate(){
+        const errors = [];
+
+        if (!this.title || this.title.trim() === "") {
+            errors.push("Title is required");
+        }
+
+        if (!this.deadline) {
+            errors.push("Deadline is required");
+        }
+
+        if (!this.description || this.description.trim() === "") {
+            errors.push("Description is required");
+        }
+
+        if (!this.status) {
+            errors.push("Status is required");
+        }
+
+        if (!this.participants || this.participants.length === 0) {
+            errors.push("At least one participant is required");
+        }
+
+        const ownerCount = this.participants.filter(p => p.is_owner).length;
+        if (ownerCount === 0) {
+            errors.push("At least one participant must be an owner");
+        }
+
+        if (errors.length > 0) {
+            throw new ValidationError(errors);
+        }
+
+        return true;
     }
 
     async getTaskDetails(){
         const { data, error } = await supabase
-            .from(taskTable)
+            .from(Task.taskTable)
             .select(`
                 *,
                 participants:revamped_task_participant(profile_id, is_owner)
@@ -64,23 +115,19 @@ class Task {
             .single()
 
         if (error){
-            console.error("Error with getTaskDetails: ", error)
-            throw error;
+            console.error("Error with getTaskDetails: ", error);
+            if (error.code === 'PGRST116') {
+                throw new TaskNotFoundError(`Task with ID ${this.id} not found`);
+            }
+            throw new DatabaseError("Failed to retrieve task details", error);
         }
 
-        // const retrievedTask = new Task(data)
         return data;
     }
 
-    // method to add task to db
-        // call the supabase api to add into task table
-        // check if error   
-            // return yup
-        // check if have participant list
-            // activate the add participant helper function
     async createTask(){
         const { data, error } = await supabase
-        .from(taskTable)
+        .from(Task.taskTable)
         .insert({
             parent_task_id: this.parent_task_id, 
             project_id: this.project_id, 
@@ -94,7 +141,7 @@ class Task {
 
         if (error){
             console.error("Error executing createTask: ", error);
-            throw error;
+            throw new DatabaseError("Failed to create task", error);
         }
 
         this.id = data.id;
@@ -104,15 +151,9 @@ class Task {
         }
     }
 
-    // method to update task from db
-        // call supabase api
-        // check if error   
-            // return yup
-        // run helper function to delete participants
-        // run helper function to add participants
     async updateTask(){
         const { error } = await supabase
-            .from(taskTable)
+            .from(Task.taskTable)
             .update({
                 parent_task_id: this.parent_task_id, 
                 project_id: this.project_id, 
@@ -124,16 +165,14 @@ class Task {
             .eq('id', this.id)
         
         if (error){
-            return null;
+            console.error("Error executing updateTask: ", error);
+            throw new DatabaseError("Failed to update task", error);
         }
 
-        this.deleteTaskParticipants();
-        this.addTaskParticipants();
+        await this.deleteTaskParticipants();
+        await this.addTaskParticipants();
     }
 
-    // Helper function to add to task_participant table
-        // map participants to appropriate data type INCLUDING the isOwner or not
-        // run the supabase api to add the records
     async addTaskParticipants(){
         const participantDetails = this.participants.map(participant => ({
             task_id: this.id,
@@ -142,42 +181,40 @@ class Task {
         }))
 
         const { error } = await supabase
-            .from(taskParticipantTable)
+            .from(Task.taskParticipantTable)
             .insert(participantDetails);
         
         if (error){
-            console.error("Error in addTaskParticipants: ", error)
-            throw error;
+            console.error("Error in addTaskParticipants: ", error);
+            throw new DatabaseError("Failed to add task participants", error);
         }
     }
 
-    // Helper function  to delete participants
-        // run supabase api to delete all that have the same task_id
     async deleteTaskParticipants(){
         const {data, error} = await supabase
-            .from(taskParticipantTable)
+            .from(Task.taskParticipantTable)
             .delete()
             .eq('task_id', this.id)
             .select()
         
         if (error){
-            return null;
+            console.error("Error in deleteTaskParticipants: ", error);
+            throw new DatabaseError("Failed to delete task participants", error);
         }
     }
 
-    // Helper function to get participants
-        // run the supabase api to retrieve list of participants based on task id
     async getTaskParticipants(){
         const { data, error } = await supabase
-            .from(taskParticipantTable)
+            .from(Task.taskParticipantTable)
             .select('*')
             .eq('task_id', this.id)
         
         if (error){
-            return null;
+            console.error("Error in getTaskParticipants: ", error);
+            throw new DatabaseError("Failed to retrieve task participants", error);
         }
         
-        return data;
+        return data || [];
     }
 
 }
