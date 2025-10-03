@@ -72,6 +72,7 @@ class Task {
 
     async validate(){
         const errors = [];
+        const validStatuses = ["Ongoing", "Under Review", "Completed", "Overdue"];
 
         if (!this.title || this.title.trim() === "") {
             errors.push("Title is required");
@@ -87,6 +88,8 @@ class Task {
 
         if (!this.status) {
             errors.push("Status is required");
+        } else if (!validStatuses.includes(this.status)) {
+            errors.push("Status must be one of: Ongoing, Under Review, Completed, Overdue");
         }
 
         if (!this.participants || this.participants.length === 0) {
