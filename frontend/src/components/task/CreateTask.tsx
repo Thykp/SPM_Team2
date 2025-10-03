@@ -4,23 +4,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, X } from "lucide-react";
-import { Task } from "@/lib/api"; // Import the Task service
+import { Task } from "@/lib/api"; // Task service (and type, if you export it there)
+import {
+  Select as ShadcnSelect,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface CreateTaskProps {
-  userId: string; // Add userId as a prop
-  onTaskCreated: (task: Task) => void; // Callback to update the task list in the parent component
+  userId: string; // current user id
+  onTaskCreated: (task: Task) => void; // callback to update parent list
 }
+
+const STATUSES = [
+  "Unassigned",
+  "Ongoing",
+  "Under Review",
+  "Completed",
+  "Overdue",
+] as const;
+
+type StatusType = typeof STATUSES[number];
 
 const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
   const [showModal, setShowModal] = useState(false);
   const [newTask, setNewTask] = useState<{
     title: string;
     description: string;
-    status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
+    status: StatusType;
   }>({
     title: "",
     description: "",
-    status: "Unassigned", // Default status
+    status: "Unassigned",
   });
   const [loading, setLoading] = useState(false);
 
@@ -33,15 +50,15 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
         title: newTask.title,
         description: newTask.description,
         status: newTask.status,
-        owner: userId, // Use the userId passed as a prop
+        owner: userId,
         collaborators: [],
         deadline: new Date().toISOString(),
       };
 
-      const createdTask = await Task.createTask(taskData); // Call the API to create the task
-      onTaskCreated(createdTask); // Notify the parent component
-      setNewTask({ title: "", description: "", status: "Unassigned" }); // Reset the form
-      setShowModal(false); // Close the modal
+      const createdTask = await Task.createTask(taskData);
+      onTaskCreated(createdTask);
+      setNewTask({ title: "", description: "", status: "Unassigned" });
+      setShowModal(false);
     } catch (err) {
       console.error("Failed to create task:", err);
     } finally {
@@ -81,6 +98,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateTask} className="space-y-6">
+                {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title" className="text-base font-medium">
                     Task Title
@@ -97,45 +115,53 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
                     required
                   />
                 </div>
-                
+
+                {/* Description */}
                 <div className="space-y-2">
-                <Label htmlFor="description" className="text-base font-medium">
+                  <Label htmlFor="description" className="text-base font-medium">
                     Task Description
-                </Label>
-                <textarea
+                  </Label>
+                  <textarea
                     id="description"
                     placeholder="Enter a detailed description of the task"
                     value={newTask.description}
                     onChange={(e) =>
-                    setNewTask((prev) => ({ ...prev, description: e.target.value }))
+                      setNewTask((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
                     required
-                />
+                  />
                 </div>
 
+                {/* Status (shadcn Select) */}
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-base font-medium">
                     Task Status
                   </Label>
-                  <select
-                    id="status"
+                  <ShadcnSelect
                     value={newTask.status}
-                    onChange={(e) =>
-                    setNewTask((prev) => ({
-                        ...prev,
-                        status: e.target.value as "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue",
-                    }))
+                    onValueChange={(val: StatusType) =>
+                      setNewTask((prev) => ({ ...prev, status: val }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
-                    <option value="Unassigned">Unassigned</option>
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Under Review">Under Review</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Overdue">Overdue</option>
-                  </select>
+                    <SelectTrigger id="status" className="h-11">
+                      <SelectValue placeholder="Select a status" />
+                    </SelectTrigger>
+                    {/* z-index so it renders above the modal content if needed */}
+                    <SelectContent className="z-[60]">
+                      {STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </ShadcnSelect>
                 </div>
+
+                {/* Actions */}
                 <div className="flex gap-3 pt-6">
                   <Button
                     type="button"
