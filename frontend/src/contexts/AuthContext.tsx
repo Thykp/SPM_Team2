@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 
-export type Role = "Admin" | "Staff" | "User"
+export type Role = 'Staff' | 'Manager' | 'Director' | 'Senior Management';
 export type Profile = { id: string; role: Role; display_name?: string | null }
 
 type AuthContextType = {
