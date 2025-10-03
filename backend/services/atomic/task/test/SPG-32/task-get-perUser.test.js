@@ -1,37 +1,50 @@
-const request = require('supertest');
-const app = require('../../app');
-const { supabase } = require('../../db/supabase');
+// backend/services/atomic/task/test/SPG-32/task-get-perUser.test.js
+const request = require("supertest");
 
-describe('GET /task/:user_id', () => {
-  const reqUserId = '588fb335-9986-4c93-872e-6ef103c97f92';
+// Mock the model to avoid DB dependency
+jest.mock("../../model/task", () => ({
+  getTasksByUsers: jest.fn(),
+}));
 
-  test('should retreive tasks related to user', async () => {
+const { getTasksByUsers } = require("../../model/task");
+const app = require("../../app");
 
-    supabase.__setNextResults?.([
+describe("GET /task/by-user/:user_id (revamped, mocked)", () => {
+  const reqUserId = "588fb335-9986-4c93-872e-6ef103c97f92";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("200 and returns tasks for the user via participant join", async () => {
+    const fake = [
       {
-        data: [{
-          id: 't1',
-          user_id: reqUserId,
-          title: 'Owner Task',
-          status: 'open',
-          collaborators: [],
-          created_at: '2025-01-01T00:00:00.000Z',
-        }],
-        error: null,
+        id: "t-123",
+        title: "Prepare report",
+        deadline: "2025-10-01T10:00:00Z",
+        status: "Ongoing",
+        project_id: "p-1",
+        parent_task_id: null,
       },
-      {
-        data: [],
-        error: null,
-      },
-    ]);
+    ];
+    getTasksByUsers.mockResolvedValue(fake);
 
     const res = await request(app)
       .get(`/task/by-user/${reqUserId}`)
-      .expect('Content-Type', 'application/json; charset=utf-8');
+      .expect("Content-Type", /json/);
 
+    expect(getTasksByUsers).toHaveBeenCalledWith([reqUserId]);
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBe(1);
-    expect(res.body[0]).toMatchObject({ id: 't1', user_id: reqUserId });
+    expect(res.body).toEqual(fake);
+  });
+
+  it("500 when model throws", async () => {
+    getTasksByUsers.mockRejectedValue(new Error("db down"));
+
+    const res = await request(app).get(`/task/by-user/${reqUserId}`);
+
+    expect(getTasksByUsers).toHaveBeenCalledWith([reqUserId]);
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: "db down" });
   });
 });
