@@ -92,7 +92,7 @@ export function AppNavbar() {
               <DropdownMenuItem asChild>
                 <Link to="/app/profile">Profile</Link>
               </DropdownMenuItem>
-              {(profile?.role === "Admin" || profile?.role === "Staff") && (
+              {(profile?.role === "Director" || profile?.role === "Staff" || profile?.role === "Manager" || profile?.role === "Senior Management") && (
                 <DropdownMenuItem asChild>
                   <Link to="/app/settings">Settings</Link>
                 </DropdownMenuItem>
