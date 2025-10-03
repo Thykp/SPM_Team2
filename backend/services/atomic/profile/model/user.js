@@ -1,53 +1,60 @@
 const { supabase } = require("../db/supabase");
-const profileTable = "profiles";
 
+const PROFILE_TABLE = "revamped_profiles";      // id, display_name, role, team_id, department_id
+const DEPT_TABLE = "revamped_departments";      // id, name
+
+// Minimal list of users for dropdowns.
 async function getAllUsersDropdown() {
   const { data, error } = await supabase
-    .from(profileTable)
-    .select("id, display_name, role, department")
+    .from(PROFILE_TABLE)
+    .select("id, display_name, role, team_id, department_id")
     .order("display_name", { ascending: true });
 
   if (error) throw new Error(error.message);
   return data || [];
 }
 
+// Full list (revamped_profiles).
 async function getAllUsers() {
-  const { data, error } = await supabase
-    .from(profileTable)
-    .select("*");
-
+  const { data, error } = await supabase.from(PROFILE_TABLE).select("*");
   if (error) throw new Error(error.message);
   return data || [];
 }
 
-async function getStaffByDepartment(department, role = "staff") {
-  let query = supabase
-    .from(profileTable)
-    .select("id, display_name, role, department")
+// filter: by team_id OR department_id (UUIDs), with role (default "staff").
+ // If both are provided, team_id takes precedence.
+async function getStaffByScope({ team_id, department_id, role = "staff" }) {
+  let q = supabase
+    .from(PROFILE_TABLE)
+    .select("id, display_name, role, team_id, department_id")
     .eq("role", role);
 
-  if (department) {
-    query = query.eq("department", department);
+  if (team_id) {
+    q = q.eq("team_id", team_id);
+  } else if (department_id) {
+    q = q.eq("department_id", department_id);
   }
 
-  const { data, error } = await query.order("display_name", { ascending: true });
+  const { data, error } = await q.order("display_name", { ascending: true });
   if (error) throw new Error(error.message);
   return data || [];
 }
 
-async function getUserDetailsWithId(user_id){
+// Single user by id.
+async function getUserDetailsWithId(user_id) {
   const { data, error } = await supabase
-  .from(profileTable)
-  .select("*")
-  .eq("id",user_id);
+    .from(PROFILE_TABLE)
+    .select("*")
+    .eq("id", user_id)
+    .single();
 
   if (error) throw new Error(error.message);
-  return data || [];
+  return data;
 }
 
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,
-  getStaffByDepartment,
-  getUserDetailsWithId
+  getStaffByScope,
+  getUserDetailsWithId,
 };
