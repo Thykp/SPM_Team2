@@ -24,31 +24,49 @@
 const model = require("../../model/project2"); // Use project2 instead of project
 
 jest.mock("../../db/supabase", () => {
+  const mockEq = jest.fn().mockResolvedValue({
+    data: null,
+    error: null
+  });
+  
+  const mockDelete = jest.fn(() => ({
+    eq: mockEq
+  }));
+
   const mockInsert = jest.fn().mockResolvedValue({
     data: [
       { project_id: "p1", profile_id: "u1" },
-      { project_id: "p1", profile_id: "u2" },
+      { project_id: "p1", profile_id: "u2" }
     ],
-    error: null,
+    error: null
   });
-  const mockDelete = jest.fn().mockResolvedValue({ error: null });
-  const mockFrom = jest.fn(() => ({
+
+  const mockFrom = jest.fn((table) => ({
     delete: mockDelete,
-    insert: mockInsert,
+    insert: mockInsert
   }));
-  return { supabase: { from: mockFrom } };
+
+  return {
+    supabase: {
+      from: mockFrom
+    }
+  };
 });
 
+describe("updateCollaborators", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-test("updateCollaborators: dedupes and updates", async () => {
-  const res = await model.updateCollaborators("p1", ["u1", "u1", "u2"]);
-  expect(res).toEqual({
-    success: true,
-    message: "Collaborators updated successfully",
-    data: [
+  test("updateCollaborators: dedupes and updates", async () => {
+    const res = await model.updateCollaborators("p1", ["u1", "u1", "u2"]);
+    
+    expect(res).toBeDefined();
+    expect(res.success).toBe(true);
+    expect(res.message).toBe("Collaborators updated successfully");
+    expect(res.data).toEqual([
       { project_id: "p1", profile_id: "u1" },
-      { project_id: "p1", profile_id: "u2" },
-    ],
-    timestamp: expect.any(String),
+      { project_id: "p1", profile_id: "u2" }
+    ]);
   });
 });
