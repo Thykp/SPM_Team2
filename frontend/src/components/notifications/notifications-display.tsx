@@ -4,42 +4,46 @@ import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "./useNotifications";
+import type { Notification } from "@/lib/api";
+import { Notification as notif } from "@/lib/api";
 
 export function NotificationsPanel({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
-  const [localNotifs, setLocalNotifs] = useState<any[]>([]);
+  const [localNotifs, setLocalNotifs] = useState<Notification[]>([]);
   const notifications = useNotifications(userId);
 
+  // Sync local state with notifications from hook
   useEffect(() => {
     setLocalNotifs(notifications);
   }, [notifications]);
 
+  // Mark notifications as read after 2s when panel opens
   useEffect(() => {
     if (!open) return;
 
     const unreadIds = localNotifs.filter(n => !n.read).map(n => n.id);
     if (unreadIds.length === 0) return;
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
+      // Optimistic UI update
       setLocalNotifs(prev =>
         prev.map(n =>
           unreadIds.includes(n.id) ? { ...n, read: true } : n
         )
       );
 
-      fetch(`${import.meta.env.VITE_API_URL}/notifications/read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: unreadIds }),
-      }).catch(err =>
-        console.error("❌ Failed to mark notifications as read:", err)
-      );
+      try {
+        await notif.markAsRead(unreadIds);
+      } catch (err) {
+        console.error("❌ Failed to mark notifications as read:", err);
+      }
     }, 2000);
 
     return () => clearTimeout(timer);
   }, [open, localNotifs]);
 
   const hasGlobalBadge = localNotifs.some(n => !n.read);
+
   return (
     <div className="relative">
       <Button
@@ -54,7 +58,6 @@ export function NotificationsPanel({ userId }: { userId: string }) {
         )}
       </Button>
 
-      {/* Dropdown Panel */}
       {open && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
           <div className="p-2 font-semibold border-b">Notifications</div>
@@ -67,7 +70,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
               localNotifs.map(n => (
                 <div
                   key={n.id}
-                  className={`px-3 py-2 text-sm border-b hover:bg-gray-100 flex justify-between items-start`}
+                  className="px-3 py-2 text-sm border-b hover:bg-gray-100 flex justify-between items-start"
                 >
                   <div>
                     <div className="font-medium">{n.from_username ?? "Unknown"}</div>
@@ -79,7 +82,6 @@ export function NotificationsPanel({ userId }: { userId: string }) {
                     )}
                   </div>
 
-                  {/* Red dot only if unread */}
                   {!n.read && (
                     <span className="ml-2 mt-1 h-2 w-2 bg-destructive rounded-full animate-pulse" />
                   )}

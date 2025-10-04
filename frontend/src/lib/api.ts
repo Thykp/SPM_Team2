@@ -49,6 +49,21 @@ export type ProfileRequestDetailsDto = {
   id:string;
 }
 
+export type Notification = {
+  id: string;
+  notif_text: string;
+  notif_type: string;
+  from_user: string;
+  from_username?: string;
+  to_user: string;
+  created_at?: string;
+  resource_type?: string;
+  resource_id?: string;
+  project_id?: string;
+  priority?: number;
+  read: boolean;
+}
+
 // ----- Services -----
 export const Profile = {
   getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
@@ -161,5 +176,18 @@ export const Task = {
     await api.delete(url);
   },
 };
+
+export const Notification = {
+  getNotifications: async (userId: string): Promise<Notification[]> => {
+    const url = `${KONG_BASE_URL}/notifications/${userId}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  markAsRead: async (ids: string[]): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/read`;
+    await api.post(url, { ids });
+  },
+}
 
 export default api;

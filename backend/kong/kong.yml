@@ -23,6 +23,13 @@ services:
         paths:
           - /task
 
+  - name: notification-service
+    url: http://notifications:4201
+    routes: 
+      - name: notification-route
+        paths:
+          - /notifications
+
   - name: manage-account-service
     url: http://manage-account:8090
     routes:

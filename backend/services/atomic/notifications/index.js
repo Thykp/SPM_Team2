@@ -22,7 +22,7 @@ app.use(
 );
 
 // ----- HTTP routes -----
-app.use('/notifications', notifRoutes);
+app.use('/', notifRoutes);
 
 // ----- Redis -----
 const redisSub = new Redis(process.env.REDIS_URL || 'redis://redis:6379'); // subscriber

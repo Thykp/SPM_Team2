@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Notification } from "./notification";
+import { Notification as notif } from "@/lib/api";
+import type { Notification } from "@/lib/api";
 
 export function useNotifications(userId: string) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -11,17 +12,16 @@ export function useNotifications(userId: string) {
     let ws: WebSocket | null = null;
     let isMounted = true;
 
+    // 🔹 Fetch initial notifications from API
     const fetchAll = async () => {
       try {
-
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/notifications/${userId}`);
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-        const data: Notification[] = await res.json();
+        const data = await notif.getNotifications(userId);
         if (isMounted) setNotifications(data);
       } catch (err) {
         console.error("❌ Failed to fetch notifications:", err);
       }
     };
+
     fetchAll();
 
     ws = new WebSocket(`${import.meta.env.VITE_WS_URL || "ws://localhost:4201"}/ws?userId=${userId}`);
@@ -35,12 +35,10 @@ export function useNotifications(userId: string) {
       try {
         const notif: Notification = JSON.parse(event.data);
 
-        // Determine toast title based on resource_type
         let title = "Notification";
         if (notif.resource_type === "task") title = "Added to new Task";
         else if (notif.resource_type === "project") title = "Added to new Project";
 
-        // Show toast only for new notifications
         if ((window as any).addToast && notif.id !== lastToastId) {
           (window as any).addToast({
             id: notif.id,
