@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils"
 
 type ViewType = "board" | "timeline" | "cards"
 
-type OwnershipFilter = "mine" | "mine_and_collab"
+type OwnershipFilter = "all" | "mine" | "mine_and_collab"
 
 
 export function Dashboard() {
@@ -34,7 +34,7 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [currentView, setCurrentView] = useState<ViewType>("cards")
-  const [ownerFilter, setOwnerFilter] = useState<OwnershipFilter>("mine")
+  const [ownerFilter, setOwnerFilter] = useState<OwnershipFilter>("all")
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -70,15 +70,32 @@ export function Dashboard() {
     console.log("Creating task with status:", status)
   }
 
-  const filteredTasks = useMemo(
-    () =>
-      tasks.filter(
-        (task) =>
-          task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          task.description.toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
-    [tasks, searchTerm]
-  )
+  const visibleTasks = useMemo(() => {
+    const meId = profile?.id || ""
+
+    const norm = (s?: string | null) => (s ?? "").trim().toLowerCase()
+    const q = norm(searchTerm)
+
+    const matchesSearch = (t: TaskType) =>
+      !q || norm(t.title).includes(q) || norm(t.description).includes(q)
+
+    const isMine = (t: TaskType) => norm(t.owner) === norm(meId)
+
+    const hasMeAsCollaborator = (t: TaskType) => {
+      const collabs = Array.isArray(t.collaborators) ? t.collaborators : []
+      return collabs.map(norm).includes(norm(meId))
+    }
+
+    return tasks
+      .filter(matchesSearch)
+      .filter((t) => {
+        if (currentView === "cards") return true
+        if (ownerFilter === "all") return true
+        if (ownerFilter === "mine") return isMine(t)
+        if (ownerFilter === "mine_and_collab") return isMine(t) || hasMeAsCollaborator(t)
+        return true
+      })
+  }, [tasks, searchTerm, ownerFilter, currentView, profile?.id])
 
   if (authLoading || loading) {
     return (
@@ -132,22 +149,17 @@ export function Dashboard() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Ownership</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup
-              value={ownerFilter}
-              onValueChange={(v) => setOwnerFilter(v as OwnershipFilter)}
-            >
-              <DropdownMenuRadioItem value="mine">
-                My tasks
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="mine_and_collab">
-                My + collaborators
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
+              <DropdownMenuRadioGroup
+                value={ownerFilter}
+                onValueChange={(v) => setOwnerFilter(v as OwnershipFilter)}
+              >
+                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="mine">My tasks</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="mine_and_collab">My + collaborators</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
-
-        {/* View Switcher Buttons */}
         <div className="flex gap-1 border rounded-lg p-1">
           <Button
             variant="ghost"
@@ -184,13 +196,13 @@ export function Dashboard() {
 
         {currentView === "cards" && (
           <div className="h-full overflow-auto">
-            <TaskCard tasks={filteredTasks} />
+            <TaskCard tasks={visibleTasks} />
           </div>
         )}
 
         {currentView === "board" && (
           <TaskBoard
-            tasks={filteredTasks}
+            tasks={visibleTasks}
             onTaskUpdate={handleTaskUpdate}
             onTaskDelete={handleTaskDelete}
             onTaskCreate={handleTaskCreate}
@@ -198,7 +210,11 @@ export function Dashboard() {
         )}
 
         {currentView === "timeline" && (
-          <TaskTimeline tasks={filteredTasks} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
+          <TaskTimeline
+            tasks={visibleTasks}
+            onTaskUpdate={handleTaskUpdate}
+            onTaskDelete={handleTaskDelete}
+          />
         )}
 
       </div>
