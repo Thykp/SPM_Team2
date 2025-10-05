@@ -4,16 +4,28 @@ import Loader from "@/components/layout/Loader"
 import { useEffect, useMemo, useState } from "react"
 import { TaskBoard } from "@/components/task/TaskBoard"
 import { TaskTimeline } from "@/components/task/TaskTimeline"
-import { TaskCard } from "@/components/task/TaskCard" // ⬅️ bring it back
+import { TaskCard } from "@/components/task/TaskCard"
 import { useAuth } from "@/contexts/AuthContext"
 import CreateTask from "@/components/task/CreateTask"
 import { type Task as TaskType, Task } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Filter, Search, LayoutGrid, Calendar, Rows } from "lucide-react" // ⬅️ Rows = “Cards” icon
+import { Filter, Search, LayoutGrid, Calendar, Rows } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
-type ViewType = "board" | "timeline" | "cards" // ⬅️ add cards
+type ViewType = "board" | "timeline" | "cards"
+
+type OwnershipFilter = "mine" | "mine_and_collab"
+
 
 export function Dashboard() {
   const { profile, authLoading } = useAuth()
@@ -22,6 +34,7 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [currentView, setCurrentView] = useState<ViewType>("cards")
+  const [ownerFilter, setOwnerFilter] = useState<OwnershipFilter>("mine")
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -103,10 +116,36 @@ export function Dashboard() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" className="gap-2 bg-transparent">
-          <Filter className="h-4 w-4" />
-          Filter
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="gap-2 bg-transparent"
+              // disabled={currentView === "cards"}
+              // aria-disabled={currentView === "cards"}
+              // title={currentView === "cards" ? "Switch to Board/Timeline to filter by ownership" : "Filter"}
+            >
+              <Filter className="h-4 w-4" />
+              Filter
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Ownership</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup
+              value={ownerFilter}
+              onValueChange={(v) => setOwnerFilter(v as OwnershipFilter)}
+            >
+              <DropdownMenuRadioItem value="mine">
+                My tasks
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="mine_and_collab">
+                My + collaborators
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
 
         {/* View Switcher Buttons */}
         <div className="flex gap-1 border rounded-lg p-1">
