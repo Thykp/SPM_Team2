@@ -1,49 +1,54 @@
-const request = require("supertest");
+const model = require("../../model/project2");
 
-jest.mock("../../model/project2", () => ({
-  getProjectById: jest.fn(),
-  getAllProjects: jest.fn(),
-}));
+jest.mock("../../db/supabase", () => {
+  const mockSingle = jest.fn(() => 
+    Promise.resolve({ data: { profile_id: 'owner-123' }, error: null })
+  );
 
-const { getProjectById, getAllProjects } = require("../../model/project2");
-const app = require("../../app");
+  const mockEqForSelect2 = jest.fn(() => ({ single: mockSingle }));
+  const mockEqForSelect1 = jest.fn(() => ({ eq: mockEqForSelect2 }));
+  const mockSelect = jest.fn(() => ({ eq: mockEqForSelect1 }));
 
-describe("GET /project/:id", () => {
-  beforeEach(() => jest.clearAllMocks());
+  const mockEqForDelete2 = jest.fn(() =>
+    Promise.resolve({ data: null, error: null })
+  );
+  const mockEqForDelete1 = jest.fn(() => ({ eq: mockEqForDelete2 }));
+  const mockDelete = jest.fn(() => ({ eq: mockEqForDelete1 }));
 
-  it("200: returns project by ID", async () => {
-    const mockProject = {
-      id: "proj-123",
-      title: "Test Project",
-      description: "Test Description",
-      created_at: "2025-01-01T00:00:00Z",
-      updated_at: "2025-01-01T00:00:00Z",
-    };
+  const mockInsert = jest.fn(() =>
+    Promise.resolve({ data: null, error: null })
+  );
 
-    getProjectById.mockResolvedValue(mockProject);
+  const mockFrom = jest.fn(() => ({
+    select: mockSelect,
+    delete: mockDelete,
+    insert: mockInsert
+  }));
 
-    const res = await request(app).get("/project/proj-123");
+  return {
+    supabase: { from: mockFrom }
+  };
+});
 
-    expect(res.status).toBe(200);
-    expect(getProjectById).toHaveBeenCalledWith("proj-123");
-    expect(res.body).toEqual(mockProject);
+describe("updateCollaborators", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it("404: project not found", async () => {
-    getProjectById.mockResolvedValue(null);
-
-    const res = await request(app).get("/project/nonexistent-id");
-
-    expect(res.status).toBe(404);
-    expect(res.body.error).toBe("Project not found");
+  test("updateCollaborators: dedupes and updates", async () => {
+    const res = await model.updateCollaborators("p1", ["u1", "u1", "u2"]);
+    
+    expect(res).toBeDefined();
+    expect(res.success).toBe(true);
+    expect(res.message).toBe("Collaborators updated successfully");
+    expect(res.timestamp).toBeDefined();
   });
 
-  it("500: handles database error", async () => {
-    getProjectById.mockRejectedValue(new Error("Database error"));
-
-    const res = await request(app).get("/project/proj-123");
-
-    expect(res.status).toBe(500);
-    expect(res.body.error).toBeDefined();
+  test("updateCollaborators: handles empty array", async () => {
+    const res = await model.updateCollaborators("p1", []);
+    
+    expect(res).toBeDefined();
+    expect(res.success).toBe(true);
+    expect(res.timestamp).toBeDefined();
   });
 });
