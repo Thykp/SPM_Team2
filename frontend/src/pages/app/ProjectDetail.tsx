@@ -26,17 +26,44 @@ const ProjectDetail: React.FC = () => {
             try {
                 const updatedTasks = await fetchTasksByIds([...project.tasklist, newTask.id]);
                 setTasks(updatedTasks);
-            } catch (err) {
-                console.warn('Failed to refresh tasks after creation:', err);
+            } catch {
+                // Failed to refresh tasks after creation
             }
+        }
+    };
+
+    // Handler for when a task is updated (e.g., status change from drag & drop)
+    const handleTaskUpdate = (updatedTask: Task) => {
+        setTasks(prevTasks => 
+            prevTasks.map(task => 
+                task.id === updatedTask.id ? updatedTask : task
+            )
+        );
+    };
+
+    // Handler for when the project is updated (e.g., from edit dialog)
+    const handleProjectUpdate = (updatedProject: ProjectDto) => {
+        setProject(updatedProject);
+        // Update owner name if needed
+        if (updatedProject.title !== project?.title) {
+            // Refetch owner information if the project was updated
+            Profile.getAllUsers()
+                .then((allUsers) => {
+                    const ownerUser = allUsers.find(u => u.id === updatedProject.owner);
+                    if (ownerUser) {
+                        setOwnerName(ownerUser.display_name || `${ownerUser.role} (${updatedProject.owner.slice(0, 8)}...)`);
+                    }
+                })
+                .catch(() => {
+                    // Silent error handling
+                });
         }
     };
 
     // Fetch individual tasks based on task IDs
     const fetchTasksByIds = async (taskIds: string[]): Promise<Task[]> => {
         const taskPromises = taskIds.map(taskId => 
-            TaskAPI.getTasksById(taskId).catch(err => {
-                console.warn(`Failed to fetch task ${taskId}:`, err);
+            TaskAPI.getTasksById(taskId).catch(() => {
                 return null; // Return null for failed requests
             })
         );
@@ -78,8 +105,7 @@ const ProjectDetail: React.FC = () => {
                 let foundProject;
                 try {
                     foundProject = await ProjectAPI.getById(projectId);
-                } catch (getByIdError) {
-                    console.error('Error fetching project by ID:', getByIdError);
+                } catch {
                     // Fallback to searching in user projects
                     const allProjects = await ProjectAPI.getByUser(user.id);
                     foundProject = allProjects.find(p => p.id === projectId);
@@ -100,12 +126,11 @@ const ProjectDetail: React.FC = () => {
                     } else {
                         setOwnerName(`User ${foundProject.owner.slice(0, 8)}...`);
                     }
-                } catch (ownerErr) {
-                    console.warn('Failed to fetch owner information:', ownerErr);
+                } catch {
                     setOwnerName(`User ${foundProject.owner.slice(0, 8)}...`);
                 }
                 
-                // Fetch individual tasks based on project's tasklist
+                // Fetch individual tasks based on project's tasklist only
                 if (foundProject.tasklist && foundProject.tasklist.length > 0) {
                     const projectTasks = await fetchTasksByIds(foundProject.tasklist);
                     setTasks(projectTasks);
@@ -113,7 +138,6 @@ const ProjectDetail: React.FC = () => {
                     setTasks([]);
                 }
             } catch (err) {
-                console.error('Error fetching project data:', err);
                 setError(err instanceof Error ? err.message : 'Failed to fetch project data');
             } finally {
                 setLoading(false);
@@ -159,7 +183,8 @@ const ProjectDetail: React.FC = () => {
             <ProjectHeader 
                 project={project} 
                 userId={user?.id} 
-                onTaskCreated={handleTaskCreated} 
+                onTaskCreated={handleTaskCreated}
+                onProjectUpdate={handleProjectUpdate}
             />
             
             <ProjectInfo 
@@ -167,7 +192,11 @@ const ProjectDetail: React.FC = () => {
                 ownerName={ownerName}
             />
             
-            <KanbanBoard tasks={tasks} />
+            <KanbanBoard 
+                tasks={tasks} 
+                projectId={projectId!} // Pass projectId for realtime filtering
+                onTaskUpdate={handleTaskUpdate} 
+            />
         </div>
     );
 };
