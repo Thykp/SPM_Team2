@@ -91,6 +91,16 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/etc/grafana/dashboards
 
+  redis:
+    image: redis:7
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - spm-net
+
   manage-account:
     build:
       context: ./backend/services/composite/manage-account
@@ -179,3 +189,22 @@ services:
     environment:
       PORT: "3040"
       FE_ENDPOINT: "http://localhost:5173"  
+
+  notifications:
+    build:
+      context: ./backend/services/atomic/notifications
+      dockerfile: dockerfile
+    container_name: notifications
+    restart: unless-stopped
+    networks:
+      - spm-net
+    env_file:
+      - ./backend/services/atomic/notifications/.env
+    depends_on:
+      - redis
+    ports:
+      - "4201:4201"
+    environment:
+      PORT: "4201"
+      FE_ENDPOINT: "http://localhost:5173"
+      REDIS_URL: redis://redis:6379
