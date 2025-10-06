@@ -4,11 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
 import com.spm.manage_task.dto.UserDto;
 
 @Service
 public class ProfileService {
-        private final String profileUrl = "http://profile:3030/user";
+    private final String profileUrl = "http://profile:3030/user";
 
     @Autowired
     private RestTemplate restTemplate;

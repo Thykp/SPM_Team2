@@ -1,4 +1,4 @@
-const Task = require("../model/Task");
+const Task = require("../model/task");
 const Subtask = require("../model/Subtask");
 const TaskService = require("../service/TaskService");
 const { TaskNotFoundError, ValidationError, DatabaseError } = require("../model/TaskError");
@@ -89,10 +89,11 @@ module.exports = {
 
     async updateTask(req, res){
         try {
-            // const taskId = req.params.id;
-            const newtaskObj = new Task(req.body);
+            const taskId = req.params.id;
+            const newtaskObj = new Task({ id: taskId, ...req.body });
+            console.log("TASK OBJECT: ", newtaskObj)
             await newtaskObj.updateTask();
-            res.status(201).json({ message: "Successfully created task and task participants" });
+            res.status(200).json({ message: "Successfully updated task and task participants" });
         } catch (error) {
             if (error instanceof DatabaseError){
                 return res.status(error.statusCode).json({ error: error.message }); 

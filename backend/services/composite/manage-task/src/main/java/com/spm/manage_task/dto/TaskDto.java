@@ -2,8 +2,6 @@ package com.spm.manage_task.dto;
 
 import java.util.ArrayList;
 
-import org.springframework.http.ResponseEntity;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TaskDto {
@@ -12,6 +10,9 @@ public class TaskDto {
 
     @JsonProperty("title")
     private String taskTitle;
+
+    @JsonProperty("project_id")
+    private String taskProjectId;
 
     @JsonProperty("deadline")
     private String taskDeadline;
@@ -38,9 +39,12 @@ public class TaskDto {
     private String taskOwnerDepartment;
 
 
-    public TaskDto(String taskId, String taskTitle, String taskDeadline, String taskDescription, String taskStatus, ArrayList<String> taskCollaborators, String taskOwner, String taskParent, String taskOwnerName, String taskOwnerDepartment) {
+    public TaskDto(String taskId, String taskTitle, String taskProjectId, String taskDeadline, String taskDescription,
+            String taskStatus, ArrayList<String> taskCollaborators, String taskOwner, String taskParent,
+            String taskOwnerName, String taskOwnerDepartment) {
         this.taskId = taskId;
         this.taskTitle = taskTitle;
+        this.taskProjectId = taskProjectId;
         this.taskDeadline = taskDeadline;
         this.taskDescription = taskDescription;
         this.taskStatus = taskStatus;
@@ -56,6 +60,7 @@ public class TaskDto {
         return "TaskDto{" +
                 "taskId='" + taskId + '\'' +
                 ", taskDeadline='" + taskDeadline + '\'' +
+                ", taskProjectid='" + taskProjectId + '\'' +
                 ", taskTitle='" + taskTitle + '\'' +
                 ", taskStatus=" + taskStatus +
                 ", taskDescription='" + taskDescription + '\'' +
@@ -81,6 +86,14 @@ public class TaskDto {
 
     public void setTaskTitle(String taskTitle) {
         this.taskTitle = taskTitle;
+    }
+
+    public String getTaskProjectId() {
+        return taskProjectId;
+    }
+
+    public void setTaskProjectId(String taskProjectId) {
+        this.taskProjectId = taskProjectId;
     }
 
     public String getTaskDeadline() {
@@ -146,5 +159,7 @@ public class TaskDto {
     public void setTaskOwnerDepartment(String taskOwnerDepartment) {
         this.taskOwnerDepartment = taskOwnerDepartment;
     }
+
+    
     
 }

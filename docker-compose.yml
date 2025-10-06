@@ -116,6 +116,7 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - task
+      - profile
 
   organise-project:
     build:

@@ -1,4 +1,4 @@
-const Task = require("./Task");
+const Task = require("./task");
 const { supabase } = require("../db/supabase");
 const { ValidationError, DatabaseError } = require("./TaskError");
 
@@ -38,7 +38,10 @@ class Subtask extends Task{
     static async getSubTasksOfParent(parentTaskId){
         const { data, error } = await supabase
             .from(Task.taskTable)
-            .select('*')
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `)
             .eq('parent_task_id', parentTaskId);
         
         if (error){

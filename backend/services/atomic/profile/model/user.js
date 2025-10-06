@@ -37,12 +37,31 @@ async function getStaffByDepartment(department, role = "staff") {
 
 async function getUserDetailsWithId(user_id){
   const { data, error } = await supabase
-  .from(profileTable)
-  .select("*")
-  .eq("id",user_id);
+  .from("revamped_profiles")
+  .select(`
+    *,
+    department:revamped_departments(name),
+    team:revamped_teams(name)
+  `)
+  .eq("id",user_id)
+  .single();
 
   if (error) throw new Error(error.message);
-  return data || [];
+  
+  if (!data) return [];
+  
+  // Flatten department and team objects
+  const result = {
+    ...data,
+    department_name: data.department?.name || null,
+    team_name: data.team?.name || null
+  };
+  
+  // Remove nested objects
+  delete result.department;
+  delete result.team;
+  
+  return result;
 }
 
 module.exports = {

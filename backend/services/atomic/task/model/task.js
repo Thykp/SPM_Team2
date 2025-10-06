@@ -5,6 +5,17 @@ class Task {
     static taskTable = "revamped_task";
     static taskParticipantTable = "revamped_task_participant";
 
+
+    static deduplicateTasksById(tasks) {
+        if (!tasks || tasks.length === 0) {
+            return [];
+        }
+        
+        return Array.from(
+            new Map(tasks.map(task => [task.id, task])).values()
+        );
+    }
+
     static normalizeStatus(input) {
         if (!input) return null;
 
@@ -45,18 +56,33 @@ class Task {
 
     static async getTasksByUsers(userId){
         const userIdArray = !Array.isArray(userId) ? [userId]: userId;
+        
+        // Get all tasks with their full participants array
         const { data, error } = await supabase
             .from(Task.taskTable)
             .select(`
                 *,
-                participants:${Task.taskParticipantTable}!inner(profile_id, is_owner)
-            `)
-            .in("participants.profile_id",userIdArray);
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `);
+        
         if (error){
             console.error("Error in getTasksByUsers:", error);
             throw new DatabaseError("Failed to retrieve tasks by users", error);
         }
-        return data;
+        
+        // Filter tasks where at least one participant matches the userIdArray
+        const filteredTasks = data.filter(task => {
+            if (!task.participants) return false;
+            
+            for (const participant of task.participants) {
+                if (userIdArray.includes(participant.profile_id)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        
+        return filteredTasks;
     }
 
     constructor(data){
