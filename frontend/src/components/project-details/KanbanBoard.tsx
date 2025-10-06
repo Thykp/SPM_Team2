@@ -35,7 +35,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     onTaskUpdate 
 }) => {
     const [activeTask, setActiveTask] = useState<Task | null>(null);
-    const [isUpdating, setIsUpdating] = useState(false);
 
     // Stabilize callback functions to prevent infinite re-subscriptions
     const handleRealtimeTaskUpdate = useCallback((updatedTask: Task) => {
@@ -113,8 +112,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             return;
         }
 
-        setIsUpdating(true);
-
         try {
             // Update task status via API
             // The realtime subscription will automatically update the UI
@@ -129,8 +126,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             console.error('Failed to update task status:', error);
             // You might want to show a toast notification here
             // Optionally, you could revert the optimistic update here
-        } finally {
-            setIsUpdating(false);
         }
     }, [tasks, columnStatusMap, onTaskUpdate]);
 
