@@ -1,4 +1,4 @@
-const Task = require("../model/task");
+const Task = require("../model/Task");
 const Subtask = require("../model/Subtask");
 const TaskService = require("../service/TaskService");
 const { TaskNotFoundError, ValidationError, DatabaseError } = require("../model/TaskError");

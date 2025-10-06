@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
     res.status(200).send('ok')
 });
 
-let apiRouter = require('./api/index');
+let apiRouter = require('./router/index');
 app.use('/', apiRouter);
 
 app.listen(PORT, () => {

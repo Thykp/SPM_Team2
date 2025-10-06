@@ -1,5 +1,5 @@
 const Subtask = require('../../model/Subtask');
-const Task = require('../../model/task');
+const Task = require('../../model/Task');
 const { ValidationError, DatabaseError } = require('../../model/TaskError');
 const { supabase } = require('../../db/supabase');
 

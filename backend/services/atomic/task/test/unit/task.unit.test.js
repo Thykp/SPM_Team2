@@ -1,5 +1,5 @@
 const { supabase } = require("../../db/supabase");
-const Task = require("../../model/task");
+const Task = require("../../model/Task");
 const { TaskNotFoundError, ValidationError, DatabaseError } = require("../../model/TaskError");
 
 jest.mock("../../db/supabase");

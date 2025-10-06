@@ -1,166 +1,238 @@
 const { supabase } = require("../db/supabase");
-const taskTable = "task";
+const { TaskNotFoundError, ValidationError, DatabaseError } = require("./TaskError");
 
-// Accepted outputs: "Ongoing", "Under Review", "Completed", "Overdue"
-function normalizeStatus(input) {
-  if (!input) return null;
+class Task {
+    static taskTable = "revamped_task";
+    static taskParticipantTable = "revamped_task_participant";
 
-  const s = String(input).trim().toLowerCase().replace(/[_-]+/g, " ");
+    static normalizeStatus(input) {
+        if (!input) return null;
 
-  // order matters; check the most specific first
-  if (/^under\s*review$/.test(s)) return "Under Review";
-  if (/^(completed|done)$/.test(s)) return "Completed";
-  if (/^(overdue)$/.test(s)) return "Overdue";
-  if (/^(ongoing|in\s*progress|pending)$/.test(s)) return "Ongoing";
+        const s = String(input).trim().toLowerCase().replace(/[_-]+/g, " ");
 
-  // If it already matches, preserve original casing if provided,
-  // otherwise capitalize nicely as a fallback.
-  if (s === "ongoing") return "Ongoing";
-  if (s === "under review") return "Under Review";
-  if (s === "completed") return "Completed";
-  if (s === "overdue") return "Overdue";
+        // order matters; check the most specific first
+        if (/^under\s*review$/.test(s)) return "Under Review";
+        if (/^(completed|done)$/.test(s)) return "Completed";
+        if (/^(overdue)$/.test(s)) return "Overdue";
+        if (/^(ongoing|in\s*progress|pending)$/.test(s)) return "Ongoing";
 
-  // last resort: return the original input (lets Supabase error if invalid)
-  return input;
-}
+        // If it already matches, preserve original casing if provided,
+        // otherwise capitalize nicely as a fallback.
+        if (s === "ongoing") return "Ongoing";
+        if (s === "under review") return "Under Review";
+        if (s === "completed") return "Completed";
+        if (s === "overdue") return "Overdue";
 
-// helper
-async function getTasksByUsers(userIds = []) {
-  if (!Array.isArray(userIds) || userIds.length === 0) return [];
+        // last resort: return the original input (lets Supabase error if invalid)
+        return input;
+    }
 
-  // Tasks where any of these users is the owner
-  const { data: ownerTasks, error: ownerError } = await supabase
-    .from(taskTable)
-    .select("id, title, deadline, status, owner, collaborators")
-    .in("owner", userIds)
-    .order("deadline", { ascending: true });
-  if (ownerError) throw new Error(ownerError.message);
-
-  // Tasks where any of these users is a collaborator (array column)
-  const { data: collabTasks, error: collabError } = await supabase
-    .from(taskTable)
-    .select("id, title, deadline, status, owner, collaborators")
-    .overlaps("collaborators", userIds);
-  if (collabError) throw new Error(collabError.message);
-
-  // Merge + de-dupe by id, sort by deadline asc
-  const all = [...(ownerTasks || []), ...(collabTasks || [])];
-  const map = new Map(all.map((t) => [t.id, t]));
-  return Array.from(map.values()).sort((a, b) =>
-    String(a.deadline || "").localeCompare(String(b.deadline || ""))
-  );
-}
-
-module.exports = {
-
-    async getAllTasks() {
-        const { data } = await supabase
-            .from(taskTable)
-            .select('*')
-
-        console.log(data)
-        return data;
-    },
-
-    async addNewTask(task) {
+    static async getAllTasks(){
         const { data, error } = await supabase
-          .from(taskTable)
-          .insert([{
-            title: task.title,
-            deadline: task.deadline,
-            description: task.description,
-            status: normalizeStatus(task.status),
-            collaborators: task.collaborators,
-            owner: task.owner,
-            parent: task.parent
-          }])
-          .select();
-      
-        if (error) {
-          console.error("Error inserting task:", error);
-          throw error;
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `);
+        
+        if (error){
+            console.error("Error executing getAllTasks: ", error);
+            throw new DatabaseError("Failed to retrieve tasks", error);
         }
-      
-        console.log("Inserted task:", data);
+        
         return data;
-    },
-    
-    async getTasksPerUser(userId) {
-      // Get tasks where user is owner
-      const { data: ownerTasks, error: ownerError } = await supabase
-        .from(taskTable)
-        .select('*')
-        .eq('owner', userId);
-      if (ownerError) throw new Error(ownerError.message);
+    }
 
-      // Get tasks where user is a collaborator
-      const { data: collabTasks, error: collabError } = await supabase
-        .from(taskTable)
-        .select('*')
-        .contains('collaborators', [userId]);
-      if (collabError) throw new Error(collabError.message);
-
-      const allTasks = [...ownerTasks, ...collabTasks];
-      const uniqueTasks = Object.values(
-        allTasks.reduce((acc, task) => {
-          acc[task.id] = task;
-          return acc;
-        }, {})
-      );
-      return uniqueTasks;
-    },
-
-    async updateTask(taskId, updatedTask) {
+    static async getTasksByUsers(userId){
+        const userIdArray = !Array.isArray(userId) ? [userId]: userId;
         const { data, error } = await supabase
-            .from(taskTable)
-            .update({
-                title: updatedTask.title,
-                deadline: updatedTask.deadline,
-                description: updatedTask.description,
-                status: normalizeStatus(updatedTask.status),
-                collaborators: updatedTask.collaborators,
-                owner: updatedTask.owner,
-                parent: updatedTask.parent
-            })
-            .eq('id', taskId); // Match the row where the id equals taskId
-
-        if (error) {
-            console.error("Error updating task:", error);
-            throw error;
-        }
-
-        console.log("Updated task:", data);
-        return data;
-    },
-
-    async getTaskById(taskId) {
-        const { data, error } = await supabase
-          .from(taskTable)
-          .select("*")
-          .eq("id", taskId)
-          .single(); 
-
-        if (error) {
-          console.error("Error fetching task:", error);
-          return null;
-        }
-
-        return data;
-    },
-
-    getTasksByUsers,
-
-    async getSubTasksByParent(taskId){
-        const { data, error } = await supabase
-          .from(taskTable)
-          .select("*")
-          .eq("parent", taskId);
-
-        if (error) {
-          console.error("Error fetching task:", error);
-          return null;
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}!inner(profile_id, is_owner)
+            `)
+            .in("participants.profile_id",userIdArray);
+        if (error){
+            console.error("Error in getTasksByUsers:", error);
+            throw new DatabaseError("Failed to retrieve tasks by users", error);
         }
         return data;
     }
+
+    constructor(data){
+        this.id = data.id || null;
+        this.parent_task_id = data.parent_task_id || null;
+        this.project_id = data.project_id || null;
+        this.title = data.title || null;
+        this.deadline = data.deadline || null;
+        this.description = data.description || null;
+        this.status = Task.normalizeStatus(data.status) || null;
+        this.participants = data.participants || [];
+    }
+
+    async validate(){
+        const errors = [];
+        const validStatuses = ["Ongoing", "Under Review", "Completed", "Overdue"];
+
+        if (!this.title || this.title.trim() === "") {
+            errors.push("Title is required");
+        }
+
+        if (!this.deadline) {
+            errors.push("Deadline is required");
+        }
+
+        if (!this.description || this.description.trim() === "") {
+            errors.push("Description is required");
+        }
+
+        if (!this.status) {
+            errors.push("Status is required");
+        } else if (!validStatuses.includes(this.status)) {
+            errors.push("Status must be one of: Ongoing, Under Review, Completed, Overdue");
+        }
+
+        if (!this.participants || this.participants.length === 0) {
+            errors.push("At least one participant is required");
+        }
+
+        const ownerCount = this.participants.filter(p => p.is_owner).length;
+        if (ownerCount === 0) {
+            errors.push("At least one participant must be an owner");
+        }
+
+        if (errors.length > 0) {
+            throw new ValidationError(errors);
+        }
+
+        return true;
+    }
+
+    async getTaskDetails(){
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `)
+            .eq('id', this.id)
+            .single()
+
+        if (error){
+            console.error("Error in getTaskDetails:", error);
+            if (error.code === 'PGRST116') {
+                throw new TaskNotFoundError(`Task with ID ${this.id} not found`);
+            }
+            throw new DatabaseError("Failed to retrieve task details", error);
+        }
+
+        return data;
+    }
+
+    async createTask(){
+        const { data, error } = await supabase
+        .from(Task.taskTable)
+        .insert({
+            parent_task_id: this.parent_task_id, 
+            project_id: this.project_id, 
+            title: this.title, 
+            deadline: this.deadline, 
+            description: this.description, 
+            status: this.status
+        })
+        .select()
+        .single()
+
+        if (error){
+            console.error("Error in createTask:", error);
+            throw new DatabaseError("Failed to create task", error);
+        }
+
+        this.id = data.id;
+
+        if (this.participants.length > 0){
+            await this.addTaskParticipants();
+        }
+    }
+
+    async updateTask(){
+        const { error } = await supabase
+            .from(Task.taskTable)
+            .update({
+                parent_task_id: this.parent_task_id, 
+                project_id: this.project_id, 
+                title: this.title, 
+                deadline: this.deadline, 
+                description: this.description, 
+                status: this.status
+            })
+            .eq('id', this.id)
+        
+        if (error){
+            console.error("Error in updateTask:", error);
+            throw new DatabaseError("Failed to update task", error);
+        }
+
+        await this.deleteTaskParticipants();
+        await this.addTaskParticipants();
+    }
+
+    async deleteTask(){
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .delete()
+            .eq('id', this.id)
+            .select()
+        if (error){
+            console.error("Error in deleteTask:", error);
+            throw new DatabaseError("Failed to delete task", error);
+        }
+    }
+
+    async addTaskParticipants(){
+        const participantDetails = this.participants.map(participant => ({
+            task_id: this.id,
+            profile_id: participant.profile_id,
+            is_owner : participant.is_owner || false
+        }))
+
+        const { error } = await supabase
+            .from(Task.taskParticipantTable)
+            .insert(participantDetails);
+        
+        if (error){
+            console.error("Error in addTaskParticipants: ", error);
+            throw new DatabaseError("Failed to add task participants", error);
+        }
+    }
+
+    async deleteTaskParticipants(){
+        const {data, error} = await supabase
+            .from(Task.taskParticipantTable)
+            .delete()
+            .eq('task_id', this.id)
+            .select()
+        
+        if (error){
+            console.error("Error in deleteTaskParticipants: ", error);
+            throw new DatabaseError("Failed to delete task participants", error);
+        }
+    }
+
+    async getTaskParticipants(){
+        const { data, error } = await supabase
+            .from(Task.taskParticipantTable)
+            .select('*')
+            .eq('task_id', this.id)
+        
+        if (error){
+            console.error("Error in getTaskParticipants: ", error);
+            throw new DatabaseError("Failed to retrieve task participants", error);
+        }
+        
+        return data || [];
+    }
+
 }
 
+module.exports = Task;
