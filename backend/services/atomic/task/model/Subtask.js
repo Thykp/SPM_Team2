@@ -1,4 +1,4 @@
-const Task = require("./Task");
+const Task = require("./task");
 const { supabase } = require("../db/supabase");
 const { ValidationError, DatabaseError } = require("./TaskError");
 
