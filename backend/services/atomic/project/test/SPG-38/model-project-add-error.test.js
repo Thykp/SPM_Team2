@@ -1,7 +1,7 @@
 jest.mock("../../db/supabase", () => {
   let shouldFail = false;
 
-  const mockSelect = jest.fn(() => {
+  const mockSingle = jest.fn(() => {
     if (shouldFail) {
       return Promise.resolve({
         data: null,
@@ -9,11 +9,12 @@ jest.mock("../../db/supabase", () => {
       });
     }
     return Promise.resolve({
-      data: [{ id: "new-proj", title: "New Project", description: "Test" }],
+      data: { id: "new-proj", title: "New Project", description: "Test" },
       error: null,
     });
   });
 
+  const mockSelect = jest.fn(() => ({ single: mockSingle }));
   const mockInsert = jest.fn(() => ({ select: mockSelect }));
   const mockFrom = jest.fn(() => ({ insert: mockInsert }));
 
@@ -37,7 +38,10 @@ describe("addNewProject error handling", () => {
     __setError();
 
     await expect(
-      model.addNewProject({ title: "Test", description: "Test" })
+      model.addNewProject(
+        { title: "Test", description: "Test" },
+        "123e4567-e89b-12d3-a456-426614174000"
+      )
     ).rejects.toMatchObject({
       message: "Duplicate project title",
       code: "23505",

@@ -7,6 +7,9 @@ describe('Project Health Check', () => {
       .get('/project/')
       .expect(200);
 
-    expect(response.body).toBe('Health Check: Success!');
+    expect(response.body).toEqual({
+      status: 'ok',
+      message: 'Project service is running'
+    });
   });
 });
