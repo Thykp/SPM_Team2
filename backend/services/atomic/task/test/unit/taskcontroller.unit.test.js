@@ -1,10 +1,10 @@
 const TaskController = require('../../controller/TaskController');
-const Task = require('../../model/Task');
+const Task = require('../../model/task');
 const Subtask = require('../../model/Subtask');
 const TaskService = require('../../service/TaskService');
 const { TaskNotFoundError, ValidationError, DatabaseError } = require('../../model/TaskError');
 
-jest.mock('../../model/Task');
+jest.mock('../../model/task');
 jest.mock('../../model/Subtask');
 jest.mock('../../service/TaskService');
 
