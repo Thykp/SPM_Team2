@@ -26,6 +26,7 @@ class Task {
         if (/^(completed|done)$/.test(s)) return "Completed";
         if (/^(overdue)$/.test(s)) return "Overdue";
         if (/^(ongoing|in\s*progress|pending)$/.test(s)) return "Ongoing";
+        if (/^(unassigned|un\s*assigned|not\s*assigned)$/.test(s)) return "Unassigned";
 
         // If it already matches, preserve original casing if provided,
         // otherwise capitalize nicely as a fallback.
@@ -33,6 +34,7 @@ class Task {
         if (s === "under review") return "Under Review";
         if (s === "completed") return "Completed";
         if (s === "overdue") return "Overdue";
+        if (s === "unassigned") return "Unassigned";
 
         // last resort: return the original input (lets Supabase error if invalid)
         return input;
@@ -98,7 +100,7 @@ class Task {
 
     async validate(){
         const errors = [];
-        const validStatuses = ["Ongoing", "Under Review", "Completed", "Overdue"];
+        const validStatuses = ["Ongoing", "Under Review", "Completed", "Overdue", "Unassigned"];
 
         if (!this.title || this.title.trim() === "") {
             errors.push("Title is required");
@@ -115,7 +117,7 @@ class Task {
         if (!this.status) {
             errors.push("Status is required");
         } else if (!validStatuses.includes(this.status)) {
-            errors.push("Status must be one of: Ongoing, Under Review, Completed, Overdue");
+            errors.push("Status must be one of: Ongoing, Under Review, Completed, Overdue, Unassigned");
         }
 
         if (!this.participants || this.participants.length === 0) {
