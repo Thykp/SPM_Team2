@@ -29,7 +29,7 @@ public class ProjectService {
     private final String baseUrl;
 
     public ProjectService(RestTemplate restTemplate,
-                          @Value("${project.base-url}") String baseUrl) {
+                          @Value("${project.base.url}") String baseUrl) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;
     }

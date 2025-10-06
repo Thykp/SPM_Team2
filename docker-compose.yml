@@ -15,7 +15,7 @@ services:
     image: redis:7
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
-      - "6379:6379"
+      - "3069:6379" # change due 6379 being a Windows reserved port
     volumes:
       - redis-data:/data
     networks:
