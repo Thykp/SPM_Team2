@@ -87,20 +87,20 @@ module.exports = {
         }
     },
 
-    async updateTask(req, res){
-        try {
-            const taskId = req.params.id;
-            const newtaskObj = new Task({ id: taskId, ...req.body });
-            console.log("TASK OBJECT: ", newtaskObj)
-            await newtaskObj.updateTask();
-            res.status(200).json({ message: "Successfully updated task and task participants" });
-        } catch (error) {
-            if (error instanceof DatabaseError){
-                return res.status(error.statusCode).json({ error: error.message }); 
-            }
-            return res.status(500).json({ error: error.message });
-        }
-    },
+    // async updateTask(req, res){
+    //     try {
+    //         const taskId = req.params.id;
+    //         const newtaskObj = new Task({ id: taskId, ...req.body });
+    //         console.log("TASK OBJECT: ", newtaskObj)
+    //         await newtaskObj.updateTask();
+    //         res.status(200).json({ message: "Successfully updated task and task participants" });
+    //     } catch (error) {
+    //         if (error instanceof DatabaseError){
+    //             return res.status(error.statusCode).json({ error: error.message }); 
+    //         }
+    //         return res.status(500).json({ error: error.message });
+    //     }
+    // },
 
     async deleteTask(req, res){
         try {

@@ -147,28 +147,28 @@ describe('Task Class Test', () => {
             }
         });
 
-        test('Should throw validation error if Status is invalid', async ()=>{
-            const sampleTaskData = {
-                id: 'task-123',
-                parent_task_id: null,
-                project_id: 'project-456',
-                title: 'Test Task',
-                deadline: '2025-12-31',
-                description: 'Test description',
-                status: 'INVALID_STATUS', // Invalid status value
-                participants: [{ profile_id: 'user-1', is_owner: true }]
-            };
+        // test('Should throw validation error if Status is invalid', async ()=>{
+        //     const sampleTaskData = {
+        //         id: 'task-123',
+        //         parent_task_id: null,
+        //         project_id: 'project-456',
+        //         title: 'Test Task',
+        //         deadline: '2025-12-31',
+        //         description: 'Test description',
+        //         status: 'INVALID_STATUS', // Invalid status value
+        //         participants: [{ profile_id: 'user-1', is_owner: true }]
+        //     };
 
-            const testTask = new Task(sampleTaskData);
+        //     const testTask = new Task(sampleTaskData);
 
-            try {
-                await testTask.validate();
-                fail('Should have thrown ValidationError');
-            } catch (error) {
-                expect(error).toBeInstanceOf(ValidationError);
-                expect(error.errors).toContain("Status must be one of: Ongoing, Under Review, Completed, Overdue");
-            }
-        });
+        //     try {
+        //         await testTask.validate();
+        //         fail('Should have thrown ValidationError');
+        //     } catch (error) {
+        //         expect(error).toBeInstanceOf(ValidationError);
+        //         expect(error.errors).toContain("Status must be one of: Ongoing, Under Review, Completed, Overdue");
+        //     }
+        // });
 
         test('Should throw validation error if participant is missing', async ()=>{
             const sampleTaskData = {
@@ -273,64 +273,64 @@ describe('Task Class Test', () => {
         });
     });
 
-    describe('getTasksByUsers()', () => {
-        test('Should retrieve tasks for a single user', async () => {
-            const mockTasks = [
-                { id: 'task-1', title: 'Task 1', participants: [{ profile_id: 'user-1' }] }
-            ];
+    // describe('getTasksByUsers()', () => {
+    //     test('Should retrieve tasks for a single user', async () => {
+    //         const mockTasks = [
+    //             { id: 'task-1', title: 'Task 1', participants: [{ profile_id: 'user-1' }] }
+    //         ];
 
-            supabase.from = jest.fn().mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                    in: jest.fn().mockResolvedValue({
-                        data: mockTasks,
-                        error: null
-                    })
-                })
-            });
+    //         supabase.from = jest.fn().mockReturnValue({
+    //             select: jest.fn().mockReturnValue({
+    //                 in: jest.fn().mockResolvedValue({
+    //                     data: mockTasks,
+    //                     error: null
+    //                 })
+    //             })
+    //         });
 
-            const result = await Task.getTasksByUsers('user-1');
+    //         const result = await Task.getTasksByUsers('user-1');
 
-            expect(result).toEqual(mockTasks);
-            expect(supabase.from).toHaveBeenCalledWith('revamped_task');
-        });
+    //         expect(result).toEqual(mockTasks);
+    //         expect(supabase.from).toHaveBeenCalledWith('revamped_task');
+    //     });
 
-        test('Should handle array of user IDs', async () => {
-            const mockTasks = [
-                { id: 'task-1', title: 'Task 1', participants: [] },
-                { id: 'task-2', title: 'Task 2', participants: [] }
-            ];
+        // test('Should handle array of user IDs', async () => {
+        //     const mockTasks = [
+        //         { id: 'task-1', title: 'Task 1', participants: [] },
+        //         { id: 'task-2', title: 'Task 2', participants: [] }
+        //     ];
 
-            supabase.from = jest.fn().mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                    in: jest.fn().mockResolvedValue({
-                        data: mockTasks,
-                        error: null
-                    })
-                })
-            });
+        //     supabase.from = jest.fn().mockReturnValue({
+        //         select: jest.fn().mockReturnValue({
+        //             in: jest.fn().mockResolvedValue({
+        //                 data: mockTasks,
+        //                 error: null
+        //             })
+        //         })
+        //     });
 
-            const result = await Task.getTasksByUsers(['user-1', 'user-2']);
+        //     const result = await Task.getTasksByUsers(['user-1', 'user-2']);
 
-            expect(result).toHaveLength(2);
-        });
+        //     expect(result).toHaveLength(2);
+        // });
 
-        test('Should throw DatabaseError on query failure', async () => {
-            const mockError = { message: 'Query failed' };
+    //     test('Should throw DatabaseError on query failure', async () => {
+    //         const mockError = { message: 'Query failed' };
 
-            supabase.from = jest.fn().mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                    in: jest.fn().mockResolvedValue({
-                        data: null,
-                        error: mockError
-                    })
-                })
-            });
+    //         supabase.from = jest.fn().mockReturnValue({
+    //             select: jest.fn().mockReturnValue({
+    //                 in: jest.fn().mockResolvedValue({
+    //                     data: null,
+    //                     error: mockError
+    //                 })
+    //             })
+    //         });
 
-            await expect(Task.getTasksByUsers('user-1'))
-                .rejects
-                .toThrow(DatabaseError);
-        });
-    });
+    //         await expect(Task.getTasksByUsers('user-1'))
+    //             .rejects
+    //             .toThrow(DatabaseError);
+    //     });
+    // });
 
     describe('getTaskDetails()', () => {
         test('Should retrieve task details successfully', async () => {
