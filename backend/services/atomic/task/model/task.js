@@ -73,16 +73,17 @@ class Task {
         }
         
         // Filter tasks where at least one participant matches the userIdArray
-        const filteredTasks = data.filter(task => {
-            if (!task.participants) return false;
-            
-            for (const participant of task.participants) {
-                if (userIdArray.includes(participant.profile_id)) {
-                    return true;
+        const filteredTasks = [];
+        for (const task of data) {
+            if (task.participants) {
+                for (const participant of task.participants) {
+                    if (userIdArray.includes(participant.profile_id)) {
+                        filteredTasks.push(task);
+                        break;
+                    }
                 }
             }
-            return false;
-        });
+        }
         
         return filteredTasks;
     }
