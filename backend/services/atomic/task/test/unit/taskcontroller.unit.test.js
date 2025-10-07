@@ -264,40 +264,45 @@ describe('TaskController', () => {
     });
 
     describe('updateTask', () => {
-        // test('Should update task successfully and return 201', async () => {
-        //     req.body = {
-        //         id: 'task-123',
-        //         title: 'Updated Task',
-        //         description: 'Updated description',
-        //     };
+        test('Should update task successfully and return 200', async () => {
+            req.params = {id: 'task-123'};
+            req.body = {
+                title: 'Updated Task',
+                description: 'Updated description',
+            };
 
-        //     Task.mockImplementation(() => ({
-        //         updateTask: jest.fn().mockResolvedValue(undefined),
-        //     }));
+            Task.mockImplementation(() => ({
+                updateTask: jest.fn().mockResolvedValue(undefined),
+            }));
 
-        //     await TaskController.updateTask(req, res);
+            await TaskController.updateTask(req, res);
 
-        //     expect(Task).toHaveBeenCalledWith(req.body);
-        //     expect(res.status).toHaveBeenCalledWith(201);
-        //     expect(res.json).toHaveBeenCalledWith({ 
-        //         message: "Successfully created task and task participants" 
-        //     });
-        // });
+            expect(Task).toHaveBeenCalledWith({
+                id: 'task-123',
+                title: 'Updated Task',
+                description: 'Updated description'
+            });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ 
+                message: "Successfully updated task and task participants" 
+            });
+        });
 
-        // test('Should return 500 on DatabaseError', async () => {
-        //     const dbError = new DatabaseError('Failed to update task');
+        test('Should return 500 on DatabaseError', async () => {
+            const dbError = new DatabaseError('Failed to update task');
 
-        //     req.body = { id: 'task-123', title: 'Updated Task' };
+            req.params = {id: 'task-123'};
+            req.body = {title: 'Updated Task' };
 
-        //     Task.mockImplementation(() => ({
-        //         updateTask: jest.fn().mockRejectedValue(dbError),
-        //     }));
+            Task.mockImplementation(() => ({
+                updateTask: jest.fn().mockRejectedValue(dbError),
+            }));
 
-        //     await TaskController.updateTask(req, res);
+            await TaskController.updateTask(req, res);
 
-        //     expect(res.status).toHaveBeenCalledWith(500);
-        //     expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
-        // });
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
     });
 
     describe('deleteTask', () => {
