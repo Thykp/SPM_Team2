@@ -1,81 +1,354 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/UnitTests/JUnit4TestClass.java to edit this template
- */
-
 package com.spm.manage_task.controller;
 
-// Make sure its Junit 5
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.spm.manage_task.dto.TaskDto;
+import com.spm.manage_task.dto.TaskPostRequestDto;
+import com.spm.manage_task.services.TaskService;
 
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.MOCK)
-@AutoConfigureMockMvc
+@WebMvcTest(TaskController.class)
 public class TaskControllerTest {
 
     @Autowired
-    private MockMvc mvc;
+    private MockMvc mockMvc;
 
-    // SPG 62
+    @MockitoBean
+    private TaskService taskService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    // ==================== GET /api/task/ ====================
+
     @Test
-    void testGetAllTasks() throws Exception{
-        MvcResult res = mvc.perform(get("/api/task"))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType("application/json"))
-            .andExpect(content().encoding("UTF-8"))
-            .andExpect(jsonPath("$").isArray())
-            .andReturn();
+    void getAllTasks_ShouldReturnTaskList() throws Exception {
+        ArrayList<String> collaborators1 = new ArrayList<>();
+        collaborators1.add("user2");
+
+        TaskDto task1 = new TaskDto(
+            "task1",
+            "Task 1",
+            "project1",
+            "2024-12-31",
+            "Description 1",
+            "To Do",
+            collaborators1,
+            "user1",
+            null,
+            "John Doe",
+            "Engineering"
+        );
+
+        ArrayList<String> collaborators2 = new ArrayList<>();
+        collaborators2.add("user3");
+
+        TaskDto task2 = new TaskDto(
+            "task2",
+            "Task 2",
+            "project1",
+            "2024-12-25",
+            "Description 2",
+            "In Progress",
+            collaborators2,
+            "user2",
+            null,
+            "Jane Smith",
+            "Marketing"
+        );
+
+        List<TaskDto> mockTasks = Arrays.asList(task1, task2);
+
+        when(taskService.getAllTasks()).thenReturn(mockTasks);
+
+        mockMvc.perform(get("/api/task/"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].title").value("Task 1"))
+                .andExpect(jsonPath("$[1].title").value("Task 2"));
+    }
+
+    @Test
+    void getAllTasks_ShouldReturnEmptyList() throws Exception {
+        when(taskService.getAllTasks()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/task/"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    // ==================== GET /api/task/{userId} ====================
+
+    @Test
+    void getUserTasks_ShouldReturnUserTasks() throws Exception {
+        String userId = "user1";
         
-        System.out.println("Response Body: " + res.getResponse().getContentAsString());
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+
+        TaskDto task1 = new TaskDto(
+            "task1",
+            "User Task 1",
+            "project1",
+            "2024-12-31",
+            "Description",
+            "To Do",
+            collaborators,
+            userId,
+            null,
+            "John Doe",
+            "Engineering"
+        );
+
+        List<TaskDto> mockTasks = List.of(task1);
+
+        when(taskService.getUserTask(userId)).thenReturn(mockTasks);
+
+        mockMvc.perform(get("/api/task/{userId}", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("User Task 1"))
+                .andExpect(jsonPath("$[0].owner").value(userId));
     }
 
-    // SPG 62
     @Test
-    void testGetUserTasks() throws Exception{
-        String userId = "5ad17add-da44-43ec-b78f-da22451a827b";
-        MvcResult res = mvc.perform(get("/api/task/"+userId))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType("application/json"))
-            .andExpect(content().encoding("UTF-8"))
-            .andExpect(jsonPath("$").isArray())
-            .andReturn();
+    void getUserTasks_ShouldReturnEmptyList_WhenNoTasks() throws Exception {
+        String userId = "user1";
 
-        System.out.println("Response Body: " + res.getResponse().getContentAsString());
+        when(taskService.getUserTask(userId)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/task/{userId}", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
     }
-    
-    // SPG 92
-    // @Test
-    // void testCreateTask() throws Exception{
-    //     TaskPostRequestDto testInsertObj = new TaskPostRequestDto(
-    //         "User Sample Task", 
-    //         "2025-09-21 10:36:35+00", 
-    //         "This task is used for automated testing of the POST /api/new endpoint for Manage Task Microservice", 
-    //         "Overdue", 
-    //         null, 
-    //         "5ad17add-da44-43ec-b78f-da22451a827b", 
-    //         null);
-    //     ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-    //     String convertedJSON = ow.writeValueAsString(testInsertObj);
 
-    //     MvcResult res = mvc.perform(post("/api/task/new")
-    //         .contentType(MediaType.APPLICATION_JSON)
-    //         .content(convertedJSON))
-    //             .andExpect(status().isCreated())
-    //             .andExpect(content().contentType("application/json"))
-    //             .andReturn();
+    // ==================== POST /api/task/new ====================
 
-    //     System.out.println("Response Body: " + res.getResponse().getContentAsString());
-    // }
-    
+    @Test
+    void createTask_ShouldReturnSuccess() throws Exception {
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
 
+        TaskPostRequestDto newTask = new TaskPostRequestDto(
+            "New Task",
+            "2024-12-31",
+            "project1",
+            "Task description",
+            "To Do",
+            collaborators,
+            "user1",
+            null
+        );
+
+        doNothing().when(taskService).createTask(any(TaskPostRequestDto.class));
+
+        mockMvc.perform(post("/api/task/new")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newTask)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task created successfully"));
+    }
+
+    @Test
+    void createTask_WithParentTask_ShouldReturnSuccess() throws Exception {
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+
+        TaskPostRequestDto newSubTask = new TaskPostRequestDto(
+            "Sub Task",
+            "2024-12-31",
+            "project1",
+            "Subtask description",
+            "To Do",
+            collaborators,
+            "user1",
+            "parentTask123"
+        );
+
+        doNothing().when(taskService).createTask(any(TaskPostRequestDto.class));
+
+        mockMvc.perform(post("/api/task/new")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newSubTask)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task created successfully"));
+    }
+
+    // ==================== GET /api/task/id/{taskId} ====================
+
+    @Test
+    void getTaskById_ShouldReturnTask_WhenTaskExists() throws Exception {
+        String taskId = "task123";
+        
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+
+        TaskDto mockTask = new TaskDto(
+            taskId,
+            "Sample Task",
+            "project1",
+            "2024-12-31",
+            "Task description",
+            "In Progress",
+            collaborators,
+            "user1",
+            null,
+            "John Doe",
+            "Engineering"
+        );
+
+        when(taskService.getTaskByIdWithOwner(taskId)).thenReturn(mockTask);
+
+        mockMvc.perform(get("/api/task/id/{taskId}", taskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(taskId))
+                .andExpect(jsonPath("$.title").value("Sample Task"))
+                .andExpect(jsonPath("$.status").value("In Progress"))
+                .andExpect(jsonPath("$.ownerName").value("John Doe"));
+    }
+
+    // ==================== PUT /api/task/edit/{taskId} ====================
+
+    @Test
+    void updateTask_ShouldReturnSuccess() throws Exception {
+        String taskId = "task123";
+        
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+        collaborators.add("user3");
+
+        TaskPostRequestDto updateRequest = new TaskPostRequestDto(
+            "Updated Task",
+            "2024-12-31",
+            "project1",
+            "Updated description",
+            "Done",
+            collaborators,
+            "user1",
+            null
+        );
+
+        doNothing().when(taskService).updateTask(eq(taskId), any(TaskPostRequestDto.class));
+
+        mockMvc.perform(put("/api/task/edit/{taskId}", taskId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task updated successfully"));
+    }
+
+    @Test
+    void updateTask_ChangeStatus_ShouldReturnSuccess() throws Exception {
+        String taskId = "task123";
+        
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+
+        TaskPostRequestDto updateRequest = new TaskPostRequestDto(
+            "Task Title",
+            "2024-12-31",
+            "project1",
+            "Description",
+            "Done",
+            collaborators,
+            "user1",
+            null
+        );
+
+        doNothing().when(taskService).updateTask(eq(taskId), any(TaskPostRequestDto.class));
+
+        mockMvc.perform(put("/api/task/edit/{taskId}", taskId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task updated successfully"));
+    }
+
+    // ==================== GET /api/task/subtask/{taskId} ====================
+
+    @Test
+    void getSubTaskByTaskId_ShouldReturnSubtasks() throws Exception {
+        String parentTaskId = "task123";
+        
+        ArrayList<String> collaborators1 = new ArrayList<>();
+        collaborators1.add("user2");
+
+        TaskDto subtask1 = new TaskDto(
+            "subtask1",
+            "Subtask 1",
+            "project1",
+            "2024-12-31",
+            "Subtask description 1",
+            "To Do",
+            collaborators1,
+            "user1",
+            parentTaskId,
+            "John Doe",
+            "Engineering"
+        );
+
+        ArrayList<String> collaborators2 = new ArrayList<>();
+        collaborators2.add("user3");
+
+        TaskDto subtask2 = new TaskDto(
+            "subtask2",
+            "Subtask 2",
+            "project1",
+            "2024-12-25",
+            "Subtask description 2",
+            "In Progress",
+            collaborators2,
+            "user2",
+            parentTaskId,
+            "Jane Smith",
+            "Marketing"
+        );
+
+        List<TaskDto> mockSubtasks = Arrays.asList(subtask1, subtask2);
+
+        when(taskService.getSubTaskByTaskId(parentTaskId)).thenReturn(mockSubtasks);
+
+        mockMvc.perform(get("/api/task/subtask/{taskId}", parentTaskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].title").value("Subtask 1"))
+                .andExpect(jsonPath("$[0].parent").value(parentTaskId))
+                .andExpect(jsonPath("$[1].title").value("Subtask 2"));
+    }
+
+    @Test
+    void getSubTaskByTaskId_ShouldReturnEmptyList_WhenNoSubtasks() throws Exception {
+        String taskId = "task123";
+
+        when(taskService.getSubTaskByTaskId(taskId)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/task/subtask/{taskId}", taskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
 }
