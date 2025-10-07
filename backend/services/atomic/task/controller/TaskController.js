@@ -91,7 +91,6 @@ module.exports = {
         try {
             const taskId = req.params.id;
             const newtaskObj = new Task({ id: taskId, ...req.body });
-            console.log("TASK OBJECT: ", newtaskObj)
             await newtaskObj.updateTask();
             res.status(200).json({ message: "Successfully updated task and task participants" });
         } catch (error) {
