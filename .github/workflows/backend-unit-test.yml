@@ -62,7 +62,11 @@ jobs:
           cache: npm
           cache-dependency-path: backend/services/atomic/task/package-lock.json
       - run: npm ci
-      - run: npm test -- --coverage
+      - name: Run tests with Supabase authentication
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
+        run: npm test -- --coverage
 
   manage_account_tests:
     name: Go — composite/manage-account tests
