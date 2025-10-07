@@ -80,3 +80,36 @@ jobs:
         with:
           go-version: '1.22'
       - run: go test ./... -race -covermode=atomic -coverprofile=coverage.out
+
+  # https://medium.com/@nipun.jayasanka10/step-by-step-guide-to-spring-boot-ci-cd-using-github-actions-docker-and-render-c0088ae53737
+  manage_task_tests:
+    name: Springboot — composite/manage-task tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/composite/manage-task
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+        
+        - name: Setup JDK
+          uses: actions/setup-java@v4
+          with:
+            java-version: '17'
+
+        - name: Cache Maven packages
+          uses: actions/cache@v4
+          with:
+            path: ~/.m2/repository
+            key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+            restore-keys: |
+              ${{ runner.os }}-maven-
+
+        - name: Give execute permission to mvnw
+          run: chmod +x mvnw
+
+        - name: Run unit tests
+          run: ./mvnw clean test
+
