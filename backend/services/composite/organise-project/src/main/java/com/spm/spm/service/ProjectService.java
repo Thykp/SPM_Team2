@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.spm.spm.dto.ChangeOwnerRequest;
+import com.spm.spm.dto.CollaboratorDto;
 import com.spm.spm.dto.NewProjectRequest;
 import com.spm.spm.dto.ProjectDto;
 import com.spm.spm.dto.UpdateCollaboratorsRequest;
@@ -57,10 +58,51 @@ public class ProjectService {
 
     /* Get all projects for a user (owner or collaborator) */
     public List<ProjectDto> getProjectsByUser(UUID userId) {
-        ResponseEntity<ProjectDto[]> resp =
-                restTemplate.getForEntity(baseUrl + "/project/user/" + userId.toString(), ProjectDto[].class);
-        ProjectDto[] body = resp.getBody();
-        return body == null ? List.of() : Arrays.asList(body);
+        System.out.println("[ProjectService] Fetching projects for user: " + userId);
+
+        // Fetch the projects for the user
+        ResponseEntity<ProjectDto[]> resp = restTemplate.getForEntity(
+                baseUrl + "/project/user/" + userId.toString(), ProjectDto[].class);
+        ProjectDto[] projects = resp.getBody();
+
+        if (projects == null || projects.length == 0) {
+            System.out.println("[ProjectService] No projects found for user: " + userId);
+            return List.of(); // Return an empty list if no projects are found
+        }
+
+        // Enrich each project with owner and collaborators
+        return Arrays.stream(projects).map(project -> {
+            try {
+                // Fetch owner ID
+                System.out.println("[ProjectService] Fetching owner for project: " + project.getId());
+                ResponseEntity<Map> ownerResp = restTemplate.getForEntity(
+                        baseUrl + "/project/" + project.getId().toString() + "/owner", Map.class);
+                Map<String, String> ownerData = ownerResp.getBody();
+                UUID ownerId = ownerData != null && ownerData.containsKey("profile_id")
+                        ? UUID.fromString(ownerData.get("profile_id"))
+                        : null;
+                project.setOwner(ownerId);
+
+                // Fetch collaborator IDs
+                System.out.println("[ProjectService] Fetching collaborators for project: " + project.getId());
+                ResponseEntity<Map[]> collabResp = restTemplate.getForEntity(
+                        baseUrl + "/project/" + project.getId().toString() + "/collaborators", Map[].class);
+                Map[] collaborators = collabResp.getBody();
+
+                List<UUID> collaboratorIds = collaborators != null
+                        ? Arrays.stream(collaborators)
+                                .map(collab -> UUID.fromString(collab.get("profile_id").toString()))
+                                .toList()
+                        : List.of();
+                project.setCollaborators(collaboratorIds);
+
+                return project;
+            } catch (Exception e) {
+                System.err.println("[ProjectService] Error processing project: " + project.getId());
+                e.printStackTrace();
+                throw new RuntimeException("Error enriching project data", e);
+            }
+        }).toList();
     }
 
     /* Create a new project */

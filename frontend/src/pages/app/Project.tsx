@@ -30,7 +30,19 @@ type UserRow = {
 };
 
 // Helper functions to reduce nesting
-const getUserDisplayName = (userId: string, users: UserRow[]): string => {
+const getUserDisplayName = (userId: string | null, users: UserRow[]): string => {
+
+  if (!Array.isArray(users)) {
+    console.error("Invalid users array:", users); // Debugging log
+    return "Unknown User";
+  }
+
+  console.log("User ID:", userId); // Debugging log
+  console.log("All Users:", users);
+
+  if (!userId) {
+    return "Unknown User";
+  }
   const foundUser = users.find(u => u.id === userId);
   if (foundUser) {
     return foundUser.display_name || `${foundUser.role} (${userId.slice(0, 8)}...)`;
@@ -66,22 +78,30 @@ const Projects: React.FC = () => {
                 // Load users first for collaborator name mapping
                 let allUsers: UserRow[] = [];
                 try {
-                    allUsers = await Profile.getAllUsers();
+                    const response = await Profile.getAllUsers();
+                    // Handle both direct array and { data: array } formats
+                    allUsers = Array.isArray(response) ? response : (response as any).data || [];
+                    console.log("All Users:", allUsers);
                 } catch (userErr) {
                     console.error('Error loading users for name mapping:', userErr);
                 }
                 
                 // Use the new endpoint to get projects for the specific user
                 const apiProjects = await ProjectAPI.getByUser(user.id);
+                console.log("API Projects:", apiProjects);
                 
                 // Transform API response to component format
                 const transformedProjects: Project[] = apiProjects.map((apiProject: ProjectDto) => {
+                    console.log("Transforming Project:", apiProject);
+                    console.log("All Users During Transformation:", allUsers);
+
                     // Convert collaborator UUIDs to display names
                     const collaboratorUUIDs = apiProject.collaborators || [];
                     const collaboratorNames = getCollaboratorNames(collaboratorUUIDs, allUsers);
 
                     // Get owner display name
                     const ownerName = getUserDisplayName(apiProject.owner, allUsers);
+                    console.log("Owner Name Debug:", { ownerId: apiProject.owner, allUsers });
                     
                     return {
                         id: apiProject.id,

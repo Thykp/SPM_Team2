@@ -52,7 +52,7 @@ export type ProfileRequestDetailsDto = {
 // ----- Services -----
 export const Profile = {
   getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
-    const url = `${KONG_BASE_URL}/profile/user/all`;
+    const url = `${KONG_BASE_URL}/manage-account/api/users`;
     const { data } = await api.get<Array<{ id: string; display_name: string; role: string; department: string }>>(url);
     return data;
   },
