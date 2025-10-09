@@ -7,12 +7,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var users = []map[string]interface{}{
-	{"id": 1, "name": "Alice"},
-	{"id": 2, "name": "Bob"},
-}
+// var users = []map[string]interface{}{
+// 	{"id": 1, "name": "Alice"},
+// 	{"id": 2, "name": "Bob"},
+// }
 
 func GetUsers(c *gin.Context) {
+
+    users, err := profile_service.GetAllUsers()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+        return
+    }
+
 	c.JSON(http.StatusOK, gin.H{"data": users})
 }
 
@@ -32,19 +39,19 @@ func GetUserByID(c *gin.Context) {
 }
 
 // CreateUser handles POST /api/users
-func CreateUser(c *gin.Context) {
-	var newUser struct {
-		Name string `json:"name" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&newUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	id := len(users) + 1
-	user := map[string]interface{}{"id": id, "name": newUser.Name}
-	users = append(users, user)
-	c.JSON(http.StatusCreated, gin.H{"data": user})
-}
+// func CreateUser(c *gin.Context) {
+// 	var newUser struct {
+// 		Name string `json:"name" binding:"required"`
+// 	}
+// 	if err := c.ShouldBindJSON(&newUser); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// 	id := len(users) + 1
+// 	user := map[string]interface{}{"id": id, "name": newUser.Name}
+// 	users = append(users, user)
+// 	c.JSON(http.StatusCreated, gin.H{"data": user})
+// }
 
 // UpdateUser handles PUT /api/users/:id
 // func UpdateUser(c *gin.Context) {

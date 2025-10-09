@@ -18,6 +18,8 @@ beforeEach(() => {
   ({ getAllUsers } = require('../../model/user'));
 });
 
+const user = require('../../model/user');
+
 describe('model/user.getAllUsers', () => {
   it('returns data on success', async () => {
     const rows = [{ id: 1, email: 'a@example.com' }];

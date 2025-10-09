@@ -16,12 +16,12 @@ describe('GET /user/staff (revamped)', () => {
     const fake = [{ id: 'u1', display_name: 'A', role: 'staff', department_id: 'dep-123' }];
     getStaffByScope.mockResolvedValue(fake);
 
-    const res = await request(app).get('/user/staff?department_id=dep-123&role=staff');
+    const res = await request(app).get('/user/staff?department_id=dep-123&role=Staff');
 
     expect(getStaffByScope).toHaveBeenCalledWith({
       team_id: null,
       department_id: 'dep-123',
-      role: 'staff',
+      role: 'Staff',
     });
     expect(res.status).toBe(200);
     expect(res.body).toEqual(fake);
@@ -35,7 +35,7 @@ describe('GET /user/staff (revamped)', () => {
     expect(getStaffByScope).toHaveBeenCalledWith({
       team_id: 'team-999',
       department_id: null,
-      role: 'staff',
+      role: 'Staff',
     });
     expect(res.status).toBe(200);
   });
