@@ -117,6 +117,24 @@ module.exports = {
     return data || [];
   },
 
+
+  // Get owner for a project
+  async getProjectOwner(projectId) {
+    const { data, error } = await supabase
+      .from(PARTICIPANT_TABLE)
+      .select("profile_id, is_owner, created_at")
+      .eq("project_id", projectId)
+      .eq("is_owner", true)
+      .single();
+
+    if (error) {
+      console.error("Error fetching project owner:", error);
+      throw error;
+    }
+
+    return data;
+  },
+
   // Add a new project with owner
   async addNewProject(project, ownerId) {
     // Validate input

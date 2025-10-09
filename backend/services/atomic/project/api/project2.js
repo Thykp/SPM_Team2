@@ -11,6 +11,7 @@ const ERROR_MESSAGES = {
   MISSING_UPDATE_DATA: "Update data is required",
   INVALID_COLLABORATORS: "Collaborators must be an array of UUIDs",
   PROJECT_NOT_FOUND: "Project not found",
+  NO_COLLABORATORS: "No collaborators found for this project"
 };
 
 // ============================================
@@ -153,6 +154,48 @@ router.delete("/:id", async (req, res) => {
 // ============================================
 // Sub-resource Routes (/:id/collaborators)
 // ============================================
+
+// Get collaborators for a project
+router.get("/:id/collaborators", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: ERROR_MESSAGES.MISSING_ID });
+    }
+
+    const collaborators = await project.getProjectCollaborators(id);
+
+    if (!collaborators || collaborators.length === 0) {
+      return res.status(404).json({ error: ERROR_MESSAGES.NO_COLLABORATORS });
+    }
+
+    res.status(200).json(collaborators);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get owner for a project
+router.get("/:id/owner", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: ERROR_MESSAGES.MISSING_ID });
+    }
+
+    const owner = await project.getProjectOwner(id);
+
+    if (!owner) {
+      return res.status(404).json({ error: ERROR_MESSAGES.MISSING_OWNER_ID });
+    }
+
+    res.status(200).json(owner);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Update collaborators
 router.put("/:id/collaborators", async (req, res) => {
