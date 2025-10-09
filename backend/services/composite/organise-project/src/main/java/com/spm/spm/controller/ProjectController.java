@@ -23,7 +23,7 @@ import com.spm.spm.dto.UpdateProjectRequest;
 import com.spm.spm.service.ProjectService;
 
 @RestController
-@RequestMapping("/api/v1/projects")
+@RequestMapping("/projects")
 public class ProjectController {
 
     private final ProjectService projectService;
