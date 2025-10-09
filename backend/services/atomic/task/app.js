@@ -20,7 +20,7 @@ app.get('/', (req, res) => {
   res.status(200).send('ok');
 });
 
-const apiRouter = require('./api/index');
+const apiRouter = require('./router/index');
 app.use('/', apiRouter);
 
 module.exports = app;

@@ -1,40 +1,60 @@
+jest.mock('../../db/supabase', () => {
+  const mockSingle = jest.fn().mockResolvedValue({
+    data: {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      title: 'Test Project',
+      description: 'Test Description',
+      owner_id: 'd1111111-1111-1111-1111-111111111111'
+    },
+    error: null
+  });
+
+  const mockSelect = jest.fn(() => ({ single: mockSingle }));
+  const mockInsert = jest.fn(() => ({ select: mockSelect }));
+  const mockFrom = jest.fn(() => ({ insert: mockInsert }));
+
+  return {
+    supabase: { from: mockFrom }
+  };
+});
+
 const request = require('supertest');
 const app = require('../../app');
 
 describe('Project API - Create New Project', () => {
-  test('POST /project/new should create a new project', async () => {
+  test('POST /project/ should create a new project', async () => {
     const newProject = {
       title: 'Test Project',
       description: 'Test Description',
-      collaborators: ['588fb335-9986-4c93-872e-6ef103c97f92', 'c0cd847d-8c61-45dd-8dda-ecffe214943e'],
-      owner: 'testuser',
-      task_list: []
+      ownerId: 'd1111111-1111-1111-1111-111111111111'
     };
 
     const response = await request(app)
-      .post('/project/new')
-      .send(newProject)
-      .expect(201);
+      .post('/project/')
+      .send(newProject);
 
-    // Expect the new response format with success, message, data, timestamp
+    console.log('Response status:', response.status);
+    console.log('Response body:', response.body);
+
+    expect(response.status).toBe(201);
     expect(response.body).toBeDefined();
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Project created successfully');
     expect(response.body.data).toBeDefined();
+    expect(response.body.data.title).toBe('Test Project');
+    expect(response.body.data.description).toBe('Test Description');
     expect(response.body.timestamp).toBeDefined();
   });
 
-  test('POST /project/new should handle missing data gracefully', async () => {
+  test('POST /project/ should handle missing data gracefully', async () => {
     const incompleteProject = {
       title: 'Test Project'
-      // Missing required fields
     };
 
     const response = await request(app)
-      .post('/project/new')
+      .post('/project/')
       .send(incompleteProject);
 
-    // Should either succeed with null data (due to mocks) or fail gracefully
-    expect([200, 201, 400, 500]).toContain(response.status);
+    expect([400, 500]).toContain(response.status);
   });
 });

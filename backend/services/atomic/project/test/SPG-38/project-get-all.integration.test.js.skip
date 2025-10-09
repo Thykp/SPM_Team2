@@ -1,0 +1,41 @@
+// jest.unmock('@supabase/supabase-js');
+
+// const request = require('supertest');
+
+// const app = require('../../app');
+// const { supabase } = require('../../db/supabase');
+
+// describe('Project API - Get All Projects (Real Integration)', () => {
+//   test('GET /project/all should return all projects from database', async () => {
+//     // First, verify we can connect to Supabase directly
+//     const { data: directData, error: directError } = await supabase
+//       .from('revamped_project')
+//       .select('*');
+    
+//     console.log('Direct Supabase call:');
+//     console.log('  Data count:', directData?.length);
+//     console.log('  Error:', directError);
+
+//     // Now test the API endpoint
+//     const response = await request(app)
+//       .get('/project/all');
+
+//     console.log('\nAPI call:');
+//     console.log('  Status:', response.status);
+//     console.log('  Body length:', response.body?.length);
+//     console.log('  Body:', response.body);
+    
+//     if (response.status !== 200) {
+//       console.log('  Error:', response.body.error);
+//     }
+
+//     expect(response.status).toBe(200);
+//     expect(Array.isArray(response.body)).toBe(true);
+//     expect(response.body.length).toBe(2); // You said there are 2 projects
+    
+//     // Verify structure
+//     expect(response.body[0]).toHaveProperty('id');
+//     expect(response.body[0]).toHaveProperty('title');
+//     expect(response.body[0]).toHaveProperty('description');
+//   });
+// });

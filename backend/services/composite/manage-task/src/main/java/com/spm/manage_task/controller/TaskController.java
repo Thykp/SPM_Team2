@@ -25,6 +25,7 @@ public class TaskController {
         this.taskService = taskService;
     }
 
+
     @GetMapping("/")
     public ResponseEntity<List<TaskDto>> getAllTasks(){
         List<TaskDto> respBody = taskService.getAllTasks();
@@ -40,9 +41,9 @@ public class TaskController {
 
     // POST for task
     @PostMapping("/new")
-    public ResponseEntity<TaskDto> createTask(@RequestBody TaskPostRequestDto taskReq){
-        TaskDto respBody = taskService.createTask(taskReq);
-        return ResponseEntity.status(201).body(respBody);
+    public ResponseEntity<String> createTask(@RequestBody TaskPostRequestDto taskReq){
+        taskService.createTask(taskReq);
+        return ResponseEntity.status(200).body("Task created successfully");
     }
 
     // GET based on task id
@@ -54,9 +55,9 @@ public class TaskController {
     
     // PUT route to update a task (based on task id)
     @PutMapping("/edit/{taskId}")
-    public ResponseEntity<TaskDto> updateTask(@PathVariable String taskId, @RequestBody TaskDto updatedTask) {
-        TaskDto updatedTaskResponse = taskService.updateTask(taskId, updatedTask);
-        return ResponseEntity.ok(updatedTaskResponse);
+    public ResponseEntity<String> updateTask(@PathVariable String taskId, @RequestBody TaskPostRequestDto updatedTask) {
+        taskService.updateTask(taskId, updatedTask);
+        return ResponseEntity.ok("Task updated successfully");
     }
 
     // GET subtasks related to current task id

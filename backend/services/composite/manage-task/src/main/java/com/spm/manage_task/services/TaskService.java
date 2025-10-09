@@ -1,6 +1,5 @@
 package com.spm.manage_task.services;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -13,9 +12,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.spm.manage_task.components.TaskDTOWrapperComponent;
 import com.spm.manage_task.dto.TaskDto;
 import com.spm.manage_task.dto.TaskPostRequestDto;
-import com.spm.manage_task.dto.UserDto;
+import com.spm.manage_task.factory.TaskMicroserviceResponse;
+import com.spm.manage_task.factory.TaskMicroserviceUpsertRequest;
 
 @Service
 public class TaskService {
@@ -27,84 +28,85 @@ public class TaskService {
     private RestTemplate restTemplate;
 
     @Autowired
-    private ProfileService profileService;
+    private TaskDTOWrapperComponent taskDTOWrapper;
 
     public List<TaskDto> getAllTasks(){
-        ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/all", TaskDto[].class);
+        ResponseEntity<TaskMicroserviceResponse[]> responseEntity = restTemplate.getForEntity(
+            taskUrl + "/", 
+            TaskMicroserviceResponse[].class
+        );
 
-        TaskDto[] tasks = responseEntity.getBody();
-
-        return tasks == null ? List.of() : Arrays.asList(tasks);
+        TaskMicroserviceResponse[] rawTasks = responseEntity.getBody();
+        List<TaskDto> taskDtos = taskDTOWrapper.toTaskDtoList(rawTasks);
+        
+        return taskDtos;
     }
 
     public List<TaskDto> getUserTask(String userId){
-        ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/by-user/"+userId, TaskDto[].class);
-        TaskDto[] tasks = responseEntity.getBody();
-        return tasks == null ? List.of() : Arrays.asList(tasks);
+        ResponseEntity<TaskMicroserviceResponse[]> responseEntity = restTemplate.getForEntity(
+            taskUrl+"/users/"+userId, 
+            TaskMicroserviceResponse[].class
+        );
+
+        TaskMicroserviceResponse[] rawTasks = responseEntity.getBody();
+        List<TaskDto> taskDtos = taskDTOWrapper.toTaskDtoList(rawTasks);
+        
+        return taskDtos == null ? List.of() : taskDtos;
     }
 
-    public TaskDto createTask(TaskPostRequestDto newTaskBody ){
+    public void createTask(TaskPostRequestDto newTaskBody){
+        TaskMicroserviceUpsertRequest upsertRequest = taskDTOWrapper.toTaskMicroserviceUpsert(newTaskBody);
+        
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        HttpEntity<TaskPostRequestDto> entity = new HttpEntity<>(newTaskBody, httpHeaders);
+        HttpEntity<TaskMicroserviceUpsertRequest> entity = new HttpEntity<>(upsertRequest, httpHeaders);
 
-        ResponseEntity<TaskDto[]> resp = restTemplate.exchange(taskUrl+"/new", HttpMethod.POST, entity, TaskDto[].class);
+        ResponseEntity<TaskMicroserviceResponse> resp = restTemplate.exchange(taskUrl+"/", HttpMethod.POST, entity, TaskMicroserviceResponse.class);
 
-        TaskDto[] tasks = resp.getBody();
-        return (tasks != null && tasks.length > 0) ? tasks[0] : null;
+        if (resp.getStatusCode().value() != 200) {
+            throw new RuntimeException("Failed to create task. Status code: " + resp.getStatusCode());
+        }
     }
 
-    public TaskDto updateTask(String taskId, TaskDto updatedTask) {
+    public void updateTask(String taskId, TaskPostRequestDto updatedTask) {
+        TaskMicroserviceUpsertRequest upsertRequest = taskDTOWrapper.toTaskMicroserviceUpsert(updatedTask);
+        
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
 
-        // Create the HTTP entity with the updated task data
-        HttpEntity<TaskDto> entity = new HttpEntity<>(updatedTask, httpHeaders);
+        HttpEntity<TaskMicroserviceUpsertRequest> entity = new HttpEntity<>(upsertRequest, httpHeaders);
 
-        // Send the PUT request to the atomic task microservice
-        ResponseEntity<TaskDto> responseEntity = restTemplate.exchange(taskUrl + "/edit/" + taskId, HttpMethod.PUT, entity, TaskDto.class);
+        ResponseEntity<TaskMicroserviceResponse> responseEntity = restTemplate.exchange(taskUrl + "/" + taskId, HttpMethod.PUT, entity, TaskMicroserviceResponse.class);
 
-        // Return the updated task from the response
-        return responseEntity.getBody();
-    }
-
-    public TaskDto getTaskById(String taskId) {
-        ResponseEntity<TaskDto> responseEntity = restTemplate.getForEntity(taskUrl + "/id/" + taskId, TaskDto.class);
-        return responseEntity.getBody();
+        if (responseEntity.getStatusCode().value() != 200) {
+            throw new RuntimeException("Failed to update task. Status code: " + responseEntity.getStatusCode());
+        }
     }
 
     public TaskDto getTaskByIdWithOwner(String taskId) {
-        ResponseEntity<TaskDto> responseEntity = restTemplate.getForEntity(taskUrl + "/id/" + taskId, TaskDto.class);
-        TaskDto task = responseEntity.getBody();
+        ResponseEntity<TaskMicroserviceResponse> responseEntity = restTemplate.getForEntity(taskUrl + "/" + taskId, TaskMicroserviceResponse.class);
 
-        if (task == null) {
+        TaskMicroserviceResponse rawResponse = responseEntity.getBody();
+
+        if (rawResponse == null) {
             throw new RuntimeException("Task not found for ID: " + taskId);
         }
 
-        if (task != null) {
-            // Fetch owner details from the atomic profile microservice
-            UserDto ownerDetails = profileService.getUserById(task.getTaskOwner());
+        TaskDto taskResponse = taskDTOWrapper.toTaskDto(rawResponse);
+        taskDTOWrapper.addOwnerInformation(taskResponse);
 
-            if (ownerDetails == null) {
-                task.setTaskOwnerName("Unknown");
-                task.setTaskOwnerDepartment("Unknown");
-            }
-
-            if (ownerDetails != null) {
-                task.setTaskOwnerName(ownerDetails.getDisplayName()); // Populate owner's name
-                task.setTaskOwnerDepartment(ownerDetails.getDepartment()); // Populate owner's department
-            }
-        }
-
-        return task;
+        return taskResponse;
     }
 
     public List<TaskDto> getSubTaskByTaskId(String taskId){
-        ResponseEntity<TaskDto[]> responseEntity = restTemplate.getForEntity(taskUrl+"/subtask/"+taskId, TaskDto[].class);
-        TaskDto[] tasks = responseEntity.getBody();
-        return tasks == null ? List.of() : Arrays.asList(tasks);
+        ResponseEntity<TaskMicroserviceResponse[]> responseEntity = restTemplate.getForEntity(taskUrl+"/"+taskId+"/subtasks", TaskMicroserviceResponse[].class);
+
+        TaskMicroserviceResponse[] rawTasks = responseEntity.getBody();
+        List<TaskDto> taskDtos = taskDTOWrapper.toTaskDtoList(rawTasks);
+
+
+        return taskDtos == null ? List.of() : taskDtos;
     }
-    
 
 }

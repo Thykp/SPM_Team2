@@ -1,184 +1,267 @@
 const { supabase } = require("../db/supabase");
+const { TaskNotFoundError, ValidationError, DatabaseError } = require("./TaskError");
 
-const TASK_TABLE = "revamped_task";                  // id, project_id, parent_task_id, title, deadline, description, status
-const TP_TABLE = "revamped_task_participant";        // task_id, profile_id, is_owner
+class Task {
+    static taskTable = "revamped_task";
+    static taskParticipantTable = "revamped_task_participant";
 
-// Accepted outputs: "Ongoing", "Under Review", "Completed", "Overdue"
-function normalizeStatus(input) {
-  if (!input) return null;
-  const s = String(input).trim().toLowerCase().replace(/[_-]+/g, " ");
-  if (/^under\s*review$/.test(s)) return "Under Review";
-  if (/^(completed|done)$/.test(s)) return "Completed";
-  if (/^(overdue)$/.test(s)) return "Overdue";
-  if (/^(ongoing|in\s*progress|pending)$/.test(s)) return "Ongoing";
-  if (s === "ongoing") return "Ongoing";
-  if (s === "under review") return "Under Review";
-  if (s === "completed") return "Completed";
-  if (s === "overdue") return "Overdue";
-  return input; // let DB enforce the enum
-}
 
-// helpers
-async function getTasksByUsers(userIds = []) {
-  if (!Array.isArray(userIds) || userIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from(TP_TABLE)
-    .select("profile_id, is_owner, task:revamped_task(id, title, deadline, status, project_id, parent_task_id)")
-    .in("profile_id", userIds);
-  if (error) throw new Error(error.message);
-
-  const map = new Map();
-  for (const row of data || []) {
-    const t = row.task;
-    if (t && !map.has(t.id)) map.set(t.id, t);
-  }
-
-  // sort by deadline ascending; nulls last
-  return Array.from(map.values()).sort((a, b) => {
-    const da = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
-    const db = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
-    return da - db;
-  });
-}
-
-async function getAllTasks() {
-  const { data, error } = await supabase.from(TASK_TABLE).select("*");
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-async function getTaskById(taskId) {
-  const { data, error } = await supabase
-    .from(TASK_TABLE)
-    .select("*")
-    .eq("id", taskId)
-    .single();
-  if (error) return null;
-  return data;
-}
-
-async function getSubTasksByParent(taskId) {
-  const { data, error } = await supabase
-    .from(TASK_TABLE)
-    .select("*")
-    .eq("parent_task_id", taskId);
-  if (error) return null;
-  return data || [];
-}
-
-// Create task + participants
-async function addNewTask(task) {
-  const insertPayload = {
-    title: task.title ?? null,
-    deadline: task.deadline ?? null,
-    description: task.description ?? null,
-    status: normalizeStatus(task.status) ?? null,
-    project_id: task.project_id ?? null,
-    parent_task_id: task.parent_task_id ?? null,
-  };
-
-  const { data: inserted, error: insertErr } = await supabase
-    .from(TASK_TABLE)
-    .insert([insertPayload])
-    .select()
-    .single();
-  if (insertErr) {
-    console.error("Error inserting task:", insertErr);
-    throw insertErr;
-  }
-
-  const taskId = inserted.id;
-  const ownerId = task.owner || null;
-  const collabs = Array.isArray(task.collaborators) ? task.collaborators : [];
-  const rows = [];
-  const seen = new Set();
-
-  if (ownerId) {
-    seen.add(ownerId);
-    rows.push({ task_id: taskId, profile_id: ownerId, is_owner: true });
-  }
-  for (const pid of collabs) {
-    if (!pid || seen.has(pid)) continue;
-    seen.add(pid);
-    rows.push({ task_id: taskId, profile_id: pid, is_owner: false });
-  }
-
-  if (rows.length > 0) {
-    const { error: partErr } = await supabase.from(TP_TABLE).insert(rows);
-    if (partErr) {
-      console.error("Error inserting participants:", partErr);
-      throw partErr;
-    }
-  }
-
-  return inserted;
-}
-
-// Update task + (optional) replace participants
-async function updateTask(taskId, updatedTask) {
-  const up = {};
-  if ("title" in updatedTask) up.title = updatedTask.title;
-  if ("deadline" in updatedTask) up.deadline = updatedTask.deadline;
-  if ("description" in updatedTask) up.description = updatedTask.description;
-  if ("status" in updatedTask) up.status = normalizeStatus(updatedTask.status);
-  if ("project_id" in updatedTask) up.project_id = updatedTask.project_id;
-  if ("parent_task_id" in updatedTask) up.parent_task_id = updatedTask.parent_task_id;
-
-  if (Object.keys(up).length > 0) {
-    const { error: updErr } = await supabase.from(TASK_TABLE).update(up).eq("id", taskId);
-    if (updErr) {
-      console.error("Error updating task:", updErr);
-      throw updErr;
-    }
-  }
-
-  const hasOwner = Object.prototype.hasOwnProperty.call(updatedTask, "owner");
-  const hasCollabs = Object.prototype.hasOwnProperty.call(updatedTask, "collaborators");
-
-  if (hasOwner || hasCollabs) {
-    const { error: delErr } = await supabase.from(TP_TABLE).delete().eq("task_id", taskId);
-    if (delErr) {
-      console.error("Error clearing participants:", delErr);
-      throw delErr;
+    static deduplicateTasksById(tasks) {
+        if (!tasks || tasks.length === 0) {
+            return [];
+        }
+        
+        return Array.from(
+            new Map(tasks.map(task => [task.id, task])).values()
+        );
     }
 
-    const ownerId = hasOwner ? updatedTask.owner : null;
-    const collabs = hasCollabs && Array.isArray(updatedTask.collaborators) ? updatedTask.collaborators : [];
-    const rows = [];
-    const seen = new Set();
+    static normalizeStatus(input) {
+        if (!input) return null;
 
-    if (ownerId) {
-      seen.add(ownerId);
-      rows.push({ task_id: taskId, profile_id: ownerId, is_owner: true });
-    }
-    for (const pid of collabs) {
-      if (!pid || seen.has(pid)) continue;
-      seen.add(pid);
-      rows.push({ task_id: taskId, profile_id: pid, is_owner: false });
+        const s = String(input).trim().toLowerCase().replace(/[_-]+/g, " ");
+
+        // order matters; check the most specific first
+        if (/^under\s*review$/.test(s)) return "Under Review";
+        if (/^(completed|done)$/.test(s)) return "Completed";
+        if (/^(overdue)$/.test(s)) return "Overdue";
+        if (/^(ongoing|in\s*progress|pending)$/.test(s)) return "Ongoing";
+        if (/^(unassigned|un\s*assigned|not\s*assigned)$/.test(s)) return "Unassigned";
+
+        // If it already matches, preserve original casing if provided,
+        // otherwise capitalize nicely as a fallback.
+        if (s === "ongoing") return "Ongoing";
+        if (s === "under review") return "Under Review";
+        if (s === "completed") return "Completed";
+        if (s === "overdue") return "Overdue";
+        if (s === "unassigned") return "Unassigned";
+
+        // last resort: return the original input (lets Supabase error if invalid)
+        return input;
     }
 
-    if (rows.length > 0) {
-      const { error: insErr } = await supabase.from(TP_TABLE).insert(rows);
-      if (insErr) {
-        console.error("Error inserting participants:", insErr);
-        throw insErr;
-      }
+    static async getAllTasks(){
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `);
+        
+        if (error){
+            console.error("Error executing getAllTasks: ", error);
+            throw new DatabaseError("Failed to retrieve tasks", error);
+        }
+        
+        return data;
     }
-  }
 
-  return await getTaskById(taskId);
+    static async getTasksByUsers(userId){
+        const userIdArray = !Array.isArray(userId) ? [userId]: userId;
+        
+        // Get all tasks with their full participants array
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `);
+        
+        if (error){
+            console.error("Error in getTasksByUsers:", error);
+            throw new DatabaseError("Failed to retrieve tasks by users", error);
+        }
+        
+        // Filter tasks where at least one participant matches the userIdArray
+        const filteredTasks = [];
+        for (const task of data) {
+            if (task.participants) {
+                for (const participant of task.participants) {
+                    if (userIdArray.includes(participant.profile_id)) {
+                        filteredTasks.push(task);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        return filteredTasks;
+    }
+
+    constructor(data){
+        this.id = data.id || null;
+        this.parent_task_id = data.parent_task_id || null;
+        this.project_id = data.project_id || null;
+        this.title = data.title || null;
+        this.deadline = data.deadline || null;
+        this.description = data.description || null;
+        this.status = Task.normalizeStatus(data.status) || null;
+        this.participants = data.participants || [];
+    }
+
+    async validate(){
+        const errors = [];
+        const validStatuses = ["Ongoing", "Under Review", "Completed", "Overdue", "Unassigned"];
+
+        if (!this.title || this.title.trim() === "") {
+            errors.push("Title is required");
+        }
+
+        if (!this.deadline) {
+            errors.push("Deadline is required");
+        }
+
+        if (!this.description || this.description.trim() === "") {
+            errors.push("Description is required");
+        }
+
+        if (!this.status) {
+            errors.push("Status is required");
+        } else if (!validStatuses.includes(this.status)) {
+            errors.push("Status must be one of: Ongoing, Under Review, Completed, Overdue, Unassigned");
+        }
+
+        if (!this.participants || this.participants.length === 0) {
+            errors.push("At least one participant is required");
+        }
+
+        const ownerCount = this.participants.filter(p => p.is_owner).length;
+        if (ownerCount === 0) {
+            errors.push("At least one participant must be an owner");
+        }
+
+        if (errors.length > 0) {
+            throw new ValidationError(errors);
+        }
+
+        return true;
+    }
+
+    async getTaskDetails(){
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `)
+            .eq('id', this.id)
+            .single()
+
+        if (error){
+            console.error("Error in getTaskDetails:", error);
+            if (error.code === 'PGRST116') {
+                throw new TaskNotFoundError(`Task with ID ${this.id} not found`);
+            }
+            throw new DatabaseError("Failed to retrieve task details", error);
+        }
+
+        return data;
+    }
+
+    async createTask(){
+        const { data, error } = await supabase
+        .from(Task.taskTable)
+        .insert({
+            parent_task_id: this.parent_task_id, 
+            project_id: this.project_id, 
+            title: this.title, 
+            deadline: this.deadline, 
+            description: this.description, 
+            status: this.status
+        })
+        .select()
+        .single()
+
+        if (error){
+            console.error("Error in createTask:", error);
+            throw new DatabaseError("Failed to create task", error);
+        }
+
+        this.id = data.id;
+
+        if (this.participants.length > 0){
+            await this.addTaskParticipants();
+        }
+    }
+
+    async updateTask(){
+        const { error } = await supabase
+            .from(Task.taskTable)
+            .update({
+                parent_task_id: this.parent_task_id, 
+                project_id: this.project_id, 
+                title: this.title, 
+                deadline: this.deadline, 
+                description: this.description, 
+                status: this.status
+            })
+            .eq('id', this.id)
+        
+        if (error){
+            console.error("Error in updateTask:", error);
+            throw new DatabaseError("Failed to update task", error);
+        }
+
+        await this.deleteTaskParticipants();
+        await this.addTaskParticipants();
+    }
+
+    async deleteTask(){
+        const { data, error } = await supabase
+            .from(Task.taskTable)
+            .delete()
+            .eq('id', this.id)
+            .select()
+        if (error){
+            console.error("Error in deleteTask:", error);
+            throw new DatabaseError("Failed to delete task", error);
+        }
+    }
+
+    async addTaskParticipants(){
+        const participantDetails = this.participants.map(participant => ({
+            task_id: this.id,
+            profile_id: participant.profile_id,
+            is_owner : participant.is_owner || false
+        }))
+
+        const { error } = await supabase
+            .from(Task.taskParticipantTable)
+            .insert(participantDetails);
+        
+        if (error){
+            console.error("Error in addTaskParticipants: ", error);
+            throw new DatabaseError("Failed to add task participants", error);
+        }
+    }
+
+    async deleteTaskParticipants(){
+        const {data, error} = await supabase
+            .from(Task.taskParticipantTable)
+            .delete()
+            .eq('task_id', this.id)
+            .select()
+        
+        if (error){
+            console.error("Error in deleteTaskParticipants: ", error);
+            throw new DatabaseError("Failed to delete task participants", error);
+        }
+    }
+
+    async getTaskParticipants(){
+        const { data, error } = await supabase
+            .from(Task.taskParticipantTable)
+            .select('*')
+            .eq('task_id', this.id)
+        
+        if (error){
+            console.error("Error in getTaskParticipants: ", error);
+            throw new DatabaseError("Failed to retrieve task participants", error);
+        }
+        
+        return data || [];
+    }
+
 }
 
-async function getTasksPerUser(userId) {
-  return getTasksByUsers([userId]);
-}
-
-module.exports = {
-  getAllTasks,
-  getTaskById,
-  getSubTasksByParent,
-  getTasksByUsers,
-  getTasksPerUser,
-  addNewTask,
-  updateTask,
-};
+module.exports = Task;
