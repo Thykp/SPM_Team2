@@ -13,30 +13,32 @@ import (
 )
 
 // Create a mock HTTP server that mimics your profile service
-func createMockProfileServer(responses map[string][]User) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract user ID from path /user/{id}
-		userId := r.URL.Path[len("/user/"):]
-
-		if users, exists := responses[userId]; exists {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(users)
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode([]User{})
-		}
-	}))
+func createMockProfileServer(responses map[string]User) *httptest.Server {
+    return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Extract user ID from path /user/{id}
+        userId := r.URL.Path[len("/user/"):]
+        if user, exists := responses[userId]; exists {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            json.NewEncoder(w).Encode(user) // Include all fields in the response
+        } else {
+            w.WriteHeader(http.StatusNotFound)
+            json.NewEncoder(w).Encode(User{})
+        }
+    }))
 }
 
 // Test helper to create sample users
-func createTestUser(id, name, dept, role string) User {
-	return User{
-		UserId:         id,
-		UserName:       &name,
-		UserDepartment: &dept,
-		UserRole:       &role,
-	}
+func createTestUser(id, name, dept, team, role, teamName, deptName string) User {
+    return User{
+        UserId:           id,
+        UserName:         &name,
+        UserDepartmentId: &dept,
+		UserTeamId:     &team,
+        UserRole:         &role,
+        UserTeamName:     &teamName,      
+        UserDepartmentName: &deptName,    
+    }
 }
 
 // Since your service has hardcoded URLs, we need to temporarily modify them for testing
@@ -90,41 +92,41 @@ func TestGetUserDetails_EmptyInput(t *testing.T) {
 }
 
 func TestUserDetailsBasedOnId_DirectCall(t *testing.T) {
-	t.Run("Should call UserDetailsBasedOnId method directly", func(t *testing.T) {
-		// Setup for actual method call
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
+    t.Run("Should call UserDetailsBasedOnId method directly", func(t *testing.T) {
+        // Setup for actual method call
+        var wg sync.WaitGroup
+        ch := make(chan User, 1)
 
-		wg.Add(1)
+        wg.Add(1)
 
-		// Call the ACTUAL method - this will make real HTTP request
-		result, err := UserDetailsBasedOnId("test-user-123", ch, &wg)
+        // Call the ACTUAL method - this will make real HTTP request
+        result, err := UserDetailsBasedOnId("test-user-123", ch, &wg)
 
-		// Wait for goroutine to complete
-		wg.Wait()
-		close(ch)
+        // Wait for goroutine to complete
+        wg.Wait()
+        close(ch)
 
-		// Verify method behavior
-		// Note: This will likely fail due to network call, but that's proper unit testing
-		if err != nil {
-			t.Logf("Expected error due to no mock server: %v", err)
-		}
+        // Verify method behavior
+        // Note: This will likely fail due to network call, but that's proper unit testing
+        if err != nil {
+            t.Logf("Expected error due to no mock server: %v", err)
+        }
 
-		// Verify return structure
-		if result == nil {
-			t.Log("Result is nil - expected due to failed HTTP call")
-		} else {
-			t.Logf("Unexpected success: got %d users", len(result))
-		}
+        // Verify return structure
+        if result == nil {
+            t.Log("Result is nil - expected due to failed HTTP call")
+        } else {
+            t.Logf("Unexpected success: got %+v users", result)
+        }
 
-		// Verify channel received data (or didn't due to error)
-		channelResults := make([]User, 0)
-		for users := range ch {
-			channelResults = append(channelResults, users...)
-		}
+        // Verify channel received data (or didn't due to error)
+        channelResults := make([]User, 0)
+        for user := range ch { // Iterate over individual User objects
+            channelResults = append(channelResults, user) // Append individual User objects
+        }
 
-		t.Logf("Channel received %d users", len(channelResults))
-	})
+        t.Logf("Channel received %d users", len(channelResults))
+    })
 }
 
 func TestGetUserDetails_SingleUser(t *testing.T) {
@@ -156,7 +158,7 @@ func TestGetUserDetails_SingleUser(t *testing.T) {
 func TestConcurrentAccess(t *testing.T) {
 	t.Run("Handles concurrent goroutines safely", func(t *testing.T) {
 		numGoroutines := 10
-		ch := make(chan []User, numGoroutines)
+		ch := make(chan User, numGoroutines)
 		var wg sync.WaitGroup
 
 		// Launch multiple goroutines concurrently
@@ -172,11 +174,11 @@ func TestConcurrentAccess(t *testing.T) {
 				user := User{
 					UserId:         fmt.Sprintf("concurrent_user_%d", index),
 					UserName:       &name,
-					UserDepartment: &dept,
+					UserDepartmentId: &dept,
 					UserRole:       &role,
 				}
 
-				ch <- []User{user}
+				ch <- user
 			}(i)
 		}
 
@@ -186,7 +188,7 @@ func TestConcurrentAccess(t *testing.T) {
 		// Collect and verify results
 		var results []User
 		for users := range ch {
-			results = append(results, users...)
+			results = append(results, users)
 		}
 
 		if len(results) != numGoroutines {
@@ -214,7 +216,7 @@ func BenchmarkGetUserDetails(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ch := make(chan []User, len(inputUsers))
+		ch := make(chan User, len(inputUsers))
 		var wg sync.WaitGroup
 
 		for _, user := range inputUsers {
@@ -226,7 +228,7 @@ func BenchmarkGetUserDetails(b *testing.B) {
 				mockUser := User{
 					UserId: userId,
 				}
-				ch <- []User{mockUser}
+				ch <- mockUser
 			}(user.UserId)
 		}
 
@@ -235,215 +237,211 @@ func BenchmarkGetUserDetails(b *testing.B) {
 
 		var resBody []User
 		for res := range ch {
-			resBody = append(resBody, res...)
+			resBody = append(resBody, res)
 		}
 	}
 }
 
 // New focused unit tests to exercise the JSON decode and status handling paths
 func TestUserDetailsBasedOnId_ResponseHandling(t *testing.T) {
-	t.Run("200 OK with valid JSON", func(t *testing.T) {
-		// Create a mock server that returns a JSON array with one user
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			users := []User{createTestUser("u1", "Alice", "Eng", "Dev")}
-			_ = json.NewEncoder(w).Encode(users)
-		}))
-		defer srv.Close()
+    t.Run("200 OK with valid JSON", func(t *testing.T) {
+        // Create a mock server that returns a JSON object with one user
+        srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            user := createTestUser(
+                "u1", "Alice", "dept-456", "team-123", "Staff", "Engineering", "Technology",
+            )
+            _ = json.NewEncoder(w).Encode(user)
+        }))
+        defer srv.Close()
 
-		// Point the package variables to the test server by parsing its URL
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
-		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
+        // Point the package variables to the test server
+        oldAddr := userServiceAddress
+        oldPort := userServicePort
+        u, err := url.Parse(srv.URL)
+        if err != nil {
+            t.Fatalf("failed to parse server URL: %v", err)
+        }
+        host, portStr, err := net.SplitHostPort(u.Host)
+        if err != nil {
+            t.Fatalf("failed to split host and port: %v", err)
+        }
+        port, err := strconv.Atoi(portStr)
+        if err != nil {
+            t.Fatalf("failed to parse port: %v", err)
+        }
+        userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
+        userServicePort = port
+        defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
 
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
+        var wg sync.WaitGroup
+        ch := make(chan User, 1)
+        wg.Add(1)
 
-		res, err := UserDetailsBasedOnId("u1", ch, &wg)
-		wg.Wait()
-		close(ch)
+        res, err := UserDetailsBasedOnId("u1", ch, &wg)
+        wg.Wait()
+        close(ch)
 
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-		if res == nil || len(res) != 1 {
-			t.Fatalf("expected one user in result, got %v", res)
-		}
-	})
+        if err != nil {
+            t.Fatalf("expected no error, got %v", err)
+        }
+        if res == nil {
+            t.Fatalf("expected non-nil result, got nil")
+        }
+        if *res.UserName != "Alice" || *res.UserTeamName != "Engineering" || *res.UserDepartmentName != "Technology" {
+            t.Fatalf("unexpected user data: %+v", res)
+        }
+    })
 
-	t.Run("200 OK with invalid JSON", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			// write invalid JSON
-			w.Write([]byte("{invalid json}"))
-		}))
-		defer srv.Close()
+    t.Run("200 OK with invalid JSON", func(t *testing.T) {
+        srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusOK)
+            // write invalid JSON
+            w.Write([]byte("{invalid json}"))
+        }))
+        defer srv.Close()
 
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
-		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
+        oldAddr := userServiceAddress
+        oldPort := userServicePort
+        u, err := url.Parse(srv.URL)
+        if err != nil {
+            t.Fatalf("failed to parse server URL: %v", err)
+        }
+        host, portStr, err := net.SplitHostPort(u.Host)
+        if err != nil {
+            t.Fatalf("failed to split host and port: %v", err)
+        }
+        port, err := strconv.Atoi(portStr)
+        if err != nil {
+            t.Fatalf("failed to parse port: %v", err)
+        }
+        userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
+        userServicePort = port
+        defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
 
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
+        var wg sync.WaitGroup
+        ch := make(chan User, 1)
+        wg.Add(1)
 
-		res, err := UserDetailsBasedOnId("u2", ch, &wg)
-		wg.Wait()
-		close(ch)
+        res, err := UserDetailsBasedOnId("u2", ch, &wg)
+        wg.Wait()
+        close(ch)
 
-		if err == nil {
-			t.Fatalf("expected JSON decode error, got nil and res=%v", res)
-		}
-	})
+        if err == nil {
+            t.Fatalf("expected JSON decode error, got nil and res=%v", res)
+        }
+    })
 
-	t.Run("200 OK with empty array (index out of range)", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			// return empty array
-			w.Write([]byte("[]"))
-		}))
-		defer srv.Close()
+    t.Run("200 OK with empty array (index out of range)", func(t *testing.T) {
+        srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            // Return an empty JSON object
+            w.Write([]byte("{}"))
+        }))
+        defer srv.Close()
 
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
-		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
+        oldAddr := userServiceAddress
+        oldPort := userServicePort
+        u, err := url.Parse(srv.URL)
+        if err != nil {
+            t.Fatalf("failed to parse server URL: %v", err)
+        }
+        host, portStr, err := net.SplitHostPort(u.Host)
+        if err != nil {
+            t.Fatalf("failed to split host and port: %v", err)
+        }
+        port, err := strconv.Atoi(portStr)
+        if err != nil {
+            t.Fatalf("failed to parse port: %v", err)
+        }
+        userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
+        userServicePort = port
+        defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
 
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
+        var wg sync.WaitGroup
+        ch := make(chan User, 1)
+        wg.Add(1)
 
-		// Call in a closure and recover from expected panic caused by indexing empty slice
-		didPanic := false
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					didPanic = true
-				}
-			}()
-			_, _ = UserDetailsBasedOnId("u3", ch, &wg)
-		}()
+        res, err := UserDetailsBasedOnId("u3", ch, &wg)
+        wg.Wait()
+        close(ch)
 
-		// Wait and cleanup
-		wg.Wait()
-		close(ch)
+        if err != nil {
+            t.Fatalf("expected no error, got %v", err)
+        }
 
-		if !didPanic {
-			t.Fatalf("expected panic due to empty array indexing but did not panic")
-		}
-	})
+        // Check if the returned User object contains default values
+        if res.UserId != "" || res.UserName != nil || res.UserRole != nil {
+            t.Fatalf("expected empty User object, got %+v", res)
+        }
+    })
 
-	t.Run("non-200 status code", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("server error"))
-		}))
-		defer srv.Close()
+    t.Run("non-200 status code", func(t *testing.T) {
+        srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusInternalServerError)
+            w.Write([]byte("server error"))
+        }))
+        defer srv.Close()
 
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
-		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
+        oldAddr := userServiceAddress
+        oldPort := userServicePort
+        u, err := url.Parse(srv.URL)
+        if err != nil {
+            t.Fatalf("failed to parse server URL: %v", err)
+        }
+        host, portStr, err := net.SplitHostPort(u.Host)
+        if err != nil {
+            t.Fatalf("failed to split host and port: %v", err)
+        }
+        port, err := strconv.Atoi(portStr)
+        if err != nil {
+            t.Fatalf("failed to parse port: %v", err)
+        }
+        userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
+        userServicePort = port
+        defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
 
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
+        var wg sync.WaitGroup
+        ch := make(chan User, 1)
+        wg.Add(1)
 
-		res, err := UserDetailsBasedOnId("u4", ch, &wg)
-		wg.Wait()
-		close(ch)
+        res, err := UserDetailsBasedOnId("u4", ch, &wg)
+        wg.Wait()
+        close(ch)
 
-		// Current production behavior returns nil error and an empty result when status != 200.
-		// That is arguably a bug (should return a non-nil error). Adjust the test to assert
-		// the existing behavior so tests reflect current code.
-		if err != nil {
-			t.Fatalf("expected nil error for current behavior, got err=%v res=%v", err, res)
-		}
-		if res != nil && len(res) != 0 {
-			t.Fatalf("expected empty result for non-200 status, got res=%v", res)
-		}
-	})
+        if err == nil {
+            t.Fatalf("expected error for non-200 status code, got nil")
+        }
+        if res != nil {
+            t.Fatalf("expected nil result for non-200 status code, got %+v", res)
+        }
+    })
 
-	t.Run("network error (server closed)", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// immediate close to simulate network error
-		}))
-		// close server to simulate unreachable host
-		srv.Close()
+    t.Run("network error (server closed)", func(t *testing.T) {
+        srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            // immediate close to simulate network error
+        }))
+        // close server to simulate unreachable host
+        srv.Close()
 
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		userServiceAddress = srv.URL
-		userServicePort = 0
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
+        oldAddr := userServiceAddress
+        oldPort := userServicePort
+        userServiceAddress = srv.URL
+        userServicePort = 0
+        defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
 
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
+        var wg sync.WaitGroup
+        ch := make(chan User, 1)
+        wg.Add(1)
 
-		res, err := UserDetailsBasedOnId("u5", ch, &wg)
-		wg.Wait()
-		close(ch)
+        res, err := UserDetailsBasedOnId("u5", ch, &wg)
+        wg.Wait()
+        close(ch)
 
-		if err == nil {
-			t.Fatalf("expected network error, got nil and res=%v", res)
-		}
-	})
+        if err == nil {
+            t.Fatalf("expected network error, got nil and res=%v", res)
+        }
+    })
 }
