@@ -119,11 +119,20 @@ const ProjectDetail: React.FC = () => {
                 
                 // Fetch owner information
                 try {
-                    const allUsers = await Profile.getAllUsers();
+                    const response = await Profile.getAllUsers();
+                    const allUsers = Array.isArray(response) ? response : (response as any).data || [];
+
                     const ownerUser = allUsers.find(u => u.id === foundProject.owner);
+                    console.log('🔍 Found owner user:', ownerUser);
+
                     if (ownerUser) {
+                        console.log('🔍 Owner display_name:', ownerUser.display_name);
+                        console.log('🔍 Owner role:', ownerUser.role);
+
                         setOwnerName(ownerUser.display_name || `${ownerUser.role} (${foundProject.owner.slice(0, 8)}...)`);
                     } else {
+                        console.warn('⚠️ Owner user NOT FOUND in users list');
+
                         setOwnerName(`User ${foundProject.owner.slice(0, 8)}...`);
                     }
                 } catch {

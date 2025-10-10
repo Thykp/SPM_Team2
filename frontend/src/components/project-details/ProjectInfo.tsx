@@ -28,7 +28,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, ownerName }) => {
                     )}
                     <div className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
-                        <span>{(project.collaborators?.length || 0) + 1} members</span>
+                        <span>{(project.collaborators?.length || 0)} members</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
