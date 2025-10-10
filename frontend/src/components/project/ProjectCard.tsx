@@ -35,7 +35,7 @@ interface ProjectUIData {
     id: string;
     title: string;
     description: string;
-    startDate: string;
+    startDate: string | null;
     members: string[];
     owner?: string;
 }
@@ -132,15 +132,25 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
             // First get the current project data to preserve all fields
             const currentProject = await Project.getById(project.id);
             console.log('Current project from API:', currentProject);
+
+            // Update collaborators
+            if (editForm.collaborators) {
+            console.log("Updating collaborators...");
+            console.log("Payload for updateCollaborators:", {
+                projectId: project.id,
+                collaborators: editForm.collaborators,
+            });
+            const collaboratorsResult = await Project.updateCollaborators(
+                project.id,
+                editForm.collaborators
+            );
+            console.log("Collaborators update result:", collaboratorsResult);
+            }
             
             // Build update payload with current values + changes
             const updateData: UpdateProjectRequest = {
                 title: editForm.title,
                 description: editForm.description,
-                // Preserve existing fields to prevent them from being nullified
-                owner: currentProject.owner,
-                collaborators: editForm.collaborators,
-                tasklist: currentProject.tasklist || undefined,
             };
 
             console.log('Update payload:', updateData);
@@ -150,25 +160,17 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
             if (result.success) {
                 console.log('Project updated successfully:', result);
                 
-                // Get the updated project data from the API response or fetch fresh data
-                let updatedProjectData: ProjectUIData;
-                if (result.project) {
-                    // Use the returned data from the update API
-                    updatedProjectData = {
-                        ...project,
-                        title: result.project.title || editForm.title,
-                        description: result.project.description || editForm.description,
-                        members: project.members, // Keep existing UI structure
-                    };
-                } else {
-                    // Fallback to form data if no data in response
-                    updatedProjectData = {
-                        ...project,
-                        title: editForm.title,
-                        description: editForm.description,
-                        members: project.members,
-                    };
-                }
+                const updatedProject = await Project.getById(project.id);
+                console.log("Updated project from API:", updatedProject);
+                // Transform the API response to match the ProjectUIData structure
+                const updatedProjectData: ProjectUIData = {
+                    id: updatedProject.id,
+                    title: updatedProject.title,
+                    description: updatedProject.description,
+                    startDate: updatedProject.created_at,
+                    members: updatedProject.collaborators || [],
+                    owner: updatedProject.owner,
+                };
                 
                 // Update local state for immediate UI update
                 setLocalProject(updatedProjectData);
@@ -184,7 +186,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
             }
         } catch (error) {
             console.error('Failed to update project:', error);
-            // You could add a toast notification here
+            
         } finally {
             setIsLoading(false);
         }

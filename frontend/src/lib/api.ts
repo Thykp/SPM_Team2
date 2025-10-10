@@ -22,7 +22,7 @@ export type Task = {
 
 export type ProjectDto = {
   id: string;
-  createdat: string | null;
+  created_at: string | null;
   title: string;
   tasklist: string[] | null;
   description: string;
@@ -34,7 +34,7 @@ export type NewProjectRequest = {
   title: string;
   description: string;
   tasklist?: string[];
-  owner: string;
+  ownerId: string;
   collaborators?: string[];
 };
 

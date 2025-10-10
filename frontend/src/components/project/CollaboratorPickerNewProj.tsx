@@ -12,7 +12,7 @@ type UserRow = {
 };
 
 interface CollaboratorPickerProps {
-  users: UserRow[];
+  users: UserRow[] | { data: UserRow[] };
   userSearchTerm: string;
   onUserSearchChange: (term: string) => void;
   selectedCollaborators: string[];
@@ -30,8 +30,9 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
   loadingUsers,
   currentUserId,
 }) => {
+    console.log("🔍 CollaboratorPicker users prop:", users);
     // Filter users based on search and exclude current user
-    const filteredUsers = users.filter(u => {
+    const filteredUsers = (Array.isArray(users) ? users : users?.data || []).filter((u: UserRow) => {
         // More robust owner exclusion - handle string comparison and null/undefined cases
         const isOwner = currentUserId && u.id && (
             u.id === currentUserId || 
@@ -49,6 +50,8 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
             u.department?.toLowerCase().includes(searchLower)
         );
     });
+
+    console.log("🔍 Filtered users:", filteredUsers);
 
   return (
     <div className="space-y-2">

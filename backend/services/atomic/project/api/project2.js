@@ -41,7 +41,7 @@ router.get("/all", async (req, res) => {
 // Create new project
 router.post("/", async (req, res) => {
   try {
-    const { title, description, ownerId } = req.body;
+    const { title, description, ownerId, collaborators } = req.body;
 
     if (!title || !description) {
       return res.status(400).json({ error: ERROR_MESSAGES.MISSING_TITLE_DESC });
@@ -51,7 +51,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: ERROR_MESSAGES.MISSING_OWNER_ID });
     }
 
-    const result = await project.addNewProject({ title, description }, ownerId);
+    const result = await project.addNewProject({ title, description }, ownerId, collaborators);
     res.status(201).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
