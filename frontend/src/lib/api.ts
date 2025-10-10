@@ -202,6 +202,17 @@ export const Notification = {
     const url = `${KONG_BASE_URL}/manage-notifications/${userId}`;
     await api.put(url, { preferences: filteredPrefs });
   },
+
+  deleteNotification: async (userId: string, notifId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/${userId}/${notifId}`;
+    await api.delete(url);
+  },
+
+  deleteAllNotification: async (userId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/all/${userId}`;
+    await api.delete(url);
+  },
+
 }
 
 export default api;

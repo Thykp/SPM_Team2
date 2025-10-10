@@ -12,7 +12,6 @@ export function useNotifications(userId: string) {
     let ws: WebSocket | null = null;
     let isMounted = true;
 
-    // 🔹 Fetch initial notifications from API
     const fetchAll = async () => {
       try {
         const data = await notif.getNotifications(userId);

@@ -7,19 +7,6 @@ app.use(express.json());
 
 const router = express.Router();
 
-// GET notification preferences
-router.get('/:userId', async (req, res) => {
-  const { userId } = req.params;
-  try {
-    const userMsUrl = process.env.USER_MS_URL || 'http://kong:8000/profile';
-    const response = await axios.get(`${userMsUrl}/user/${userId}/notifications/preferences`);
-    res.json({ preferences: response.data.notification_delivery });
-  } catch (err) {
-    console.error('[api:preferences:get]', err.message);
-    res.status(500).json({ error: 'Failed to fetch preferences' });
-  }
-});
-
 // UPDATE notification preferences
 router.put('/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -50,6 +37,19 @@ router.put('/:userId', async (req, res) => {
   } catch (err) {
     console.error('[api:preferences:put]', err.message);
     res.status(500).json({ error: 'Failed to update preferences' });
+  }
+});
+
+// GET notification preferences
+router.get('/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const userMsUrl = process.env.USER_MS_URL || 'http://kong:8000/profile';
+    const response = await axios.get(`${userMsUrl}/user/${userId}/notifications/preferences`);
+    res.json({ preferences: response.data.notification_delivery });
+  } catch (err) {
+    console.error('[api:preferences:get]', err.message);
+    res.status(500).json({ error: 'Failed to fetch preferences' });
   }
 });
 

@@ -65,6 +65,66 @@ router.patch("/read", async (req, res) => {
   }
 });
 
+// Delete all notifications for a user
+router.delete("/all/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("notifications")
+      .delete()
+      .eq("to_user", userId)
+      .select();
+
+    if (error) {
+      console.error("[notifications:deleteAll] Supabase delete error:", error);
+      return res.status(500).json({ error: "Failed to delete all notifications" });
+    }
+
+    res.json({ success: true, deleted: data });
+  } catch (err) {
+    console.error("[notifications:deleteAll] Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// Delete a specific notification for a user
+router.delete("/:userId/:notificationId", async (req, res) => {
+  const { userId, notificationId } = req.params;
+
+  if (!userId || !notificationId) {
+    return res.status(400).json({ error: "User ID and notification ID are required" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("notifications")
+      .delete()
+      .eq("to_user", userId)
+      .eq("id", notificationId)
+      .select();
+
+    if (error) {
+      console.error("[notifications:delete] Supabase delete error:", error);
+      return res.status(500).json({ error: "Failed to delete notification" });
+    }
+
+    if (data.length === 0) {
+      return res.status(404).json({ error: "Notification not found for this user" });
+    }
+
+    res.json({ success: true, deleted: data[0] });
+  } catch (err) {
+    console.error("[notifications:delete] Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Accept new notifications 
 router.post("/notify", async (req, res) => {
   const notif = req.body;

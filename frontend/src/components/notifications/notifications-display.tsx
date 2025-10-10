@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Bell } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Bell, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "./useNotifications";
 import type { Notification } from "@/lib/api";
@@ -11,13 +11,14 @@ export function NotificationsPanel({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [localNotifs, setLocalNotifs] = useState<Notification[]>([]);
   const notifications = useNotifications(userId);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // Sync local state with notifications from hook
+  // Sync local state
   useEffect(() => {
     setLocalNotifs(notifications);
   }, [notifications]);
 
-  // Mark notifications as read after 2s when panel opens
+  // Mark unread notifications as read
   useEffect(() => {
     if (!open) return;
 
@@ -25,7 +26,6 @@ export function NotificationsPanel({ userId }: { userId: string }) {
     if (unreadIds.length === 0) return;
 
     const timer = setTimeout(async () => {
-      // Optimistic UI update
       setLocalNotifs(prev =>
         prev.map(n =>
           unreadIds.includes(n.id) ? { ...n, read: true } : n
@@ -42,10 +42,39 @@ export function NotificationsPanel({ userId }: { userId: string }) {
     return () => clearTimeout(timer);
   }, [open, localNotifs]);
 
+  // Close on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleDelete = async (notifId: string) => {
+    try {
+      await notif.deleteNotification(userId, notifId);
+      setLocalNotifs(prev => prev.filter(n => n.id !== notifId));
+    } catch (err) {
+      console.error("❌ Failed to delete notification:", err);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    try {
+      await notif.deleteAllNotification(userId);
+      setLocalNotifs([]);
+    } catch (err) {
+      console.error("❌ Failed to delete all notifications:", err);
+    }
+  };
+
   const hasGlobalBadge = localNotifs.some(n => !n.read);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={panelRef}>
       <Button
         variant="ghost"
         size="icon"
@@ -60,7 +89,19 @@ export function NotificationsPanel({ userId }: { userId: string }) {
 
       {open && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
-          <div className="p-2 font-semibold border-b">Notifications</div>
+          <div className="p-2 font-semibold border-b flex justify-between items-center">
+            Notifications
+            {localNotifs.length > 0 && (
+              <Button
+                onClick={handleDeleteAll}
+                className="bg-white text-red-500 border border-gray-300 hover:bg-red-500 hover:text-white hover:border-red-500 px-2 py-1 rounded"
+                aria-label="Delete all notifications"
+              >
+                Clear All
+              </Button>
+            )}
+          </div>
+
           <div className="max-h-64 overflow-y-auto">
             {localNotifs.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500">
@@ -82,9 +123,18 @@ export function NotificationsPanel({ userId }: { userId: string }) {
                     )}
                   </div>
 
-                  {!n.read && (
-                    <span className="ml-2 mt-1 h-2 w-2 bg-destructive rounded-full animate-pulse" />
-                  )}
+                  <div className="flex items-center gap-2">
+                    {!n.read && (
+                      <span className="ml-2 mt-1 h-2 w-2 bg-destructive rounded-full animate-pulse" />
+                    )}
+                    <Button
+                      onClick={() => handleDelete(n.id)}
+                      className="bg-white text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 px-2 py-1 rounded"
+                      aria-label="Delete notification"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
