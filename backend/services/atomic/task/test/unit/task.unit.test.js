@@ -1,5 +1,5 @@
 const { supabase } = require("../../db/supabase");
-const Task = require("../../model/task");
+const Task = require("../../model/Task");
 const { TaskNotFoundError, ValidationError, DatabaseError } = require("../../model/TaskError");
 
 jest.mock("../../db/supabase");
@@ -26,7 +26,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test description',
                 status: 'pending',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -39,13 +40,14 @@ describe('Task Class Test', () => {
             expect(testTask.description).toBe('Test description');
             expect(testTask.status).toBe('Ongoing');
             expect(testTask.participants).toHaveLength(1);
+            expect(testTask.priority).toBe(5);
         });
 
         test('Should normalize task status',()=>{
-            const task1 = new Task({status:"ONGOING"});
-            const task2 = new Task({status:"UNDER review"});
-            const task3 = new Task({status:"completed"});
-            const task4 = new Task({status:"oVerDUe"});
+            const task1 = new Task({status:"ONGOING", priority: 5});
+            const task2 = new Task({status:"UNDER review", priority: 5});
+            const task3 = new Task({status:"completed", priority: 5});
+            const task4 = new Task({status:"oVerDUe", priority: 5});
 
             expect(task1.status).toBe("Ongoing");
             expect(task2.status).toBe("Under Review");
@@ -55,6 +57,68 @@ describe('Task Class Test', () => {
     });
 
     describe('validate()',()=>{
+        test('Should throw validation error if priority is missing or invalid', async ()=>{
+            // Missing priority
+            const missingPriority = {
+                id: 'task-123',
+                parent_task_id: null,
+                project_id: 'project-456',
+                title: 'Test Task',
+                deadline: '2025-12-31',
+                description: 'Test description',
+                status: 'pending',
+                participants: [{ profile_id: 'user-1', is_owner: true }]
+            };
+            try {
+                const testTask = new Task(missingPriority);
+                await testTask.validate();
+                fail('Should have thrown ValidationError');
+            } catch (error) {
+                expect(error).toBeInstanceOf(ValidationError);
+                expect(error.errors).toContain("Priority is required and must be a number from 1 to 10");
+            }
+
+            // Invalid priority (not a number)
+            const invalidPriorityType = {
+                ...missingPriority,
+                priority: 'high'
+            };
+            try {
+                const testTask = new Task(invalidPriorityType);
+                await testTask.validate();
+                fail('Should have thrown ValidationError');
+            } catch (error) {
+                expect(error).toBeInstanceOf(ValidationError);
+                expect(error.errors).toContain("Priority is required and must be a number from 1 to 10");
+            }
+
+            // Invalid priority (out of range)
+            const invalidPriorityLow = {
+                ...missingPriority,
+                priority: 0
+            };
+            try {
+                const testTask = new Task(invalidPriorityLow);
+                await testTask.validate();
+                fail('Should have thrown ValidationError');
+            } catch (error) {
+                expect(error).toBeInstanceOf(ValidationError);
+                expect(error.errors).toContain("Priority is required and must be a number from 1 to 10");
+            }
+
+            const invalidPriorityHigh = {
+                ...missingPriority,
+                priority: 11
+            };
+            try {
+                const testTask = new Task(invalidPriorityHigh);
+                await testTask.validate();
+                fail('Should have thrown ValidationError');
+            } catch (error) {
+                expect(error).toBeInstanceOf(ValidationError);
+                expect(error.errors).toContain("Priority is required and must be a number from 1 to 10");
+            }
+        });
         test('Should throw validation error if title is missing', async ()=>{
             const sampleTaskData = {
                 id: 'task-123',
@@ -64,7 +128,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test description',
                 status: 'pending',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -87,7 +152,8 @@ describe('Task Class Test', () => {
                 deadline: null,
                 description: 'Test description',
                 status: 'pending',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -110,7 +176,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: null,
                 status: 'pending',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -133,7 +200,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test description',
                 status: null, // Changed to null to test missing status
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -156,7 +224,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test description',
                 status: 'INVALID_STATUS', // Invalid status value
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -179,7 +248,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test description',
                 status: null,
-                participants: null
+                participants: null,
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -202,7 +272,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test description',
                 status: 'pending',
-                participants: [{ profile_id: 'user-1', is_owner: false }]
+                participants: [{ profile_id: 'user-1', is_owner: false }],
+                priority: 5
             };
 
             const testTask = new Task(sampleTaskData);
@@ -228,7 +299,8 @@ describe('Task Class Test', () => {
                     deadline: '2025-12-31',
                     description: 'Test description',
                     status: 'pending',
-                    participants: [{ profile_id: 'user-1', is_owner: true }]                
+                    participants: [{ profile_id: 'user-1', is_owner: true }],
+                    priority: 5
                 },
                 {
                     id: 'task-456',
@@ -238,7 +310,8 @@ describe('Task Class Test', () => {
                     deadline: '2025-12-31',
                     description: 'Test description',
                     status: 'pending',
-                    participants: [{ profile_id: 'user-2', is_owner: true }]                
+                    participants: [{ profile_id: 'user-2', is_owner: true }],
+                    priority: 5
                 }
             ];
 
@@ -281,7 +354,8 @@ describe('Task Class Test', () => {
                     title: 'Task 1', 
                     participants: [
                         { profile_id: 'user-1' }
-                    ] 
+                    ],
+                    priority: 5
                 },
                 { 
                     id: 'task-2', 
@@ -289,7 +363,8 @@ describe('Task Class Test', () => {
                     participants: [
                         { profile_id: 'user-1' },
                         { profile_id: 'user-2' }
-                    ] 
+                    ],
+                    priority: 5
                 },
             ];
 
@@ -313,7 +388,8 @@ describe('Task Class Test', () => {
                     title: 'Task 1', 
                     participants: [
                         { profile_id: 'user-1' }
-                    ] 
+                    ],
+                    priority: 5
                 },
                 { 
                     id: 'task-2', 
@@ -321,7 +397,8 @@ describe('Task Class Test', () => {
                     participants: [
                         { profile_id: 'user-1' },
                         { profile_id: 'user-2' }                        
-                    ] 
+                    ],
+                    priority: 5
                 },
             ];
 
@@ -358,7 +435,8 @@ describe('Task Class Test', () => {
             const mockTask = {
                 id: 'task-123',
                 title: 'Test Task',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             supabase.from = jest.fn().mockReturnValue({
@@ -374,7 +452,6 @@ describe('Task Class Test', () => {
 
             const task = new Task({ id: 'task-123' });
             const result = await task.getTaskDetails();
-
             expect(result).toEqual(mockTask);
         });
 
@@ -426,7 +503,8 @@ describe('Task Class Test', () => {
             const mockCreatedTask = {
                 id: 'new-task-123',
                 title: 'New Task',
-                project_id: 'project-456'
+                project_id: 'project-456',
+                priority: 5
             };
 
             // Mock task insert
@@ -455,7 +533,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test',
                 status: 'ongoing',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             });
 
             await task.createTask();
@@ -519,7 +598,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Updated',
                 status: 'ongoing',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             });
 
             await expect(task.updateTask()).resolves.not.toThrow();
