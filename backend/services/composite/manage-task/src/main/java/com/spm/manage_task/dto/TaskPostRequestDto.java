@@ -8,6 +8,9 @@ import com.spm.manage_task.factory.Participant;
 
 public class TaskPostRequestDto {
 
+    @JsonProperty("priority")
+    private int taskPriority;
+
     private String taskId;
 
     @JsonProperty("title")
@@ -36,7 +39,7 @@ public class TaskPostRequestDto {
 
 
     public TaskPostRequestDto(String taskTitle, String taskDeadline, String taskProjectId, String taskDescription,
-            String taskStatus, ArrayList<String> taskCollaborators, String taskOwner, String taskParent) {
+            String taskStatus, ArrayList<String> taskCollaborators, String taskOwner, String taskParent, int taskPriority) {
         this.taskTitle = taskTitle;
         this.taskDeadline = taskDeadline;
         this.taskProjectId = taskProjectId;
@@ -45,6 +48,14 @@ public class TaskPostRequestDto {
         this.taskCollaborators = taskCollaborators;
         this.taskOwner = taskOwner;
         this.taskParent = taskParent;
+        this.taskPriority = taskPriority;
+    }
+    public int getTaskPriority() {
+        return taskPriority;
+    }
+
+    public void setTaskPriority(int taskPriority) {
+        this.taskPriority = taskPriority;
     }
 
     public List<Participant> processCollaborators(){
