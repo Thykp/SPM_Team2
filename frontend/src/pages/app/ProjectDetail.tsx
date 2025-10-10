@@ -122,7 +122,7 @@ const ProjectDetail: React.FC = () => {
                     const response = await Profile.getAllUsers();
                     const allUsers = Array.isArray(response) ? response : (response as any).data || [];
 
-                    const ownerUser = allUsers.find(u => u.id === foundProject.owner);
+                    const ownerUser = allUsers.find((u: { id: string; display_name: string; role: string }) => u.id === foundProject.owner);
                     console.log('🔍 Found owner user:', ownerUser);
 
                     if (ownerUser) {

@@ -263,7 +263,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                     )}
                     <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        <span>Started: {new Date(localProject.startDate).toLocaleDateString()}</span>
+                        <span>Started: {localProject.startDate ? new Date(localProject.startDate).toLocaleDateString() : 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
