@@ -9,7 +9,7 @@ interface ProjectInfoProps {
 }
 
 const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, ownerName }) => {
-    const createdDate = project.createdat ? new Date(project.createdat) : new Date();
+    const createdDate = project.created_at ? new Date(project.created_at) : new Date();
     return (
         <Card>
             <CardHeader>
