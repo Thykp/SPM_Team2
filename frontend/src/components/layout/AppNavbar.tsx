@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Sidebar } from "./Sidebar"
 import { useAuth } from "@/contexts/AuthContext"
 import { NotificationsPanel } from "../notifications/notifications-display"
+import { NotificationPreferences } from "../notifications/notifications-settings"
 
 export function AppNavbar() {
   const [showMobileSearch, setShowMobileSearch] = useState(false)
@@ -98,6 +99,7 @@ export function AppNavbar() {
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
+              <NotificationPreferences userId={user?.id ?? ""} />
               <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -30,6 +30,13 @@ services:
         paths:
           - /notifications
 
+  - name: manage-notification-service
+    url: http://manage-notification:4202
+    routes: 
+      - name: manage-notification-route
+        paths:
+          - /manage-notifications
+
   - name: manage-account-service
     url: http://manage-account:8090
     routes:

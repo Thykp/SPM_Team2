@@ -61,7 +61,7 @@ async function getNotificationPreferences(userId) {
 async function updateNotificationPreferences(userId, prefs) {
   const { data, error } = await supabase
     .from('profiles')
-    .update({ notification_preferences: prefs })
+    .update({ notification_delivery: prefs })
     .eq('id', userId)
     .select('notification_delivery')
     .single();

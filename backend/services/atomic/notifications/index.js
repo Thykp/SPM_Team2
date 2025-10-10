@@ -35,7 +35,7 @@ const POLL_INTERVAL = 5000;
 // ----- WebSocket Server -----
 const PORT = process.env.PORT || 4201;
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Running on http://localhost:${PORT}`);
+  console.log(`Notifications Service running on port:${PORT}`);
 });
 
 const wss = new WebSocketServer({ server, path: '/ws' });

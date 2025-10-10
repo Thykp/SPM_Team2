@@ -65,7 +65,7 @@ router.patch("/read", async (req, res) => {
   }
 });
 
-// Accept new notifications (from Manage-Notifications MS or other services)
+// Accept new notifications 
 router.post("/notify", async (req, res) => {
   const notif = req.body;
 

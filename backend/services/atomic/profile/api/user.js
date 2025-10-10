@@ -77,11 +77,11 @@ router.put("/:userId/notifications/preferences", async (req, res) => {
   const { notification_preferences } = req.body;
 
   if (!userId) return res.status(400).json({ error: "Missing user ID" });
-  if (!Array.isArray(notification_delivery))
+  if (!Array.isArray(notification_preferences))
     return res.status(400).json({ error: "notification_preferences must be an array" });
 
   try {
-    const updated = await user.updateNotificationPreferences(userId, notification_delivery);
+    const updated = await user.updateNotificationPreferences(userId, notification_preferences);
     res.status(200).json({
       message: "Notification preferences updated successfully",
       notification_delivery: updated

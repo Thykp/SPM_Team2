@@ -188,6 +188,20 @@ export const Notification = {
     const url = `${KONG_BASE_URL}/notifications/read`;
     await api.post(url, { ids });
   },
+
+  getPreferences: async (userId: string): Promise<string[]> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/${userId}`;
+    const response = await api.get<{ preferences: string[] }>(url);
+    return response.data.preferences;
+  },
+
+  updatePreferences: async (userId: string, preferences: string[]): Promise<void> => {
+    const validPrefs = ["in-app", "email"];
+    const filteredPrefs = preferences.filter(p => validPrefs.includes(p));
+
+    const url = `${KONG_BASE_URL}/manage-notifications/${userId}`;
+    await api.put(url, { preferences: filteredPrefs });
+  },
 }
 
 export default api;
