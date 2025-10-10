@@ -7,7 +7,7 @@ COPY pom.xml .
 RUN mvn -q -B dependency:go-offline
 
 # Build the jar
-COPY src ./src
+COPY . /app
 RUN mvn -q -DskipTests clean package
 
 # ---------- run stage ----------

@@ -3,9 +3,19 @@ const router = express.Router();
 const { supabase } = require("../db/supabase");
 const Redis = require("ioredis");
 
+// Redis setup
 const redisPub = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 const CHANNEL = "notifications";
 
+router.get("/", async (_req, res) => {
+  try {
+    res.status(200).json('Health Check: Success!');
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fetch all notifications for a user
 router.get("/:userId", async (req, res) => {
   const { userId } = req.params;
 
@@ -15,23 +25,26 @@ router.get("/:userId", async (req, res) => {
       .select("*")
       .eq("to_user", userId)
       .order("created_at", { ascending: false });
-      
+
     if (error) {
-      console.error("[api] Supabase fetch error:", error);
+      console.error("[notifications:get] Supabase fetch error:", error);
       return res.status(500).json({ error: "Failed to fetch notifications" });
     }
 
     res.json(data);
   } catch (err) {
-    console.error("[api] Error:", err);
+    console.error("[notifications:get] Error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.post("/read", async (req, res) => {
+// Mark notifications as read
+router.patch("/read", async (req, res) => {
   const { ids } = req.body;
 
-  if (!ids || !ids.length) return res.status(400).json({ error: "No IDs provided" });
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "No notification IDs provided" });
+  }
 
   try {
     const { data, error } = await supabase
@@ -41,53 +54,61 @@ router.post("/read", async (req, res) => {
       .select();
 
     if (error) {
-      console.error("[api] Supabase update error:", error);
-      return res.status(500).json({ error: "Failed to mark as read" });
+      console.error("[notifications:read] Supabase update error:", error);
+      return res.status(500).json({ error: "Failed to mark notifications as read" });
     }
 
-    res.json(data);
+    res.json({ success: true, updated: data });
   } catch (err) {
-    console.error("[api] Error:", err);
+    console.error("[notifications:read] Error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.post("/project-collaborators", async (req, res) => {
-  // inform collaborators of addition
-  const { type, projectId, collaborators, owner, title, description } = req.body;
+// Accept new notifications (from Manage-Notifications MS or other services)
+router.post("/notify", async (req, res) => {
+  const notif = req.body;
 
-  if (!projectId || !collaborators || !owner) 
-  {
-    return res.status(400).json({ error: "Missing required fields" })
+  // Basic validation
+  if (!notif.to_user || !notif.notif_text || !notif.notif_type) {
+    return res.status(400).json({ error: "Missing required notification fields" });
   }
 
-  try { 
-    const notifications = collaborators
-    .filter((c) => c != owner)
-    .map((to_user) =>({
-          notif_text: title,
-          notif_type: "info",
-          from_user: owner,
-          to_user: to_user,
-          resource_type: "project",
-          resource_id: projectId,
-          project_id: projectId,
-          priority: 0,
-          read: false
-    }))
-  
-    for (const notif of notifications) {
-      await redisPub.publish(CHANNEL, JSON.stringify(notif));
-      console.info("sending notification for: " + notif.to_user)
+  const notificationPayload = {
+    notif_text: notif.notif_text,
+    notif_type: notif.notif_type,
+    from_user: notif.from_user || null,
+    to_user: notif.to_user,
+    resource_type: notif.resource_type || null,
+    resource_id: notif.resource_id || null,
+    project_id: notif.project_id || null,
+    priority: notif.priority || 0,
+    read: false,
+    metadata: notif.metadata || {},
+  };
+
+  try {
+    // Store notification in Supabase
+    const { data, error } = await supabase
+      .from("notifications")
+      .insert(notificationPayload)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[notifications:notify] Supabase insert error:", error);
+      return res.status(500).json({ error: "Failed to store notification" });
     }
 
-    res.json({ ok: true});
-  }
-  catch (error) {
-    console.error("[api] Error notifying collaborators:", error);
-    res.status(500).json({ error: "Failed to notify collaborators" });
-  }
-})
+    // Publish notification via Redis (for WebSocket broadcast)
+    await redisPub.publish(CHANNEL, JSON.stringify(data));
+    console.info(`[notifications:notify] Sent notification to ${data.to_user}`);
 
+    res.json({ success: true, notification: data });
+  } catch (err) {
+    console.error("[notifications:notify] Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 module.exports = router;

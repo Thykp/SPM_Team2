@@ -45,9 +45,37 @@ async function getUserDetailsWithId(user_id){
   return data || [];
 }
 
+// Get notification preferences
+async function getNotificationPreferences(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('notification_delivery')
+    .eq('id', userId)
+    .single();
+
+  if (error) throw error;
+  return data.notification_delivery;
+}
+
+// Update notification preferences
+async function updateNotificationPreferences(userId, prefs) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ notification_preferences: prefs })
+    .eq('id', userId)
+    .select('notification_delivery')
+    .single();
+
+  if (error) throw error;
+  return data.notification_delivery;
+}
+
+
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,
   getStaffByDepartment,
-  getUserDetailsWithId
+  getUserDetailsWithId,
+  updateNotificationPreferences,
+  getNotificationPreferences
 };
