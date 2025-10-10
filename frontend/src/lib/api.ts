@@ -186,7 +186,7 @@ export const Notification = {
 
   markAsRead: async (ids: string[]): Promise<void> => {
     const url = `${KONG_BASE_URL}/notifications/read`;
-    await api.post(url, { ids });
+    await api.patch(url, { ids });
   },
 
   getPreferences: async (userId: string): Promise<string[]> => {
