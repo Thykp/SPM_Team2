@@ -140,9 +140,12 @@ create table public.revamped_task (
     deadline timestamptz not null,
     description text not null,
     status public.task_status not null,
+    priority integer,
 
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
+
+    check (priority >= 1 and priority <= 10),
 
     constraint pk_task primary key (id),
     constraint fk_task_parent_task_id_tas foreign key (parent_task_id) references public.revamped_task(id) on delete cascade,

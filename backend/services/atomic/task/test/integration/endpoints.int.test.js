@@ -45,7 +45,8 @@ describe('Task API - Integration Tests', () => {
                 title: 'Test Task',
                 deadline: '2025-12-31',
                 description: 'Test task description',
-                status: 'Ongoing'
+                status: 'Ongoing',
+                priority: 5
             })
             .select()
             .single();
@@ -80,7 +81,8 @@ describe('Task API - Integration Tests', () => {
                 title: 'Test Subtask',
                 deadline: '2025-12-31',
                 description: 'Test subtask description',
-                status: 'Ongoing'
+                status: 'Ongoing',
+                priority: 5
             })
             .select()
             .single();
@@ -183,6 +185,7 @@ describe('Task API - Integration Tests', () => {
             const foundTask = response.body.find(task => task.id === testTaskId);
             expect(foundTask).toBeDefined();
             expect(foundTask.title).toBe('Test Task');
+            expect(foundTask.priority).toBe(5);
         });
     });
 
@@ -198,6 +201,7 @@ describe('Task API - Integration Tests', () => {
             expect(response.body.description).toBe('Test task description');
             expect(response.body.status).toBe('Ongoing');
             expect(response.body.project_id).toBe(testProjectId);
+            expect(response.body.priority).toBe(5);
             
             // Check participants
             expect(response.body.participants).toBeDefined();
@@ -227,6 +231,7 @@ describe('Task API - Integration Tests', () => {
             expect(subtask.id).toBe(testSubtaskId);
             expect(subtask.title).toBe('Test Subtask');
             expect(subtask.parent_task_id).toBe(testTaskId);
+            expect(subtask.priority).toBe(5);
         });
 
         test('should return empty array for task with no subtasks', async () => {
@@ -252,6 +257,7 @@ describe('Task API - Integration Tests', () => {
             const foundTask = response.body.find(task => task.id === testTaskId);
             expect(foundTask).toBeDefined();
             expect(foundTask.title).toBe('Test Task');
+            expect(foundTask.priority).toBe(5);
         });
 
         test('should return tasks for collaborator user', async () => {
@@ -265,6 +271,7 @@ describe('Task API - Integration Tests', () => {
             // Collaborator should see the task they're assigned to
             const foundTask = response.body.find(task => task.id === testTaskId);
             expect(foundTask).toBeDefined();
+            expect(foundTask.priority).toBe(5);
         });
 
         test('should return empty array for user with no tasks', async () => {
@@ -306,6 +313,7 @@ describe('Task API - Integration Tests', () => {
                 deadline: '2026-01-15',
                 description: 'Task created by integration test',
                 status: 'Ongoing',
+                priority: 5,
                 participants: [
                     { profile_id: testOwnerId, is_owner: true },
                     { profile_id: testCollaboratorId, is_owner: false }
@@ -330,6 +338,7 @@ describe('Task API - Integration Tests', () => {
             createdTaskId = tasks[0].id;
             expect(tasks[0].description).toBe('Task created by integration test');
             expect(tasks[0].status).toBe('Ongoing');
+            expect(tasks[0].priority).toBe(5);
 
             // Verify participants were created
             const { data: participants } = await supabase
@@ -406,7 +415,12 @@ describe('Task API - Integration Tests', () => {
                 title: 'Updated Test Task Title',
                 description: 'Updated description for integration test',
                 status: 'Under Review',
-                deadline: '2026-06-30'
+                deadline: '2026-06-30',
+                priority: 8,
+                participants: [
+                    { profile_id: testOwnerId, is_owner: true },
+                    { profile_id: testCollaboratorId, is_owner: false }
+                ]
             };
 
             const response = await request(app)
@@ -425,6 +439,7 @@ describe('Task API - Integration Tests', () => {
             expect(getResponse.body.description).toBe('Updated description for integration test');
             expect(getResponse.body.status).toBe('Under Review');
             expect(getResponse.body.deadline).toBe('2026-06-30T00:00:00+00:00');
+            expect(getResponse.body.priority).toBe(8);
         });
 
         test('should update task participants (add new collaborator)', async () => {
@@ -435,6 +450,7 @@ describe('Task API - Integration Tests', () => {
                 description: 'Updated description for integration test',
                 status: 'Under Review',
                 deadline: '2026-06-30',
+                priority: 7,
                 participants: [
                     { profile_id: testOwnerId, is_owner: true },
                     { profile_id: testCollaboratorId, is_owner: false },
@@ -471,7 +487,12 @@ describe('Task API - Integration Tests', () => {
                 title: 'Updated Test Task Title',
                 description: 'Updated description for integration test',
                 status: 'Completed',
-                deadline: '2026-06-30'
+                deadline: '2026-06-30',
+                priority: 9,
+                participants: [
+                    { profile_id: testOwnerId, is_owner: true },
+                    { profile_id: testCollaboratorId, is_owner: false }
+                ]
             };
 
             const response = await request(app)
@@ -485,6 +506,7 @@ describe('Task API - Integration Tests', () => {
                 .expect(200);
 
             expect(getResponse.body.status).toBe('Completed');
+            expect(getResponse.body.priority).toBe(9);
         });
 
     });

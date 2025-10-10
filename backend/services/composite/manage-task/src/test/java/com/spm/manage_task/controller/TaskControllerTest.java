@@ -56,7 +56,8 @@ public class TaskControllerTest {
             "user1",
             null,
             "John Doe",
-            "Engineering"
+            "Engineering",
+            5
         );
 
         ArrayList<String> collaborators2 = new ArrayList<>();
@@ -73,7 +74,8 @@ public class TaskControllerTest {
             "user2",
             null,
             "Jane Smith",
-            "Marketing"
+            "Marketing",
+            5
         );
 
         List<TaskDto> mockTasks = Arrays.asList(task1, task2);
@@ -118,7 +120,8 @@ public class TaskControllerTest {
             userId,
             null,
             "John Doe",
-            "Engineering"
+            "Engineering",
+            5
         );
 
         List<TaskDto> mockTasks = List.of(task1);
@@ -160,7 +163,8 @@ public class TaskControllerTest {
             "To Do",
             collaborators,
             "user1",
-            null
+            null,
+            5
         );
 
         doNothing().when(taskService).createTask(any(TaskPostRequestDto.class));
@@ -185,7 +189,8 @@ public class TaskControllerTest {
             "To Do",
             collaborators,
             "user1",
-            "parentTask123"
+            "parentTask123",
+            5
         );
 
         doNothing().when(taskService).createTask(any(TaskPostRequestDto.class));
@@ -217,7 +222,8 @@ public class TaskControllerTest {
             "user1",
             null,
             "John Doe",
-            "Engineering"
+            "Engineering",
+            5
         );
 
         when(taskService.getTaskByIdWithOwner(taskId)).thenReturn(mockTask);
@@ -248,7 +254,8 @@ public class TaskControllerTest {
             "Done",
             collaborators,
             "user1",
-            null
+            null,
+            5
         );
 
         doNothing().when(taskService).updateTask(eq(taskId), any(TaskPostRequestDto.class));
@@ -275,7 +282,8 @@ public class TaskControllerTest {
             "Done",
             collaborators,
             "user1",
-            null
+            null,
+            5
         );
 
         doNothing().when(taskService).updateTask(eq(taskId), any(TaskPostRequestDto.class));
@@ -307,7 +315,8 @@ public class TaskControllerTest {
             "user1",
             parentTaskId,
             "John Doe",
-            "Engineering"
+            "Engineering",
+            5
         );
 
         ArrayList<String> collaborators2 = new ArrayList<>();
@@ -324,7 +333,8 @@ public class TaskControllerTest {
             "user2",
             parentTaskId,
             "Jane Smith",
-            "Marketing"
+            "Marketing",
+            5
         );
 
         List<TaskDto> mockSubtasks = Arrays.asList(subtask1, subtask2);
