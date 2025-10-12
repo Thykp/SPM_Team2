@@ -196,16 +196,24 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
         try {
             setIsLoading(true);
             
-            // TODO: Implement delete project API endpoint
-            // const result = await Project.deleteProject(project.id);
+            const result = await Project.delete(project.id);
             
-            if (onProjectDelete) {
-                onProjectDelete(project.id);
+            if (result.success) {
+                console.log('Project deleted successfully');
+                
+                // Notify parent component about deletion
+                if (onProjectDelete) {
+                    onProjectDelete(project.id);
+                }
+                
+                setIsDeleteDialogOpen(false);
+            } else {
+                console.error('Delete failed:', result);
+                // You could show an error toast here
             }
-            
-            setIsDeleteDialogOpen(false);
         } catch (error) {
             console.error('Failed to delete project:', error);
+            // You could show an error toast here
         } finally {
             setIsLoading(false);
         }

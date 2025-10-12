@@ -16,9 +16,9 @@ interface Project {
   id: string;
   title: string;
   description: string;
-  startDate: string;
+  startDate: string | null;
   members: string[];
-    owner?: string;
+  owner?: string;
 }
 
 // User type for API response
@@ -196,6 +196,18 @@ const Projects: React.FC = () => {
     setSuccessMessage(null);
   };
 
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setProjects(prev => 
+      prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+    );
+  };
+
+  const handleProjectDelete = (projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setSuccessMessage("Project deleted successfully!");
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
   if (loading) {
     return (
       <div
@@ -234,6 +246,8 @@ const Projects: React.FC = () => {
       <ProjectGrid
         projects={filteredProjects}
         onCreateProject={() => setShowModal(true)}
+        onProjectUpdate={handleProjectUpdate}
+        onProjectDelete={handleProjectDelete}
       />
 
       <ProjectModal
