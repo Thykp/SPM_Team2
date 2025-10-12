@@ -3,21 +3,29 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import ProjectCard from './ProjectCard';
 
-interface Project {
+// Define the Project interface for the UI component
+interface ProjectUIData {
     id: string;
     title: string;
     description: string;
-    startDate: string;
+    startDate: string | null;
     members: string[];
     owner?: string;
 }
 
 interface ProjectGridProps {
-    projects: Project[];
+    projects: ProjectUIData[];
     onCreateProject?: () => void;
+    onProjectUpdate?: (updatedProject: ProjectUIData) => void;
+    onProjectDelete?: (projectId: string) => void;
 }
 
-const ProjectGrid: React.FC<ProjectGridProps> = ({ projects, onCreateProject }) => {
+const ProjectGrid: React.FC<ProjectGridProps> = ({ 
+    projects, 
+    onCreateProject, 
+    onProjectUpdate, 
+    onProjectDelete 
+}) => {
     if (projects.length === 0) {
         return (
             <div className="text-center py-12">
@@ -36,7 +44,12 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects, onCreateProject }) 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    onProjectUpdate={onProjectUpdate}
+                    onProjectDelete={onProjectDelete}
+                />
             ))}
         </div>
     );

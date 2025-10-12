@@ -59,21 +59,28 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
     const getUserProfiles = async() => {
         setUserLoading(true);
         try {
-            // Concatenate owner and collaborators into a single array of user IDs
-            const allUserIds = !currentTask.collaborators ? [currentTask.owner] : [currentTask.owner, ...currentTask.collaborators];
+            // Filter out null values and concatenate owner and collaborators into a single array of user IDs
+            const ownerIds = currentTask.owner ? [currentTask.owner] : [];
+            const collaboratorIds = currentTask.collaborators || [];
+            const allUserIds = [...ownerIds, ...collaboratorIds].filter(id => id !== null);
             
             // Format user IDs as objects with "id" property for the API
             const userIdObjects = allUserIds.map(userId => ({ id: userId }));
             
-            const profiles = await profileAPI.getProfileDetailsWithId(userIdObjects);
-            
-            // Create a mapping of user ID to profile for easy lookup
-            const profileMap: {[key: string]: profileType} = {};
-            profiles.forEach((profile, index) => {
-                profileMap[allUserIds[index]] = profile;
-            });
-            
-            setUserProfiles(profileMap);
+            if (userIdObjects.length > 0) {
+                const profiles = await profileAPI.getProfileDetailsWithId(userIdObjects);
+                
+                // Create a mapping of user ID to profile for easy lookup
+                const profileMap: {[key: string]: profileType} = {};
+                profiles.forEach((profile, index) => {
+                    const userId = allUserIds[index];
+                    if (userId) {
+                        profileMap[userId] = profile;
+                    }
+                });
+                
+                setUserProfiles(profileMap);
+            }
         } catch (error) {
             console.error("Error fetching user profiles:", error);
         } finally {
@@ -106,8 +113,20 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
         }
     }
 
+    if (!isOpen) {
+        return null;
+    }
+
     return(
-      <Sheet open={isOpen} onOpenChange={onClose}>
+      <Sheet 
+        open={true} 
+        onOpenChange={(open) => {
+          if (!open) {
+            onClose();
+          }
+        }}
+        modal={true}
+      >
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="pb-6">
             {/* Breadcrumb Navigation */}
@@ -160,10 +179,10 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          {getDisplayName(currentTask.owner) === "You" ? (
+                          {currentTask.owner && getDisplayName(currentTask.owner) === "You" ? (
                             <span className="font-bold">You</span>
                           ) : (
-                            getDisplayName(currentTask.owner)
+                            currentTask.owner ? getDisplayName(currentTask.owner) : "No owner assigned"
                           )}
                         </p>
                       )}

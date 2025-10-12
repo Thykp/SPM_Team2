@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
 import { Project, Profile, type ProjectDto, type Task, type UpdateProjectRequest } from '@/lib/api';
-import CreateTask from '@/components/task/CreateTask';
+import CreateProjectTask from './CreateProjectTask';
 
 // Define LiteUser type based on the API response structure
 type LiteUser = {
@@ -166,7 +166,11 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                         {isLoadingEdit ? 'Loading...' : 'Edit Project'}
                     </Button>
                     {userId && (
-                        <CreateTask userId={userId} onTaskCreated={onTaskCreated} />
+                        <CreateProjectTask 
+                            userId={userId} 
+                            projectId={project.id}
+                            onTaskCreated={onTaskCreated} 
+                        />
                     )}
                 </div>
             </div>
