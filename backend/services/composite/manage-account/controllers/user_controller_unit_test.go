@@ -7,85 +7,123 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	profile_service "manage-account/service"
+
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
-// Unit test for GET /api/users
-func TestGetUsers_ReturnsList(t *testing.T) {
-	r := gin.New()
-	r.GET("/api/users", GetUsers)
+func TestGetUsers_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/users", nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
-	rr := httptest.NewRecorder()
-
-	r.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("want 200, got %d, body=%q", rr.Code, rr.Body.String())
+	// Mock the service function
+	originalGetAllUsers := GetAllUsersFunc
+	defer func() { GetAllUsersFunc = originalGetAllUsers }()
+	GetAllUsersFunc = func() ([]profile_service.User, error) {
+		return []profile_service.User{
+			{UserId: "1", UserName: stringPtr("Alice")},
+			{UserId: "2", UserName: stringPtr("Bob")},
+		}, nil
 	}
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
-		t.Fatalf("response not valid JSON: %v", err)
-	}
-	if _, ok := body["data"]; !ok {
-		t.Fatalf("expected 'data' field in response, got: %v", body)
-	}
+	// Call the handler
+	GetUsers(c)
+
+	// Assertions
+	assert.Equal(t, http.StatusOK, w.Code)
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response, "data")
+	data := response["data"].([]interface{})
+	assert.Len(t, data, 2)
 }
 
-// Unit test for POST /api/users (success + validation)
-func TestCreateUser_SuccessAndValidation(t *testing.T) {
-	r := gin.New()
-	r.POST("/api/users", CreateUser)
+func TestGetUsers_Error(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/users", nil)
 
-	// Successful create
-	payload := []byte(`{"name":"Charlie"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	r.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusCreated {
-		t.Fatalf("want 201 Created, got %d, body=%q", rr.Code, rr.Body.String())
+	// Mock the service function to return error
+	originalGetAllUsers := GetAllUsersFunc
+	defer func() { GetAllUsersFunc = originalGetAllUsers }()
+	GetAllUsersFunc = func() ([]profile_service.User, error) {
+		return nil, assert.AnError // some error
 	}
 
-	var created map[string]interface{}
-	if err := json.Unmarshal(rr.Body.Bytes(), &created); err != nil {
-		t.Fatalf("response not valid JSON: %v", err)
-	}
-	if _, ok := created["data"]; !ok {
-		t.Fatalf("expected 'data' field in create response, got: %v", created)
-	}
+	// Call the handler
+	GetUsers(c)
 
-	// Validation failure (missing name)
-	badReq := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewReader([]byte(`{}`)))
-	badReq.Header.Set("Content-Type", "application/json")
-	badRR := httptest.NewRecorder()
-	r.ServeHTTP(badRR, badReq)
-
-	if badRR.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for missing name, got %d, body=%q", badRR.Code, badRR.Body.String())
-	}
+	// Assertions
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response, "error")
+	assert.Equal(t, "Failed to fetch users", response["error"])
 }
 
-// Unit test for POST /api/users/getUserDetails with an empty array (binding path)
-func TestGetUserByID_WithEmptyArray(t *testing.T) {
-	r := gin.New()
-	r.POST("/api/users/getUserDetails", GetUserByID)
+func TestGetUserByID_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/users/getUserDetails", bytes.NewReader([]byte(`[]`)))
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
+	users := []profile_service.User{{UserId: "1"}}
+	body, _ := json.Marshal(users)
+	c.Request = httptest.NewRequest("POST", "/users/details", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
 
-	r.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("want 200 OK, got %d, body=%q", rr.Code, rr.Body.String())
+	// Mock the service function
+	originalGetUserDetails := GetUserDetailsFunc
+	defer func() { GetUserDetailsFunc = originalGetUserDetails }()
+	GetUserDetailsFunc = func(users []profile_service.User) []profile_service.User {
+		return []profile_service.User{
+			{UserId: "1", UserName: stringPtr("Alice")},
+		}
 	}
 
-	// Response should be valid JSON (likely an empty array)
-	var out interface{}
-	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
-		t.Fatalf("response not valid JSON: %v", err)
-	}
+	// Call the handler
+	GetUserByID(c)
+
+	// Assertions
+	assert.Equal(t, http.StatusOK, w.Code)
+	var response []profile_service.User
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Len(t, response, 1)
+	assert.Equal(t, "1", response[0].UserId)
+}
+
+func TestGetUserByID_InvalidJSON(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	// Invalid JSON
+	c.Request = httptest.NewRequest("POST", "/users/details", bytes.NewReader([]byte("invalid json")))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	// Call the handler
+	GetUserByID(c)
+
+	// Assertions
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response, "error")
+	assert.Equal(t, "Invalid JSON", response["error"])
+}
+
+// Helper function
+func stringPtr(s string) *string {
+	return &s
 }

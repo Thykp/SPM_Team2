@@ -7,11 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.spm.manage_task.dto.TaskDto;
+import com.spm.manage_task.dto.TaskPostRequestDto;
+import com.spm.manage_task.dto.UserDto;
 import com.spm.manage_task.factory.Participant;
 import com.spm.manage_task.factory.TaskMicroserviceResponse;
 import com.spm.manage_task.factory.TaskMicroserviceUpsertRequest;
-import com.spm.manage_task.dto.TaskPostRequestDto;
-import com.spm.manage_task.dto.UserDto;
 import com.spm.manage_task.services.ProfileService;
 
 @Component
@@ -39,7 +39,8 @@ public class TaskDTOWrapperComponent {
             ownerId,
             rawTask.getParentTaskId(),
             null,
-            null
+            null,
+            rawTask.getTaskPriority() // add this getter to TaskMicroserviceResponse if missing
         );
 
         addOwnerInformation(incomingTask);
@@ -118,7 +119,8 @@ public class TaskDTOWrapperComponent {
             incomingTaskBody.getTaskDeadline(),
             incomingTaskBody.getTaskDescription(),
             incomingTaskBody.getTaskStatus(),
-            participantList
+            participantList,
+            incomingTaskBody.getTaskPriority()
         );
 
 

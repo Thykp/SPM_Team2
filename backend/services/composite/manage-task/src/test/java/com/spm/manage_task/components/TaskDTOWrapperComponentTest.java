@@ -212,7 +212,7 @@ class TaskDTOWrapperComponentTest {
         // Arrange
         TaskDto task = new TaskDto("task-123", "Test Task", "project-456", "2025-12-31", 
                                     "Test description", "Ongoing", new ArrayList<>(), 
-                                    "owner-123", null, null, null);
+                                    "owner-123", null, null, null, 5);
         when(profileService.getUserById("owner-123")).thenReturn(sampleOwner);
 
         // Act
@@ -236,7 +236,7 @@ class TaskDTOWrapperComponentTest {
         // Arrange
         TaskDto task = new TaskDto("task-123", "Test Task", "project-456", "2025-12-31", 
                                     "Test description", "Ongoing", new ArrayList<>(), 
-                                    "owner-123", null, null, null);
+                                    "owner-123", null, null, null, 5);
         when(profileService.getUserById("owner-123")).thenReturn(null);
 
         // Act
@@ -264,7 +264,8 @@ class TaskDTOWrapperComponentTest {
             "Ongoing",
             collaborators,
             "owner-123",
-            null
+            null,
+            5
         );
 
         // Act
@@ -298,7 +299,8 @@ class TaskDTOWrapperComponentTest {
             "Under Review",
             new ArrayList<>(),
             "owner-123",
-            null
+            null,
+            5
         );
 
         // Act
@@ -322,7 +324,8 @@ class TaskDTOWrapperComponentTest {
             "Ongoing",
             new ArrayList<>(),
             "owner-123",
-            "parent-task-123"
+            "parent-task-123",
+            5
         );
 
         // Act

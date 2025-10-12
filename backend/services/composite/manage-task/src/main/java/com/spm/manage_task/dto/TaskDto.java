@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TaskDto {
+    @JsonProperty("priority")
+    private int taskPriority;
     @JsonProperty("id")
     private String taskId;
 
@@ -41,7 +43,7 @@ public class TaskDto {
 
     public TaskDto(String taskId, String taskTitle, String taskProjectId, String taskDeadline, String taskDescription,
             String taskStatus, ArrayList<String> taskCollaborators, String taskOwner, String taskParent,
-            String taskOwnerName, String taskOwnerDepartment) {
+            String taskOwnerName, String taskOwnerDepartment, int taskPriority) {
         this.taskId = taskId;
         this.taskTitle = taskTitle;
         this.taskProjectId = taskProjectId;
@@ -53,23 +55,33 @@ public class TaskDto {
         this.taskParent = taskParent;
         this.taskOwnerName = taskOwnerName;
         this.taskOwnerDepartment = taskOwnerDepartment;
+        this.taskPriority = taskPriority;
     }
 
     @Override
     public String toString(){
         return "TaskDto{" +
-                "taskId='" + taskId + '\'' +
-                ", taskDeadline='" + taskDeadline + '\'' +
-                ", taskProjectid='" + taskProjectId + '\'' +
-                ", taskTitle='" + taskTitle + '\'' +
-                ", taskStatus=" + taskStatus +
-                ", taskDescription='" + taskDescription + '\'' +
-                ", taskOwner='" + taskOwner + '\'' +
-                ", taskOwnerName='" + taskOwnerName + '\'' +
-                ", taskOwnerDepartment='" + taskOwnerDepartment + '\'' +
-                ", taskCollaborators=" + taskCollaborators +
-                ", taskParent='" + taskParent + '\'' +
-                '}';
+            "taskId='" + taskId + '\'' +
+            ", taskDeadline='" + taskDeadline + '\'' +
+            ", taskProjectid='" + taskProjectId + '\'' +
+            ", taskTitle='" + taskTitle + '\'' +
+            ", taskStatus=" + taskStatus +
+            ", taskDescription='" + taskDescription + '\'' +
+            ", taskOwner='" + taskOwner + '\'' +
+            ", taskOwnerName='" + taskOwnerName + '\'' +
+            ", taskOwnerDepartment='" + taskOwnerDepartment + '\'' +
+            ", taskCollaborators=" + taskCollaborators +
+            ", taskParent='" + taskParent + '\'' +
+            ", taskPriority=" + taskPriority +
+            '}';
+    }
+
+    public int getTaskPriority() {
+        return taskPriority;
+    }
+
+    public void setTaskPriority(int taskPriority) {
+        this.taskPriority = taskPriority;
     }
 
     public String getTaskId() {

@@ -5,6 +5,9 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TaskMicroserviceUpsertRequest {
+
+    @JsonProperty("priority")
+    private int taskPriority;
     
     private String taskId;
 
@@ -30,7 +33,7 @@ public class TaskMicroserviceUpsertRequest {
     private List<Participant> participants;
 
     public TaskMicroserviceUpsertRequest(String parentTaskId, String projectId, String title, String deadline,
-            String description, String status, List<Participant> participants) {
+            String description, String status, List<Participant> participants, int taskPriority) {
         this.parentTaskId = parentTaskId;
         this.projectId = projectId;
         this.title = title;
@@ -38,6 +41,15 @@ public class TaskMicroserviceUpsertRequest {
         this.description = description;
         this.status = status;
         this.participants = participants;
+        this.taskPriority = taskPriority;
+    }
+
+    public int getTaskPriority() {
+        return taskPriority;
+    }
+
+    public void setTaskPriority(int taskPriority) {
+        this.taskPriority = taskPriority;
     }
 
     public String getTaskId() {

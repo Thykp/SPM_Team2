@@ -22,7 +22,7 @@ export type Task = {
 
 export type ProjectDto = {
   id: string;
-  createdat: string | null;
+  created_at: string | null;
   title: string;
   tasklist: string[] | null;
   description: string;
@@ -34,7 +34,7 @@ export type NewProjectRequest = {
   title: string;
   description: string;
   tasklist?: string[];
-  owner: string;
+  ownerId: string;
   collaborators?: string[];
 };
 
@@ -52,7 +52,7 @@ export type ProfileRequestDetailsDto = {
 // ----- Services -----
 export const Profile = {
   getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
-    const url = `${KONG_BASE_URL}/profile/user/all`;
+    const url = `${KONG_BASE_URL}/manage-account/api/users`;
     const { data } = await api.get<Array<{ id: string; display_name: string; role: string; department: string }>>(url);
     return data;
   },

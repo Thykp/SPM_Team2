@@ -25,13 +25,13 @@ public class ProjectDto {
     private UUID owner;
 
     @JsonProperty("collaborators")
-    private List<CollaboratorDto> collaborators;
+    private List<UUID> collaborators;
 
     // Constructors
     public ProjectDto() {}
 
     public ProjectDto(UUID id, String title, String description, OffsetDateTime createdAt, 
-                     OffsetDateTime updatedAt, UUID owner, List<CollaboratorDto> collaborators) {
+                     OffsetDateTime updatedAt, UUID owner, List<UUID> collaborators) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -90,11 +90,11 @@ public class ProjectDto {
         this.owner = owner;
     }
 
-    public List<CollaboratorDto> getCollaborators() {
+    public List<UUID> getCollaborators() {
         return collaborators;
     }
 
-    public void setCollaborators(List<CollaboratorDto> collaborators) {
+    public void setCollaborators(List<UUID> collaborators) {
         this.collaborators = collaborators;
     }
 }

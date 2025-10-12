@@ -68,7 +68,8 @@ public class TaskServiceTest {
             "In Progress",             // taskStatus
             "2024-01-01T00:00:00Z",    // taskCreatedAt
             "2024-01-02T00:00:00Z",    // taskUpdatedAt
-            participants                // taskParticipants
+            participants,               // taskParticipants
+            5
         );
 
         // Setup mock TaskDto
@@ -86,7 +87,8 @@ public class TaskServiceTest {
             "user1",                    // taskOwner
             null,                       // taskParent
             "John Doe",                 // taskOwnerName
-            "Engineering"               // taskOwnerDepartment
+            "Engineering",              // taskOwnerDepartment
+            5
         );
 
         // Setup mock TaskPostRequestDto
@@ -101,7 +103,8 @@ public class TaskServiceTest {
             "To Do",                    // status
             postCollaborators,          // collaborators
             "user1",                    // owner
-            null                        // parent
+            null,                       // parent
+            5
         );
 
         // Setup mock TaskMicroserviceUpsertRequest
@@ -110,13 +113,14 @@ public class TaskServiceTest {
         upsertParticipants.add(new Participant(false, "user2")); // collaborator
 
         mockUpsertRequest = new TaskMicroserviceUpsertRequest(
-            "New Task",                 // title
-            "Task description",         // description
-            "2024-12-31",              // deadline
-            "To Do",                    // status
             null,                       // parentTaskId
             "project456",               // projectId
-            upsertParticipants          // participants
+            "New Task",                 // title
+            "2024-12-31",              // deadline
+            "Task description",         // description
+            "To Do",                    // status
+            upsertParticipants,         // participants
+            5
         );
     }
 

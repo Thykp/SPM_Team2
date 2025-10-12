@@ -148,12 +148,11 @@ class ProjectServiceTest {
     void testGetProjectById() {
         UUID projectId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
-        UUID collaboratorId = UUID.randomUUID();
+        UUID collaboratorId1 = UUID.randomUUID();
+        UUID collaboratorId2 = UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now();
 
-        CollaboratorDto ownerCollab = new CollaboratorDto(ownerId, true, now);
-        CollaboratorDto collaborator = new CollaboratorDto(collaboratorId, false, now);
-
+        // Create a mock ProjectDto response
         ProjectDto mockResponse = new ProjectDto();
         mockResponse.setId(projectId);
         mockResponse.setTitle("Test Project");
@@ -161,21 +160,25 @@ class ProjectServiceTest {
         mockResponse.setCreatedAt(now);
         mockResponse.setUpdatedAt(now);
         mockResponse.setOwner(ownerId);
-        mockResponse.setCollaborators(List.of(ownerCollab, collaborator));
+        mockResponse.setCollaborators(List.of(collaboratorId1, collaboratorId2)); // Use UUIDs directly
 
+        // Mock the RestTemplate call
         when(restTemplate.getForEntity(eq(baseUrl + "/project/" + projectId.toString()), eq(ProjectDto.class)))
                 .thenReturn(ResponseEntity.ok(mockResponse));
 
+        // Call the service method
         ProjectDto result = projectService.getProjectById(projectId);
 
+        // Assertions
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(projectId);
         assertThat(result.getOwner()).isEqualTo(ownerId);
         assertThat(result.getCollaborators()).hasSize(2);
-        assertThat(result.getCollaborators().get(0).getProfileId()).isEqualTo(ownerId);
-        assertThat(result.getCollaborators().get(0).getIsOwner()).isTrue();
+        assertThat(result.getCollaborators()).containsExactlyInAnyOrder(collaboratorId1, collaboratorId2); // Check UUIDs directly
+
+        // Verify the RestTemplate call
         verify(restTemplate).getForEntity(eq(baseUrl + "/project/" + projectId.toString()), eq(ProjectDto.class));
-    }
+}
 
     @Test
     void testUpdateProject() {

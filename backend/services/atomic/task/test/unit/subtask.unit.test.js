@@ -26,7 +26,8 @@ describe('Subtask', () => {
                 deadline: '2025-12-31',
                 description: 'Test description',
                 status: 'ongoing',
-                participants: [{ profile_id: 'user-1', is_owner: true }]
+                participants: [{ profile_id: 'user-1', is_owner: true }],
+                priority: 5
             };
 
             const subtask = new Subtask(subtaskData);
@@ -44,7 +45,8 @@ describe('Subtask', () => {
                 deadline: '2025-12-31',
                 description: 'Test',
                 status: 'completed',
-                participants: []
+                participants: [],
+                priority: 5
             });
 
             expect(subtask).toBeInstanceOf(Task);
@@ -198,13 +200,15 @@ describe('Subtask', () => {
                     id: 'subtask-1',
                     title: 'Subtask 1',
                     parent_task_id: 'parent-123',
-                    status: 'Ongoing'
+                    status: 'Ongoing',
+                    priority: 5
                 },
                 {
                     id: 'subtask-2',
                     title: 'Subtask 2',
                     parent_task_id: 'parent-123',
-                    status: 'Completed'
+                    status: 'Completed',
+                    priority: 5
                 }
             ];
 
@@ -302,7 +306,8 @@ describe('Subtask', () => {
                 participants: [
                     { profile_id: 'user-1', is_owner: true },
                     { profile_id: 'user-999', is_owner: false }
-                ]
+                ],
+                priority: 5
             });
 
             try {

@@ -105,10 +105,10 @@ describe('TaskController', () => {
 
     describe('getAllTasks', () => {
         test('Should retrieve all tasks successfully', async () => {
-            const mockTasks = [
-                { id: 'task-1', title: 'Task 1' },
-                { id: 'task-2', title: 'Task 2' },
-            ];
+			const mockTasks = [
+				{ id: 'task-1', title: 'Task 1', priority: 5 },
+				{ id: 'task-2', title: 'Task 2', priority: 5 },
+			];
 
             Task.getAllTasks.mockResolvedValue(mockTasks);
 
@@ -136,6 +136,7 @@ describe('TaskController', () => {
             const mockTaskDetail = {
                 id: 'task-123',
                 title: 'Test Task',
+                priority: 5,
                 participants: [],
             };
 
@@ -185,10 +186,10 @@ describe('TaskController', () => {
 
     describe('getSubTasks', () => {
         test('Should retrieve subtasks successfully', async () => {
-            const mockSubtasks = [
-                { id: 'subtask-1', parent_task_id: 'task-123' },
-                { id: 'subtask-2', parent_task_id: 'task-123' },
-            ];
+			const mockSubtasks = [
+				{ id: 'subtask-1', parent_task_id: 'task-123', priority: 5 },
+				{ id: 'subtask-2', parent_task_id: 'task-123', priority: 5 },
+			];
 
             req.params.id = 'task-123';
 
@@ -217,9 +218,9 @@ describe('TaskController', () => {
 
     describe('getTaskPerUser', () => {
         test('Should retrieve tasks by userId from params', async () => {
-            const mockTasks = [
-                { id: 'task-1', participants: [{ profile_id: 'user-1' }] },
-            ];
+			const mockTasks = [
+				{ id: 'task-1', priority: 5, participants: [{ profile_id: 'user-1' }] },
+			];
 
             req.params.userId = 'user-1';
 
@@ -233,9 +234,9 @@ describe('TaskController', () => {
         });
 
         test('Should retrieve tasks using req.body when params.userId is missing', async () => {
-            const mockTasks = [
-                { id: 'task-1', participants: [{ profile_id: 'user-2' }] },
-            ];
+			const mockTasks = [
+				{ id: 'task-1', priority: 5, participants: [{ profile_id: 'user-2' }] },
+			];
 
             req.body = { userId: 'user-2' };
             // params.userId is undefined
@@ -269,19 +270,26 @@ describe('TaskController', () => {
             req.body = {
                 title: 'Updated Task',
                 description: 'Updated description',
+                priority: 5,
             };
 
-            Task.mockImplementation(() => ({
+            const mockTask = {
+                validate: jest.fn().mockResolvedValue(undefined),
                 updateTask: jest.fn().mockResolvedValue(undefined),
-            }));
+            };
+
+            TaskService.checkTask.mockReturnValue(mockTask);
 
             await TaskController.updateTask(req, res);
 
-            expect(Task).toHaveBeenCalledWith({
+            expect(TaskService.checkTask).toHaveBeenCalledWith({
                 id: 'task-123',
                 title: 'Updated Task',
-                description: 'Updated description'
+                description: 'Updated description',
+                priority: 5
             });
+            expect(mockTask.validate).toHaveBeenCalled();
+            expect(mockTask.updateTask).toHaveBeenCalled();
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({ 
                 message: "Successfully updated task and task participants" 
@@ -294,9 +302,12 @@ describe('TaskController', () => {
             req.params = {id: 'task-123'};
             req.body = {title: 'Updated Task' };
 
-            Task.mockImplementation(() => ({
+            const mockTask = {
+                validate: jest.fn().mockResolvedValue(undefined),
                 updateTask: jest.fn().mockRejectedValue(dbError),
-            }));
+            };
+
+            TaskService.checkTask.mockReturnValue(mockTask);
 
             await TaskController.updateTask(req, res);
 
