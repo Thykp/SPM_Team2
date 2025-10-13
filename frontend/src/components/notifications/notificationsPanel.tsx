@@ -142,7 +142,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const hasUnread = notifications.some((n) => !n.read || !n.user_set_read);
+  const hasUnread = notifications.some((n) => !n.read || n.user_set_read);
 
   return (
     <div className="relative" ref={panelRef}>
