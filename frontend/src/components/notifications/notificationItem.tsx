@@ -20,6 +20,12 @@ export function NotificationItem({ notif, onDelete, onToggleUserSetRead }: Props
   const { id, read, user_set_read } = notif;
 
   // ---------------- RED DOT LOGIC ----------------
+  const redDotClass = !read && !user_set_read
+    ? "bg-red-500 animate-pulse"
+    : read && user_set_read
+    ? "bg-gray-400"
+    :  "bg-red-500";
+
   return (
     <div className="px-3 py-2 text-sm border-b hover:bg-gray-100 flex items-start">
       {/* Red dot / toggle */}
