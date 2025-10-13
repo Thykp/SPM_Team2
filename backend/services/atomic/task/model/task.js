@@ -200,14 +200,15 @@ class Task {
     }      
 
     constructor(data){
-        this.id = data.id || null;
-        this.parent_task_id = data.parent_task_id || null;
-        this.project_id = data.project_id || null;
-        this.title = data.title || null;
-        this.deadline = data.deadline || null;
-        this.description = data.description || null;
-        this.status = Task.normalizeStatus(data.status) || null;
-        this.participants = data.participants || [];
+    this.id = data.id || null;
+    this.parent_task_id = data.parent_task_id || null;
+    this.project_id = data.project_id || null;
+    this.title = data.title || null;
+    this.deadline = data.deadline || null;
+    this.description = data.description || null;
+    this.status = Task.normalizeStatus(data.status) || null;
+    this.priority = data.priority;
+    this.participants = data.participants || [];
     }
 
     async validate(){
@@ -230,6 +231,10 @@ class Task {
             errors.push("Status is required");
         } else if (!validStatuses.includes(this.status)) {
             errors.push("Status must be one of: Ongoing, Under Review, Completed, Overdue, Unassigned");
+        }
+
+        if (typeof this.priority !== "number" || this.priority < 1 || this.priority > 10) {
+            errors.push("Priority is required and must be a number from 1 to 10");
         }
 
         if (!this.participants || this.participants.length === 0) {
@@ -278,7 +283,8 @@ class Task {
             title: this.title, 
             deadline: this.deadline, 
             description: this.description, 
-            status: this.status
+            status: this.status,
+            priority: this.priority
         })
         .select()
         .single()
@@ -304,7 +310,8 @@ class Task {
                 title: this.title, 
                 deadline: this.deadline, 
                 description: this.description, 
-                status: this.status
+                status: this.status,
+                priority: this.priority
             })
             .eq('id', this.id)
         

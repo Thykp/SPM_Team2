@@ -1,5 +1,6 @@
 package com.spm.spm.dto;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -14,6 +15,9 @@ public class NewProjectRequest {
     @JsonProperty("ownerId")
     private UUID ownerId;
 
+    @JsonProperty("collaborators")
+    private List<UUID> collaborators;
+
     // Constructors
     public NewProjectRequest() {}
 
@@ -21,6 +25,8 @@ public class NewProjectRequest {
         this.title = title;
         this.description = description;
         this.ownerId = ownerId;
+        this.collaborators = collaborators;
+
     }
 
     // Getters and Setters
@@ -46,5 +52,13 @@ public class NewProjectRequest {
 
     public void setOwnerId(UUID ownerId) {
         this.ownerId = ownerId;
+    }
+    
+    public List<UUID> getCollaborators() {
+        return collaborators; 
+    }
+
+    public void setCollaborators(List<UUID> collaborators) {
+        this.collaborators = collaborators; 
     }
 }

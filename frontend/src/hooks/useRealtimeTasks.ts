@@ -56,30 +56,51 @@ export const useRealtimeTasks = ({
     const removeTaskFromState = (taskId: string) => {
       setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
     };
+
+    const addTaskToState = (newTask: Task) => {
+      setTasks(prevTasks => {
+        // Check if task already exists to avoid duplicates
+        const taskExists = prevTasks.some(task => task.id === newTask.id);
+        if (taskExists) return prevTasks;
+        
+        return [...prevTasks, newTask];
+      });
+    };
     
     const channel = supabase
       .channel(`project-${projectId}-tasks`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'task',
+        table: 'revamped_task',
       }, (payload) => {
         const { eventType, new: newRecord, old: oldRecord } = payload;
 
         if (eventType === 'UPDATE' && newRecord) {
           const updatedTask = transformTaskFromDb(newRecord);
-          updateTaskInState(updatedTask);
-          callbacksRef.current.onTaskUpdate?.(updatedTask);
+          // Only process tasks that belong to the current project
+          if (updatedTask.project_id === projectId) {
+            updateTaskInState(updatedTask);
+            callbacksRef.current.onTaskUpdate?.(updatedTask);
+          }
         }
 
         if (eventType === 'INSERT' && newRecord) {
           const newTask = transformTaskFromDb(newRecord);
-          callbacksRef.current.onTaskInsert?.(newTask);
+          // Only process tasks that belong to the current project
+          if (newTask.project_id === projectId) {
+            addTaskToState(newTask);
+            callbacksRef.current.onTaskInsert?.(newTask);
+          }
         }
 
         if (eventType === 'DELETE' && oldRecord) {
-          removeTaskFromState(oldRecord.id);
-          callbacksRef.current.onTaskDelete?.(oldRecord.id);
+          // For delete events, we can't check project_id from the transformed task
+          // since the record is deleted, but we can check it from oldRecord
+          if (oldRecord.project_id === projectId) {
+            removeTaskFromState(oldRecord.id);
+            callbacksRef.current.onTaskDelete?.(oldRecord.id);
+          }
         }
       })
       .subscribe((status) => {
@@ -98,12 +119,16 @@ export const useRealtimeTasks = ({
 const transformTaskFromDb = (dbRecord: any): Task => {
   return {
     id: dbRecord.id,
-    title: dbRecord.title,
+    title: dbRecord.title || '',
     description: dbRecord.description || '',
-    status: dbRecord.status,
-    deadline: dbRecord.deadline,
-    owner: dbRecord.owner,
-    collaborators: dbRecord.collaborators || [],
-    parent: dbRecord.parent,
+    status: dbRecord.status || 'Unassigned',
+    deadline: dbRecord.deadline || new Date().toISOString(),
+    owner: dbRecord.owner || null,
+    collaborators: Array.isArray(dbRecord.collaborators) ? dbRecord.collaborators : [],
+    parent: dbRecord.parent || null,
+    project_id: dbRecord.project_id || null,
+    ownerName: dbRecord.ownerName || undefined,
+    ownerDepartment: dbRecord.ownerDepartment || undefined,
+    priority: Number(dbRecord.priority) || 5, // Ensure priority is always a number
   };
 };

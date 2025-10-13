@@ -2,6 +2,7 @@ const { supabase } = require("../db/supabase");
 
 const profileTable = "revamped_profiles";
 const deptTable = "revamped_departments";
+const teamTable = "revamped_teams";
 
 // Columns: id, display_name, role, department_id, team_id
 // Sorted by display_name
@@ -23,10 +24,9 @@ async function getAllUsers() {
   return data || [];
 }
 
-// filter staff by team_id OR department_id (role defaults to "staff")
- // Exactly one of team_id or department_id should be provided
- // If both are provided, team_id takes precedence
-async function getStaffByScope({ team_id, department_id, role = "staff" }) {
+// Filter staff by team_id OR department_id (role defaults to "Staff")
+// If both are provided, team_id takes precedence
+async function getStaffByScope({ team_id, department_id, role = "Staff" }) {
   let q = supabase
     .from(profileTable)
     .select("id, display_name, role, team_id, department_id")

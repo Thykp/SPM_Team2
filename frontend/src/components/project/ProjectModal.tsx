@@ -14,6 +14,7 @@ interface ProjectModalProps {
   isCreating: boolean;
   error: string | null;
   currentUserId?: string;
+  
 }
 
 // Inline user type (replaces LiteUser)
@@ -45,13 +46,18 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
 
   // Load users for collaborator selection
   useEffect(() => {
+    console.log('🔍 ProjectModal show prop:', show);
     const loadUsers = async () => {
       try {
         setLoadingUsers(true);
-        const allUsers = (await Profile.getAllUsers()) as UserRow[];
+        const response = await Profile.getAllUsers();
+        const allUsers = Array.isArray(response) ? response : (response as any).data || [];
+        console.log('🔍 Users passed to CollaboratorPicker:', allUsers);
         setUsers(allUsers);
+
       } catch (err) {
         console.error("Error loading users:", err);
+        setUsers([]); 
       } finally {
         setLoadingUsers(false);
       }
@@ -71,9 +77,9 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
     const projectData: NewProjectRequest = {
       title: newProject.title,
       description: newProject.description,
-      owner: currentUserId,
+      ownerId: currentUserId,
       collaborators: selectedCollaborators,
-      tasklist: [],
+      // tasklist: [],
     };
 
     await onCreateProject(projectData);

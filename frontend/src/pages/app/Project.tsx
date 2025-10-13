@@ -16,9 +16,9 @@ interface Project {
   id: string;
   title: string;
   description: string;
-  startDate: string;
+  startDate: string | null;
   members: string[];
-    owner?: string;
+  owner?: string;
 }
 
 // User type for API response
@@ -30,7 +30,19 @@ type UserRow = {
 };
 
 // Helper functions to reduce nesting
-const getUserDisplayName = (userId: string, users: UserRow[]): string => {
+const getUserDisplayName = (userId: string | null, users: UserRow[]): string => {
+
+  if (!Array.isArray(users)) {
+    console.error("Invalid users array:", users); // Debugging log
+    return "Unknown User";
+  }
+
+  console.log("User ID:", userId); // Debugging log
+  console.log("All Users:", users);
+
+  if (!userId) {
+    return "Unknown User";
+  }
   const foundUser = users.find(u => u.id === userId);
   if (foundUser) {
     return foundUser.display_name || `${foundUser.role} (${userId.slice(0, 8)}...)`;
@@ -66,28 +78,36 @@ const Projects: React.FC = () => {
                 // Load users first for collaborator name mapping
                 let allUsers: UserRow[] = [];
                 try {
-                    allUsers = await Profile.getAllUsers();
+                    const response = await Profile.getAllUsers();
+                    // Handle both direct array and { data: array } formats
+                    allUsers = Array.isArray(response) ? response : (response as any).data || [];
+                    console.log("All Users:", allUsers);
                 } catch (userErr) {
                     console.error('Error loading users for name mapping:', userErr);
                 }
                 
                 // Use the new endpoint to get projects for the specific user
                 const apiProjects = await ProjectAPI.getByUser(user.id);
+                console.log("API Projects:", apiProjects);
                 
                 // Transform API response to component format
                 const transformedProjects: Project[] = apiProjects.map((apiProject: ProjectDto) => {
+                    console.log("Transforming Project:", apiProject);
+                    console.log("All Users During Transformation:", allUsers);
+
                     // Convert collaborator UUIDs to display names
                     const collaboratorUUIDs = apiProject.collaborators || [];
                     const collaboratorNames = getCollaboratorNames(collaboratorUUIDs, allUsers);
 
                     // Get owner display name
                     const ownerName = getUserDisplayName(apiProject.owner, allUsers);
+                    console.log("Owner Name Debug:", { ownerId: apiProject.owner, allUsers });
                     
                     return {
                         id: apiProject.id,
                         title: apiProject.title || 'Untitled Project',
                         description: apiProject.description || 'No description available',
-                        startDate: apiProject.createdat || new Date().toISOString(),
+                        startDate: apiProject.created_at || new Date().toISOString(),
                         members: collaboratorNames,
                         owner: ownerName
                     };
@@ -151,7 +171,7 @@ const Projects: React.FC = () => {
                 id: createdProject.id,
                 title: createdProject.title || projectData.title,
                 description: createdProject.description || projectData.description,
-                startDate: createdProject.createdat || new Date().toISOString(),
+                startDate: createdProject.created_at || new Date().toISOString(),
                 members: collaboratorNames,
                 owner: ownerName
             };
@@ -174,6 +194,18 @@ const Projects: React.FC = () => {
     setShowModal(false);
     setError(null);
     setSuccessMessage(null);
+  };
+
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setProjects(prev => 
+      prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+    );
+  };
+
+  const handleProjectDelete = (projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setSuccessMessage("Project deleted successfully!");
+    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   if (loading) {
@@ -214,6 +246,8 @@ const Projects: React.FC = () => {
       <ProjectGrid
         projects={filteredProjects}
         onCreateProject={() => setShowModal(true)}
+        onProjectUpdate={handleProjectUpdate}
+        onProjectDelete={handleProjectDelete}
       />
 
       <ProjectModal

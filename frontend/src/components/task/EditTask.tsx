@@ -25,10 +25,11 @@ interface LocalTask {
   description: string;
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
   collaborators: string[];
-  owner: string;
+  owner: string | null;
   ownerName?: string;
   ownerDepartment?: string;
   parent?: string | null;
+  priority?: number;
   isEditingOwner?: boolean;
 }
 
@@ -82,6 +83,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose, onTaskUpdated }) =
         collaborators: task.collaborators,
         owner: task.owner,
         parent: task.parent,
+        priority: task.priority || 5, // Default priority if not set
+        project_id: null, // Add required field
       });
 
       console.log("Task successfully updated:", updatedTask);

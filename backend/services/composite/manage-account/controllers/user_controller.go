@@ -7,12 +7,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var users = []map[string]interface{}{
-	{"id": 1, "name": "Alice"},
-	{"id": 2, "name": "Bob"},
-}
+// Function variables for testability
+var GetAllUsersFunc = profile_service.GetAllUsers
+var GetUserDetailsFunc = profile_service.GetUserDetails
+
+// var users = []map[string]interface{}{
+// 	{"id": 1, "name": "Alice"},
+// 	{"id": 2, "name": "Bob"},
+// }
 
 func GetUsers(c *gin.Context) {
+
+	users, err := GetAllUsersFunc()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": users})
 }
 
@@ -20,10 +31,11 @@ func GetUserByID(c *gin.Context) {
 	var receivedUserArray []profile_service.User
 
 	if err := c.BindJSON(&receivedUserArray); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		return
 	}
 
-	response := profile_service.GetUserDetails(receivedUserArray)
+	response := GetUserDetailsFunc(receivedUserArray)
 	// if err != nil {
 	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	// 	return
@@ -32,19 +44,19 @@ func GetUserByID(c *gin.Context) {
 }
 
 // CreateUser handles POST /api/users
-func CreateUser(c *gin.Context) {
-	var newUser struct {
-		Name string `json:"name" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&newUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	id := len(users) + 1
-	user := map[string]interface{}{"id": id, "name": newUser.Name}
-	users = append(users, user)
-	c.JSON(http.StatusCreated, gin.H{"data": user})
-}
+// func CreateUser(c *gin.Context) {
+// 	var newUser struct {
+// 		Name string `json:"name" binding:"required"`
+// 	}
+// 	if err := c.ShouldBindJSON(&newUser); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// 	id := len(users) + 1
+// 	user := map[string]interface{}{"id": id, "name": newUser.Name}
+// 	users = append(users, user)
+// 	c.JSON(http.StatusCreated, gin.H{"data": user})
+// }
 
 // UpdateUser handles PUT /api/users/:id
 // func UpdateUser(c *gin.Context) {

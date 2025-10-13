@@ -31,9 +31,9 @@ router.get("/dropdown", async (_req, res) => {
   }
 });
 
-// staff filter (revamped):
-// GET /user/staff?team_id=<uuid>&role=staff
-// GET /user/staff?department_id=<uuid>&role=staff
+// Staff filter (revamped):
+// GET /user/staff?team_id=<uuid>&role=Staff
+// GET /user/staff?department_id=<uuid>&role=Staff
 // If both are present, team_id wins.
 router.get("/staff", async (req, res) => {
   try {
@@ -41,7 +41,7 @@ router.get("/staff", async (req, res) => {
     const rows = await user.getStaffByScope({
       team_id: team_id || null,
       department_id: department_id || null,
-      role: role || "staff",
+      role: role || "Staff",
     });
     res.status(200).json(rows);
   } catch (e) {

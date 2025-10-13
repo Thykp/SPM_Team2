@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.spm.spm.dto.ChangeOwnerRequest;
+import com.spm.spm.dto.CollaboratorDto;
 import com.spm.spm.dto.NewProjectRequest;
 import com.spm.spm.dto.ProjectDto;
 import com.spm.spm.dto.UpdateCollaboratorsRequest;
@@ -57,10 +58,20 @@ public class ProjectService {
 
     /* Get all projects for a user (owner or collaborator) */
     public List<ProjectDto> getProjectsByUser(UUID userId) {
-        ResponseEntity<ProjectDto[]> resp =
-                restTemplate.getForEntity(baseUrl + "/project/user/" + userId.toString(), ProjectDto[].class);
-        ProjectDto[] body = resp.getBody();
-        return body == null ? List.of() : Arrays.asList(body);
+        System.out.println("[ProjectService] Fetching projects for user: " + userId);
+
+        // Fetch the projects for the user (collaborators are already UUIDs)
+        ResponseEntity<ProjectDto[]> resp = restTemplate.getForEntity(
+                baseUrl + "/project/user/" + userId.toString(), ProjectDto[].class);
+        ProjectDto[] projects = resp.getBody();
+
+        if (projects == null || projects.length == 0) {
+            System.out.println("[ProjectService] No projects found for user: " + userId);
+            return List.of(); // Return an empty list if no projects are found
+        }
+
+        System.out.println("[ProjectService] Projects fetched successfully for user: " + userId);
+        return Arrays.asList(projects);
     }
 
     /* Create a new project */
@@ -78,9 +89,18 @@ public class ProjectService {
 
     /* Get project by ID (with collaborators and owner) */
     public ProjectDto getProjectById(UUID projectId) {
+        // Fetch the project (collaborators are already UUIDs)
         ResponseEntity<ProjectDto> resp =
                 restTemplate.getForEntity(baseUrl + "/project/" + projectId.toString(), ProjectDto.class);
-        return resp.getBody();
+        ProjectDto project = resp.getBody();
+
+        if (project == null) {
+            System.out.println("[ProjectService] Project not found: " + projectId);
+            return null;
+        }
+
+        System.out.println("[ProjectService] Project fetched successfully: " + project);
+        return project;
     }
 
     /* Update project details (title and/or description) */

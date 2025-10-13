@@ -28,19 +28,37 @@ export type TaskRow = {
   status?: string | null;
   project_id?: string | null;
   description?: string | null;
-  owner_id?: string | null;
-  participants?: string[] | null;
+  owner_id?: string | null;      // returned by /task/users (backend aggregation)
+  participants?: string[] | null; // returned by /task/users (backend aggregation)
 };
 
+// Task payload for create/update (atomic service)
+export type TaskPostRequestDto = {
+  title: string;
+  description: string;
+  status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
+  owner: string | null;
+  collaborators: string[];
+  deadline: string;
+  project_id?: string | null;
+  parent?: string | null;
+  priority: number; // 1-10
+};
+
+// Canonical Task shape returned by most endpoints
 export type TaskDTO = {
   id: string;
   title: string;
   description: string;
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
-  owner: string;
+  owner: string | null;
   collaborators: string[];
   deadline: string;
   parent?: string | null;
+  project_id?: string | null;
+  ownerName?: string;
+  ownerDepartment?: string;
+  priority?: number;
 };
 
 export type ProjectDto = {
@@ -57,7 +75,7 @@ export type NewProjectRequest = {
   title: string;
   description: string;
   tasklist?: string[];
-  owner: string;
+  owner: string; // keep as "owner" to align with existing API
   collaborators?: string[];
 };
 
@@ -164,6 +182,12 @@ export const Project = {
     const { data } = await api.put<{ success: boolean; project: any }>(url, updates);
     return data;
   },
+
+  delete: async (projectId: string): Promise<{ success: boolean; message?: string }> => {
+    const url = `${KONG_BASE_URL}/organise-project/projects/${projectId}`;
+    const { data } = await api.delete<{ success: boolean; message?: string }>(url);
+    return data;
+  },
 };
 
 export const TaskApi = {
@@ -197,13 +221,15 @@ export const TaskApi = {
     return data;
   },
 
-  createTask: async (newTask: Omit<TaskDTO, "id">): Promise<TaskDTO> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task`;
+  // CREATE via atomic service
+  createTask: async (newTask: TaskPostRequestDto): Promise<TaskDTO> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/new`;
     const { data } = await api.post<TaskDTO>(url, newTask);
     return data;
   },
 
-  updateTask: async (taskId: string, updates: Partial<TaskDTO>): Promise<TaskDTO> => {
+  // UPDATE via atomic service
+  updateTask: async (taskId: string, updates: TaskPostRequestDto): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
     const { data } = await api.put<TaskDTO>(url, updates);
     return data;

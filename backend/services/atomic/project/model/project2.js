@@ -66,40 +66,70 @@ module.exports = {
       throw collabError;
     }
 
+    // Map collaborators to an array of UUIDs
+    const collaboratorIds = collaborators?.map(c => c.profile_id) || [];
+
     return {
-      ...project,
-      collaborators: collaborators || [],
-      owner: collaborators?.find(c => c.is_owner)?.profile_id || null,
+        ...project,
+        collaborators: collaboratorIds, // Return only UUIDs
+        owner: collaborators?.find(c => c.is_owner)?.profile_id || null, // Keep the owner as UUID
     };
   },
 
   // Get projects by user (owner or collaborator)
   async getProjectsByUser(userUuid) {
+    // Fetch all project IDs where the user is a participant
     const { data: participantProjects, error: participantError } = await supabase
-      .from(PARTICIPANT_TABLE)
-      .select("project_id")
-      .eq("profile_id", userUuid);
-    
+        .from(PARTICIPANT_TABLE)
+        .select("project_id")
+        .eq("profile_id", userUuid);
+
     if (participantError) {
-      throw new Error(participantError.message);
+        throw new Error(participantError.message);
     }
 
     if (!participantProjects || participantProjects.length === 0) {
-      return [];
+        return [];
     }
 
     const projectIds = participantProjects.map((row) => row.project_id);
 
+    // Fetch all projects for the user
     const { data: projects, error: projectError } = await supabase
-      .from(PROJECT_TABLE)
-      .select("*")
-      .in("id", projectIds);
-    
+        .from(PROJECT_TABLE)
+        .select("*")
+        .in("id", projectIds);
+
     if (projectError) {
-      throw new Error(projectError.message);
+        throw new Error(projectError.message);
     }
 
-    return projects || [];
+    // Enrich each project with collaborators and owner
+    const enrichedProjects = await Promise.all(
+        projects.map(async (project) => {
+            // Fetch collaborators
+            const { data: collaborators, error: collabError } = await supabase
+                .from(PARTICIPANT_TABLE)
+                .select("profile_id, is_owner")
+                .eq("project_id", project.id);
+
+            if (collabError) {
+                console.error("Error fetching collaborators for project:", project.id, collabError);
+                throw collabError;
+            }
+
+            const collaboratorIds = collaborators?.map((c) => c.profile_id) || [];
+            const owner = collaborators?.find((c) => c.is_owner)?.profile_id || null;
+
+            return {
+                ...project,
+                collaborators: collaboratorIds,
+                owner: owner,
+            };
+        })
+    );
+
+    return enrichedProjects;
   },
 
   // Get all collaborators for a project
@@ -117,14 +147,34 @@ module.exports = {
     return data || [];
   },
 
+
+  // Get owner for a project
+  async getProjectOwner(projectId) {
+    const { data, error } = await supabase
+      .from(PARTICIPANT_TABLE)
+      .select("profile_id, is_owner, created_at")
+      .eq("project_id", projectId)
+      .eq("is_owner", true)
+      .single();
+
+    if (error) {
+      console.error("Error fetching project owner:", error);
+      throw error;
+    }
+
+    return data;
+  },
+
   // Add a new project with owner
-  async addNewProject(project, ownerId) {
+  async addNewProject(project, ownerId, collaborators = []) {
     // Validate input
     if (!ownerId) {
       throw new Error("Owner ID is required");
     }
 
     const now = new Date().toISOString();
+
+    console.log("Collaborators received:", collaborators);
 
     // Insert project
     const { data, error } = await supabase
@@ -144,17 +194,29 @@ module.exports = {
     }
 
     // Add owner to participants table
-    const { error: participantError } = await supabase
-      .from(PARTICIPANT_TABLE)
-      .insert({
+    const participants = [
+      {
         project_id: data.id,
         profile_id: ownerId,
         is_owner: true,
         created_at: now,
-      });
+      },
+      ...collaborators.map((collaboratorId) => ({
+        project_id: data.id,
+        profile_id: collaboratorId,
+        is_owner: false,
+        created_at: now,
+      })),
+    ];
+
+    console.log("Participants to insert:", participants);
+
+    const { error: participantError } = await supabase
+      .from(PARTICIPANT_TABLE)
+      .insert(participants);
 
     if (participantError) {
-      console.error("Error adding owner to participants:", participantError);
+      console.error("Error adding participants to PARTICIPANT_TABLE:", participantError);
       // Rollback: delete the project we just created
       await supabase
         .from(PROJECT_TABLE)
@@ -163,17 +225,20 @@ module.exports = {
       throw participantError;
     }
 
+    // Transform participants into owner and collaborators
+    const owner = participants.find((p) => p.is_owner)?.profile_id;
+    const collaboratorIds = participants
+      .filter((p) => !p.is_owner)
+      .map((p) => p.profile_id);
+
     return {
-      success: true,
-      message: "Project created successfully",
-      data: {
-        id: data.id,
-        title: data.title,
-        description: data.description,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-      },
-      timestamp: now,
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      owner: owner,
+      collaborators: collaboratorIds,
     };
   },
 

@@ -9,10 +9,11 @@ type TaskCardProps = {
 
 export function TaskCard({ tasks }: TaskCardProps) {
   const prioritizedTasks = useMemo(() => {
-    const overdueTasks = tasks.filter(task => task.status === "Overdue");
-    const otherTasks = tasks.filter(task => task.status !== "Overdue");
+    const filteredTasks = tasks.filter(task => task.parent == null);
+    const overdueTasks = filteredTasks.filter(task => task.status === "Overdue");
+    const otherTasks = filteredTasks.filter(task => task.status !== "Overdue");
     return [...overdueTasks, ...otherTasks];
-  }, [tasks]);
+  }, [tasks]);  
 
   return (
     <Card className="max-w-md">

@@ -15,6 +15,7 @@ const ProjectDetail: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [ownerName, setOwnerName] = useState<string | null>(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0); // Add refresh trigger
 
     // Handler for when a new task is created
     const handleTaskCreated = async (newTask: TaskDTO) => {
@@ -119,24 +120,27 @@ const ProjectDetail: React.FC = () => {
                 
                 // Fetch owner information
                 try {
-                    const allUsers = await Profile.getAllUsers();
-                    const ownerUser = allUsers.find(u => u.id === foundProject.owner);
+                    const response = await Profile.getAllUsers();
+                    const allUsers = Array.isArray(response) ? response : (response as any).data || [];
+
+                    const ownerUser = allUsers.find((u: { id: string; display_name: string; role: string }) => u.id === foundProject.owner);
+                    console.log('🔍 Found owner user:', ownerUser);
+
                     if (ownerUser) {
+                        console.log('🔍 Owner display_name:', ownerUser.display_name);
+                        console.log('🔍 Owner role:', ownerUser.role);
+
                         setOwnerName(ownerUser.display_name || `${ownerUser.role} (${foundProject.owner.slice(0, 8)}...)`);
                     } else {
+                        console.warn('⚠️ Owner user NOT FOUND in users list');
+
                         setOwnerName(`User ${foundProject.owner.slice(0, 8)}...`);
                     }
                 } catch {
                     setOwnerName(`User ${foundProject.owner.slice(0, 8)}...`);
                 }
                 
-                // Fetch individual tasks based on project's tasklist only
-                if (foundProject.tasklist && foundProject.tasklist.length > 0) {
-                    const projectTasks = await fetchTasksByIds(foundProject.tasklist);
-                    setTasks(projectTasks);
-                } else {
-                    setTasks([]);
-                }
+                setError(null);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to fetch project data');
             } finally {
@@ -193,9 +197,9 @@ const ProjectDetail: React.FC = () => {
             />
             
             <KanbanBoard 
-                tasks={tasks} 
-                projectId={projectId!} // Pass projectId for realtime filtering
-                onTaskUpdate={handleTaskUpdate} 
+                projectId={projectId!} // Pass projectId for filtering tasks
+                onTaskUpdate={handleTaskUpdate}
+                refreshTrigger={refreshTrigger} // Pass refresh trigger
             />
         </div>
     );
