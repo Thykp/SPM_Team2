@@ -1,0 +1,92 @@
+{# template.njk - Task Report PDF #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Personal Task Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none; }
+    }
+    .kpi-tile { min-width: 120px; }
+    .bar { height: 16px; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-white text-gray-900 p-8">
+  <header class="mb-8">
+    <h1 class="text-2xl font-bold mb-2">Personal Task Report</h1>
+    <div class="text-sm text-gray-600">User ID: <span class="font-mono">{{ userId }}</span></div>
+    <div class="text-sm text-gray-600">Generated: {{ timestamp }}</div>
+  </header>
+
+  <section class="mb-8">
+    <div class="flex flex-wrap gap-4">
+      {% for status in ["Under Review", "Ongoing", "Completed", "Overdue", "Unassigned"] %}
+        <div class="kpi-tile bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col items-center">
+          <div class="text-lg font-semibold">{{ status }}</div>
+          <div class="text-2xl font-bold">{{ kpis[status] }}</div>
+        </div>
+      {% endfor %}
+      <div class="kpi-tile bg-gray-100 border border-gray-300 rounded-lg p-4 flex flex-col items-center">
+        <div class="text-lg font-semibold">Total</div>
+        <div class="text-2xl font-bold">{{ kpis.Total }}</div>
+      </div>
+    </div>
+  </section>
+
+  {# Optional: Bar chart placeholder #}
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold mb-2">Task Status Distribution</h2>
+    <div class="flex gap-2 items-end">
+      {% for status in ["Under Review", "Ongoing", "Completed", "Overdue", "Unassigned"] %}
+        <div class="flex flex-col items-center">
+          <div class="bar bg-blue-400 w-8 mb-1" style="height: {{ (kpis[status] / (maxVal or 1)) * 80 }}px"></div>
+          <div class="text-xs text-gray-600">{{ status }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% for role in ["Owner", "Collaborator"] %}
+    <section class="mb-8">
+      <h2 class="text-xl font-bold mb-4">Tasks as {{ role }}</h2>
+      {% set tasks = byRole[role] %}
+      {% if tasks and tasks.length > 0 %}
+        <table class="min-w-full border border-gray-300 rounded-lg overflow-hidden mb-2">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-3 py-2 text-left">Title</th>
+              <th class="px-3 py-2 text-left">Project</th>
+              <th class="px-3 py-2 text-left">Due Date</th>
+              <th class="px-3 py-2 text-left">Status</th>
+              <th class="px-3 py-2 text-left">Priority</th>
+              <th class="px-3 py-2 text-left">Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tasks %}
+              <tr class="border-t">
+                <td class="px-3 py-2">{{ t.title }}</td>
+                <td class="px-3 py-2">{% if t.project %}{{ t.project }}{% else %}-{% endif %}</td>
+                <td class="px-3 py-2">{% if t.dueDate %}{{ t.dueDate }}{% else %}-{% endif %}</td>
+                <td class="px-3 py-2">{{ t.status }}</td>
+                <td class="px-3 py-2">{{ t.priority }}</td>
+                <td class="px-3 py-2">{{ t.role }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="text-xs text-gray-500 mb-2">Sorted by status, due date, priority</div>
+      {% else %}
+        <div class="text-gray-500 italic">No tasks as {{ role }}.</div>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <footer class="mt-8 text-xs text-gray-500 border-t pt-4">
+    Legend: If you’re both owner and collaborator, the task is counted once under Owner.
+  </footer>
+</body>
+</html>
