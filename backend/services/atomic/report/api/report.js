@@ -14,6 +14,10 @@ router.get('/health', (req, res) => {
 router.post('/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
+    const startDate = req.body["startDate"];
+    const endDate = req.body["endDate"];
+
+
     // Fetch and aggregate tasks
     const { ownerTasks, collaboratorTasks } = await fetchTasksForUser(userId);
     const reportData = aggregateTask.aggregate({ ownerTasks, collaboratorTasks });

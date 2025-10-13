@@ -1,10 +1,10 @@
 const express = require('express');
 
-const task = require("./reports")
+const report = require("./report")
 
 const router = express.Router();
 
-router.use('/report', task)
+router.use('/report', report)
 
 module.exports = router;
 
