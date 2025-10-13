@@ -12,8 +12,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
-import { Project, Profile, type ProjectDto, type Task, type UpdateProjectRequest } from '@/lib/api';
+// import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
+import { CollaboratorPicker } from '@/components/CollaboratorPicker';
+import { Project, Profile, type ProjectDto, type TaskDTO, type UpdateProjectRequest } from '@/lib/api';
 import CreateTask from '@/components/task/CreateTask';
 
 // Define LiteUser type based on the API response structure
@@ -27,7 +28,7 @@ type LiteUser = {
 interface ProjectHeaderProps {
     project: ProjectDto;
     userId?: string;
-    onTaskCreated: (task: Task) => void;
+    onTaskCreated: (task: TaskDTO) => void;
     onProjectUpdate?: (updatedProject: ProjectDto) => void;
 }
 
@@ -203,13 +204,12 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                             />
                         </div>
                         <CollaboratorPicker
-                            users={users}
-                            userSearchTerm={userSearchTerm}
-                            onUserSearchChange={setUserSearchTerm}
-                            selectedCollaborators={editForm.collaborators}
-                            onToggleCollaborator={handleToggleCollaborator}
-                            loadingUsers={loadingUsers}
-                            currentUserId={project.owner}
+                            mode="project"
+                            projectId={project.id}
+                            initialSelected={editForm.collaborators}
+                            onSaved={(ids) =>
+                                setEditForm(prev => ({ ...prev, collaborators: ids }))
+                            }
                         />
                     </div>
                     <DialogFooter>

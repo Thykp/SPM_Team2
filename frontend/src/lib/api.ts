@@ -1,15 +1,38 @@
 import axios from "axios";
 
 const KONG_BASE_URL = import.meta.env.VITE_KONG_BASE_URL || "http://localhost:8000";
+const PROFILE_API = import.meta.env.VITE_PROFILE_API || `${KONG_BASE_URL}/profile`;
+const TASK_API    = import.meta.env.VITE_TASK_API    || `${KONG_BASE_URL}/task`;
 
 const api = axios.create({
   baseURL: KONG_BASE_URL,
   headers: { "Content-Type": "application/json" },
   timeout: 15000,
+  withCredentials: true,
 });
 
 // ----- Types -----
-export type Task = {
+// Staff & Task fetchers for Manager View
+export type Staff = {
+  id: string;
+  display_name: string | null;
+  role: string | null;
+  team_id: string | null;
+  department_id: string | null;
+};
+
+export type TaskRow = {
+  id: string;
+  title: string | null;
+  deadline: string | null;
+  status?: string | null;
+  project_id?: string | null;
+  description?: string | null;
+  owner_id?: string | null;
+  participants?: string[] | null;
+};
+
+export type TaskDTO = {
   id: string;
   title: string;
   description: string;
@@ -47,6 +70,36 @@ export type Profile = {
 
 export type ProfileRequestDetailsDto = {
   id:string;
+}
+
+// --- Task participants ---
+export type TaskParticipant = { profile_id: string; is_owner: boolean };
+
+export async function getTaskWithParticipants(
+  taskId: string
+): Promise<{ id: string; participants?: TaskParticipant[] } & Record<string, any>> {
+  const res = await fetch(`${TASK_API}/${taskId}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(`getTaskWithParticipants failed: ${res.status}`);
+  return res.json();
+}
+
+export async function updateTaskParticipants(
+  taskId: string,
+  participants: TaskParticipant[]
+): Promise<{ message: string }> {
+  const res = await fetch(`${TASK_API}/${taskId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ participants }),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`updateTaskParticipants failed: ${res.status} ${txt}`);
+  }
+  return res.json();
 }
 
 // ----- Services -----
@@ -113,46 +166,46 @@ export const Project = {
   },
 };
 
-export const Task = {
-  getAllTask: async (): Promise<Task[]> => {
+export const TaskApi = {
+  getAllTask: async (): Promise<TaskDTO[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/`;
-    const { data } = await api.get<Task[]>(url);
+    const { data } = await api.get<TaskDTO[]>(url);
     return data;
   },
 
-  getTasksByUserId: async (userId: string): Promise<Task[]> => {
+  getTasksByUserId: async (userId: string): Promise<TaskDTO[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/${userId}`;
-    const { data } = await api.get<Task[]>(url);
+    const { data } = await api.get<TaskDTO[]>(url);
     return data;
   },
 
-  getTasksById: async (taskId: string): Promise<Task> => {
+  getTasksById: async (taskId: string): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
-    const { data } = await api.get<Task>(url);
+    const { data } = await api.get<TaskDTO>(url);
     return data;
   },
 
-  getTaskByIdWithOwner: async (taskId: string): Promise<Task & { ownerName: string; ownerDepartment: string }> => {
+  getTaskByIdWithOwner: async (taskId: string): Promise<TaskDTO & { ownerName: string; ownerDepartment: string }> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
-    const { data } = await api.get<Task & { ownerName: string; ownerDepartment: string }>(url);
+    const { data } = await api.get<TaskDTO & { ownerName: string; ownerDepartment: string }>(url);
     return data;
   },
 
-  getSubTaskOfTask: async (taskId: string): Promise<Task[]> => {
+  getSubTaskOfTask: async (taskId: string): Promise<TaskDTO[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/subtask/${taskId}`;
-    const { data } = await api.get<Task[]>(url);
+    const { data } = await api.get<TaskDTO[]>(url);
     return data;
   },
 
-  createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task`; // might be "new" instead of "task", TBC
-    const { data } = await api.post<Task>(url, newTask);
+  createTask: async (newTask: Omit<TaskDTO, "id">): Promise<TaskDTO> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task`;
+    const { data } = await api.post<TaskDTO>(url, newTask);
     return data;
   },
 
-  updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
+  updateTask: async (taskId: string, updates: Partial<TaskDTO>): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
-    const { data } = await api.put<Task>(url, updates);
+    const { data } = await api.put<TaskDTO>(url, updates);
     return data;
   },
 
@@ -161,5 +214,33 @@ export const Task = {
     await api.delete(url);
   },
 };
+
+// Fetch staff under scope (team or department)
+export async function fetchStaffByScope(params: {
+  team_id?: string;
+  department_id?: string;
+  role?: string; // default 'staff'
+}): Promise<Staff[]> {
+  const url = new URL(`${PROFILE_API}/user/staff`);
+  if (params.team_id) url.searchParams.set("team_id", params.team_id);
+  if (params.department_id) url.searchParams.set("department_id", params.department_id);
+  url.searchParams.set("role", params.role ?? "staff");
+
+  const res = await fetch(url.toString(), { credentials: "include" });
+  if (!res.ok) throw new Error(`fetchStaffByScope failed: ${res.status}`);
+  return res.json();
+}
+
+// Fetch tasks for many users (owner or collaborator via revamped_task_participant)
+export async function fetchTasksByUsers(ids: string[]): Promise<TaskRow[]> {
+  const res = await fetch(`${TASK_API}/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error(`fetchTasksByUsers failed: ${res.status}`);
+  return res.json();
+}
 
 export default api;

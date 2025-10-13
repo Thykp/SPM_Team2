@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
-import { type Task, Task as TaskService } from '@/lib/api';
+import { type TaskDTO, TaskApi as TaskService } from '@/lib/api';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import KanbanColumn from './KanbanColumn';
 import {
@@ -20,13 +20,13 @@ import TaskCard from './TaskCard';
 interface KanbanColumn {
     id: string;
     title: string;
-    tasks: Task[];
+    tasks: TaskDTO[];
 }
 
 interface KanbanBoardProps {
-    tasks: Task[];
+    tasks: TaskDTO[];
     projectId: string; // Add projectId prop for realtime filtering
-    onTaskUpdate?: (updatedTask: Task) => void;
+    onTaskUpdate?: (updatedTask: TaskDTO) => void;
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
@@ -34,10 +34,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     projectId,
     onTaskUpdate 
 }) => {
-    const [activeTask, setActiveTask] = useState<Task | null>(null);
+    const [activeTask, setActiveTask] = useState<TaskDTO | null>(null);
 
     // Stabilize callback functions to prevent infinite re-subscriptions
-    const handleRealtimeTaskUpdate = useCallback((updatedTask: Task) => {
+    const handleRealtimeTaskUpdate = useCallback((updatedTask: TaskDTO) => {
         onTaskUpdate?.(updatedTask);
     }, [onTaskUpdate]);
 
@@ -59,7 +59,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     });
 
     // Map column IDs to status values
-    const columnStatusMap: Record<string, Task['status']> = {
+    const columnStatusMap: Record<string, TaskDTO['status']> = {
         'unassigned': 'Unassigned',
         'ongoing': 'Ongoing',
         'under-review': 'Under Review',

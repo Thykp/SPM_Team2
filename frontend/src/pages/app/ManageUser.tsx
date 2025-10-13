@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "@/contexts/AuthContext"
-import { Profile, Task as TaskAPI } from "@/lib/api"
-import type { Task as TaskType } from "@/lib/api"
+import { Profile, TaskApi as TaskAPI } from "@/lib/api"
+import type { TaskDTO as TaskType } from "@/lib/api"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import Loader from "@/components/layout/Loader"
 import { cn } from "@/lib/utils"
 
-// Inline user type (no LiteUser import)
+// Inline user type
 type UserRow = {
   id: string
   display_name: string

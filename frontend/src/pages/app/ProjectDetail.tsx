@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/layout/Loader';
 import { ArrowLeft } from 'lucide-react';
-import { Project as ProjectAPI, Task as TaskAPI, Profile, type ProjectDto, type Task } from '@/lib/api';
+import { Project as ProjectAPI, TaskApi as TaskAPI, Profile, type ProjectDto, type TaskDTO } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProjectHeader, ProjectInfo, KanbanBoard } from '@/components/project-details';
 
@@ -11,13 +11,13 @@ const ProjectDetail: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const { user } = useAuth();
     const [project, setProject] = useState<ProjectDto | null>(null);
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [tasks, setTasks] = useState<TaskDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [ownerName, setOwnerName] = useState<string | null>(null);
 
     // Handler for when a new task is created
-    const handleTaskCreated = async (newTask: Task) => {
+    const handleTaskCreated = async (newTask: TaskDTO) => {
         // Add the new task to the current list immediately for optimistic UI update
         setTasks(prevTasks => [...prevTasks, newTask]);
         
@@ -33,7 +33,7 @@ const ProjectDetail: React.FC = () => {
     };
 
     // Handler for when a task is updated (e.g., status change from drag & drop)
-    const handleTaskUpdate = (updatedTask: Task) => {
+    const handleTaskUpdate = (updatedTask: TaskDTO) => {
         setTasks(prevTasks => 
             prevTasks.map(task => 
                 task.id === updatedTask.id ? updatedTask : task
@@ -61,7 +61,7 @@ const ProjectDetail: React.FC = () => {
     };
 
     // Fetch individual tasks based on task IDs
-    const fetchTasksByIds = async (taskIds: string[]): Promise<Task[]> => {
+    const fetchTasksByIds = async (taskIds: string[]): Promise<TaskDTO[]> => {
         const taskPromises = taskIds.map(taskId => 
             TaskAPI.getTasksById(taskId).catch(() => {
                 return null; // Return null for failed requests
@@ -72,7 +72,7 @@ const ProjectDetail: React.FC = () => {
         
         // Filter out null results and sort by status priority
         return taskResults
-            .filter((task): task is Task => task !== null)
+            .filter((task): task is TaskDTO => task !== null)
             .sort((a, b) => {
                 // Define status priority for sorting
                 const statusPriority: Record<string, number> = {
