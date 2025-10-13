@@ -14,16 +14,16 @@ router.get('/health', (req, res) => {
 router.post('/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    const startDate = req.body["startDate"];
-    const endDate = req.body["endDate"];
+    const startDate = req.body.startDate;
+    const endDate = req.body.endDate;
 
+    const { ownerTasks, collaboratorTasks } = await fetchTasksForUser(userId, startDate, endDate);
+    // const reportData = aggregateTask.aggregate({ ownerTasks, collaboratorTasks });
 
-    // Fetch and aggregate tasks
-    const { ownerTasks, collaboratorTasks } = await fetchTasksForUser(userId);
-    const reportData = aggregateTask.aggregate({ ownerTasks, collaboratorTasks });
-    // Generate PDF and save to disk
-    const pdfPath = await renderPdf({ userId, reportData });
-    res.json({ success: true, pdfPath });
+    // // Generate PDF and save to disk
+    // const pdfPath = await renderPdf({ userId, reportData });
+    // res.json({ success: true, pdfPath });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to generate report' });

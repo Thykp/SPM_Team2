@@ -1,3 +1,7 @@
+const axios = require('axios');
+
+const taskAddress = "http://localhost:3031";
+// const taskAddress = "http://task:3031";
 
 const TASKS = [
   // --- Tasks owned by user D111 (your testing user) ---
@@ -240,28 +244,33 @@ function roleForUser(task, userId) {
   if (isCollab) return "Collaborator";
 }
 
-async function fetchTasksForUser(userId) {
+async function fetchTasksForUser(userId, startDate, endDate) {
   const ownerTasks = [];
   const collaboratorTasks = [];
 
-  for (const t of TASKS) {
-    const role = roleForUser(t, userId);
-    const normalized = {
-      id: t.id,
-      title: t.title,
-      status: t.status,
-      role,
-      dueDate: t.deadline,
-      priority: t.priority,
-      projectId: t.project_id,
-      updatedAt: t.updated_at
-    };
-
-    if (role == "Owner") ownerTasks.push(normalized);
-    if (role == "Collaborator") collaboratorTasks.push(normalized);
+  try {
+    const response = await axios.get(`${taskAddress}/task/users/${userId}?startDate=${startDate}&endDate=${endDate}`);
+    const foundTasks = response.data;
+    for (const t of foundTasks) {
+      const role = roleForUser(t, userId);
+      const normalized = {
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        role,
+        dueDate: t.deadline,
+        priority: t.priority,
+        projectId: t.project_id,
+        updatedAt: t.updated_at
+      };
+      if (role == "Owner") ownerTasks.push(normalized);
+      if (role == "Collaborator") collaboratorTasks.push(normalized);
+    }
+    return { ownerTasks, collaboratorTasks };
+  } catch (error) {
+    console.error(error);
+    throw error;
   }
-
-  return { ownerTasks, collaboratorTasks };
 }
 
 
