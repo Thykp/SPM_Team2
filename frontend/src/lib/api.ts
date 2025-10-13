@@ -62,6 +62,7 @@ export type Notification = {
   project_id?: string;
   priority?: number;
   read: boolean;
+  user_set_read: boolean;
 }
 
 // ----- Services -----
@@ -213,6 +214,10 @@ export const Notification = {
     await api.delete(url);
   },
 
+  toggleReadNotification: async (notifId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/toggle/${notifId}`
+    await api.patch(url)
+  }
 }
 
 export default api;

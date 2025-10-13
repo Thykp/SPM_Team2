@@ -14,7 +14,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Sidebar } from "./Sidebar"
 import { useAuth } from "@/contexts/AuthContext"
-import { NotificationsPanel } from "../notifications/notifications-display"
+import { NotificationsPanel } from "../notifications/notificationsPanel"
 import { NotificationPreferences } from "../notifications/notifications-settings"
 
 export function AppNavbar() {
