@@ -22,7 +22,7 @@ export function NotificationItem({ notif, onDelete, onToggleUserSetRead }: Props
   // ---------------- RED DOT LOGIC ----------------
   const redDotClass = !read && !user_set_read
     ? "bg-red-500 animate-pulse"
-    : read && user_set_read
+    : read && !user_set_read
     ? "bg-gray-400"
     :  "bg-red-500";
 
