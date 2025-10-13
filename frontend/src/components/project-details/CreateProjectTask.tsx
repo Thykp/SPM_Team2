@@ -21,7 +21,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { Task as TaskAPI, type TaskPostRequestDto } from "@/lib/api";
+import { TaskApi as TaskAPI, type TaskPostRequestDto } from "@/lib/api";
 
 interface CreateProjectTaskProps {
   userId: string;
@@ -87,7 +87,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       console.log('Creating task with data:', taskData);
 
       // Use the new createTaskWithProjectData API method
-      const response = await TaskAPI.createTaskWithProjectData(taskData);
+      const response = await TaskAPI.createTask(taskData);
       
       console.log('Task created successfully:', response);
       onTaskCreated(response);

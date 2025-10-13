@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit } from 'lucide-react';
@@ -13,16 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CollaboratorPicker } from '@/components/CollaboratorPicker';
-import { Project, Profile, type ProjectDto, type TaskDTO, type UpdateProjectRequest } from '@/lib/api';
+import { Project, type ProjectDto, type TaskDTO, type UpdateProjectRequest } from '@/lib/api';
 import CreateProjectTask from './CreateProjectTask';
-
-// Define LiteUser type based on the API response structure
-type LiteUser = {
-    id: string;
-    display_name: string;
-    role: string;
-    department: string;
-};
 
 interface ProjectHeaderProps {
     project: ProjectDto;
@@ -47,36 +39,36 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
     });
     
     // State for collaborator picker
-    const [users, setUsers] = useState<LiteUser[]>([]);
-    const [userSearchTerm, setUserSearchTerm] = useState('');
-    const [loadingUsers, setLoadingUsers] = useState(false);
+    // const [users, setUsers] = useState<LiteUser[]>([]);
+    // const [userSearchTerm, setUserSearchTerm] = useState('');
+    // const [loadingUsers, setLoadingUsers] = useState(false);
 
-    // Load users when edit dialog opens
-    useEffect(() => {
-        if (isEditDialogOpen && users.length === 0) {
-            setLoadingUsers(true);
-            Profile.getAllUsers()
-                .then((data) => {
-                    setUsers(data);
-                })
-                .catch(() => {
-                    // Silent error handling
-                })
-                .finally(() => {
-                    setLoadingUsers(false);
-                });
-        }
-    }, [isEditDialogOpen, users.length]);
+    // // Load users when edit dialog opens
+    // useEffect(() => {
+    //     if (isEditDialogOpen && users.length === 0) {
+    //         setLoadingUsers(true);
+    //         Profile.getAllUsers()
+    //             .then((data) => {
+    //                 setUsers(data);
+    //             })
+    //             .catch(() => {
+    //                 // Silent error handling
+    //             })
+    //             .finally(() => {
+    //                 setLoadingUsers(false);
+    //             });
+    //     }
+    // }, [isEditDialogOpen, users.length]);
 
-    // Helper function to toggle collaborator selection
-    const handleToggleCollaborator = (userId: string) => {
-        setEditForm(prev => ({
-            ...prev,
-            collaborators: prev.collaborators.includes(userId)
-                ? prev.collaborators.filter(id => id !== userId)
-                : [...prev.collaborators, userId]
-        }));
-    };
+    // // Helper function to toggle collaborator selection
+    // const handleToggleCollaborator = (userId: string) => {
+    //     setEditForm(prev => ({
+    //         ...prev,
+    //         collaborators: prev.collaborators.includes(userId)
+    //             ? prev.collaborators.filter(id => id !== userId)
+    //             : [...prev.collaborators, userId]
+    //     }));
+    // };
 
     const handleEditProject = async () => {
         try {
@@ -88,7 +80,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                 description: project.description,
                 collaborators: currentProject.collaborators || [],
             });
-            setUserSearchTerm(''); // Reset search term
+            // setUserSearchTerm(''); // Reset search term
             setIsEditDialogOpen(true);
         } catch {
             // Fallback to local data
@@ -97,7 +89,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                 description: project.description,
                 collaborators: project.collaborators || [],
             });
-            setUserSearchTerm('');
+            // setUserSearchTerm('');
             setIsEditDialogOpen(true);
         } finally {
             setIsLoadingEdit(false);

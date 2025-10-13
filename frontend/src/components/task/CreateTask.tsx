@@ -67,6 +67,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
         owner: userId,
         collaborators: [],
         deadline: new Date().toISOString(),
+        priority: 5,
       };
 
       const createdTask = await TaskApi.createTask(taskData);

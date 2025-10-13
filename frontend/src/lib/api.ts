@@ -63,7 +63,8 @@ export type TaskDTO = {
 
 export type ProjectDto = {
   id: string;
-  createdat: string | null;
+  createdat?: string | null;
+  created_at?: string | null; // should standardise to either createdat or created_at later
   title: string;
   tasklist: string[] | null;
   description: string;

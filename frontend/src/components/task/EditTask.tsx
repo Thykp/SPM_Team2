@@ -226,8 +226,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose, onTaskUpdated }) =
               <CollaboratorPicker
                 mode="task"
                 taskId={task.id}
-                initialSelected={[task.owner, ...task.collaborators.filter((id) => id !== task.owner)]}
-                defaultOwnerId={task.owner}
+                initialSelected={[task.owner, ...task.collaborators.filter((id) => id !== task.owner)]
+                  .filter((x): x is string => !!x)}
                 onSaved={(selected, owner) =>
                   setTask((prev) => ({
                     ...prev!,

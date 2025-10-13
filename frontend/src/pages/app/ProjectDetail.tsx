@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/layout/Loader';
 import { ArrowLeft } from 'lucide-react';
-import { Project as ProjectAPI, TaskApi as TaskAPI, Profile, type ProjectDto, type TaskDTO } from '@/lib/api';
+import { Project as ProjectAPI, Profile, type ProjectDto, type TaskDTO } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProjectHeader, ProjectInfo, KanbanBoard } from '@/components/project-details';
 
@@ -11,37 +11,44 @@ const ProjectDetail: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const { user } = useAuth();
     const [project, setProject] = useState<ProjectDto | null>(null);
-    const [tasks, setTasks] = useState<TaskDTO[]>([]);
+    // const [tasks, setTasks] = useState<TaskDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [ownerName, setOwnerName] = useState<string | null>(null);
-    const [refreshTrigger, setRefreshTrigger] = useState(0); // Add refresh trigger
+    // const [refreshTrigger, setRefreshTrigger] = useState(0); // Add refresh trigger
 
-    // Handler for when a new task is created
-    const handleTaskCreated = async (newTask: TaskDTO) => {
-        // Add the new task to the current list immediately for optimistic UI update
-        setTasks(prevTasks => [...prevTasks, newTask]);
+    // // Handler for when a new task is created
+    // const handleTaskCreated = async (newTask: TaskDTO) => {
+    //     // Add the new task to the current list immediately for optimistic UI update
+    //     setTasks(prevTasks => [...prevTasks, newTask]);
         
-        // Optionally, refetch all tasks to ensure consistency with the server
-        if (project?.tasklist) {
-            try {
-                const updatedTasks = await fetchTasksByIds([...project.tasklist, newTask.id]);
-                setTasks(updatedTasks);
-            } catch {
-                // Failed to refresh tasks after creation
-            }
-        }
-    };
+    //     // Optionally, refetch all tasks to ensure consistency with the server
+    //     if (project?.tasklist) {
+    //         try {
+    //             const updatedTasks = await fetchTasksByIds([...project.tasklist, newTask.id]);
+    //             setTasks(updatedTasks);
+    //         } catch {
+    //             // Failed to refresh tasks after creation
+    //         }
+    //     }
+    // };
 
-    // Handler for when a task is updated (e.g., status change from drag & drop)
-    const handleTaskUpdate = (updatedTask: TaskDTO) => {
-        setTasks(prevTasks => 
-            prevTasks.map(task => 
-                task.id === updatedTask.id ? updatedTask : task
-            )
-        );
-    };
+    const handleTaskCreated = async (_newTask: TaskDTO) => {
+           // KanbanBoard manages its own data/realtime; nothing to do here.
+        };
 
+    // // Handler for when a task is updated (e.g., status change from drag & drop)
+    // const handleTaskUpdate = (updatedTask: TaskDTO) => {
+    //     setTasks(prevTasks => 
+    //         prevTasks.map(task => 
+    //             task.id === updatedTask.id ? updatedTask : task
+    //         )
+    //     );
+    // };
+    const handleTaskUpdate = (_updatedTask: TaskDTO) => {
+          // KanbanBoard + realtime keep UI in sync.
+        };
+    
     // Handler for when the project is updated (e.g., from edit dialog)
     const handleProjectUpdate = (updatedProject: ProjectDto) => {
         setProject(updatedProject);
@@ -62,34 +69,34 @@ const ProjectDetail: React.FC = () => {
     };
 
     // Fetch individual tasks based on task IDs
-    const fetchTasksByIds = async (taskIds: string[]): Promise<TaskDTO[]> => {
-        const taskPromises = taskIds.map(taskId => 
-            TaskAPI.getTasksById(taskId).catch(() => {
-                return null; // Return null for failed requests
-            })
-        );
+    // const fetchTasksByIds = async (taskIds: string[]): Promise<TaskDTO[]> => {
+    //     const taskPromises = taskIds.map(taskId => 
+    //         TaskAPI.getTasksById(taskId).catch(() => {
+    //             return null; // Return null for failed requests
+    //         })
+    //     );
         
-        const taskResults = await Promise.all(taskPromises);
+    //     const taskResults = await Promise.all(taskPromises);
         
-        // Filter out null results and sort by status priority
-        return taskResults
-            .filter((task): task is TaskDTO => task !== null)
-            .sort((a, b) => {
-                // Define status priority for sorting
-                const statusPriority: Record<string, number> = {
-                    'Unassigned': 1,
-                    'Ongoing': 2,
-                    'Under Review': 3,
-                    'Completed': 4,
-                    'Overdue': 5
-                };
+    //     // Filter out null results and sort by status priority
+    //     return taskResults
+    //         .filter((task): task is TaskDTO => task !== null)
+    //         .sort((a, b) => {
+    //             // Define status priority for sorting
+    //             const statusPriority: Record<string, number> = {
+    //                 'Unassigned': 1,
+    //                 'Ongoing': 2,
+    //                 'Under Review': 3,
+    //                 'Completed': 4,
+    //                 'Overdue': 5
+    //             };
                 
-                const priorityA = statusPriority[a.status] || 999;
-                const priorityB = statusPriority[b.status] || 999;
+    //             const priorityA = statusPriority[a.status] || 999;
+    //             const priorityB = statusPriority[b.status] || 999;
                 
-                return priorityA - priorityB;
-            });
-    };
+    //             return priorityA - priorityB;
+    //         });
+    // };
 
     useEffect(() => {
         const fetchProjectData = async () => {
@@ -199,7 +206,7 @@ const ProjectDetail: React.FC = () => {
             <KanbanBoard 
                 projectId={projectId!} // Pass projectId for filtering tasks
                 onTaskUpdate={handleTaskUpdate}
-                refreshTrigger={refreshTrigger} // Pass refresh trigger
+                // refreshTrigger={refreshTrigger} // Pass refresh trigger
             />
         </div>
     );

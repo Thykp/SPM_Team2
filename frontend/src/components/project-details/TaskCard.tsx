@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, GripVertical } from 'lucide-react';
-import { type Task } from '@/lib/api';
+import { type TaskDTO } from '@/lib/api';
 import { useDraggable } from '@dnd-kit/core';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
 
 interface TaskCardProps {
-    task: Task;
+    task: TaskDTO;
     isDragging?: boolean;
 }
 

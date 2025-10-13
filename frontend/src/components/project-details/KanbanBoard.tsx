@@ -24,12 +24,19 @@ interface KanbanColumn {
     tasks: TaskDTO[];
 }
 
+// interface KanbanBoardProps {
+//     tasks: TaskDTO[];
+//     projectId: string; // Add projectId prop for realtime filtering
+//     onTaskUpdate?: (updatedTask: TaskDTO) => void;
+//     refreshTrigger?: number; // Add trigger for external refresh
+// }
+
 interface KanbanBoardProps {
-    tasks: TaskDTO[];
-    projectId: string; // Add projectId prop for realtime filtering
-    onTaskUpdate?: (updatedTask: TaskDTO) => void;
-    refreshTrigger?: number; // Add trigger for external refresh
-}
+      projectId: string;
+      onTaskUpdate?: (updatedTask: TaskDTO) => void;
+      refreshTrigger?: number;
+      tasks?: TaskDTO[]; // if you still want to allow injection
+    }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
     projectId,

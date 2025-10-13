@@ -56,149 +56,78 @@ class Task {
         return data;
     }
 
-    static async getTasksByUsers(userId){
-        // ---- normalize input (keep your current behavior) ----
-        let ids;
-        if (Array.isArray(userId)) {
-          ids = userId;
-        } else if (userId && Array.isArray(userId.ids)) {
-          ids = userId.ids;
-        } else if (typeof userId === "string") {
-          ids = [userId];
-        } else {
-          ids = [];
-        }
-        if (!ids.length) return [];
-      
-        // ---- fetch participant rows joined to tasks ----
-        const { data, error } = await supabase
-          .from(Task.taskParticipantTable) // 'revamped_task_participant'
-          .select(
-            `profile_id,
-             is_owner,
-             task:${Task.taskTable} ( id, title, deadline, status, project_id, description )`
-          )
-          .in("profile_id", ids);
-      
-        if (error) {
-          console.error("Error in getTasksByUsers:", error);
-          throw new DatabaseError("Failed to retrieve tasks by users", error);
-        }
-      
-        // ---- aggregate per task: owner_id + participants[] ----
-        const byTask = new Map(); // taskId -> { ...task, owner_id, participants:Set<string> }
-      
-        for (const row of data || []) {
-          const t = row.task;
-          if (!t) continue;
-      
-          let entry = byTask.get(t.id);
-          if (!entry) {
-            entry = {
-              id: t.id,
-              title: t.title,
-              deadline: t.deadline,
-              status: t.status,
-              project_id: t.project_id,
-              description: t.description,
-              owner_id: null,
-              participants: new Set(),
-            };
-            byTask.set(t.id, entry);
-          }
-      
-          // add this profile into participants
-          if (row.profile_id) entry.participants.add(row.profile_id);
-      
-          // set/overwrite owner if this row is_owner
-          if (row.is_owner) entry.owner_id = row.profile_id;
-        }
-      
-        // ---- finalize array (convert Set -> Array), sort by deadline asc (nulls last) ----
-        const result = Array.from(byTask.values()).map((x) => ({
-          ...x,
-          participants: Array.from(x.participants),
-        }));
-      
-        result.sort((a, b) => {
-          const da = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
-          const db = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
-          return da - db;
-        });
-      
-        return result;
+    static async getTasksByUsers(userId) {
+      // normalize input
+      let ids;
+      if (Array.isArray(userId)) {
+        ids = userId;
+      } else if (userId && Array.isArray(userId.ids)) {
+        ids = userId.ids;
+      } else if (typeof userId === "string") {
+        ids = [userId];
+      } else {
+        ids = [];
       }
-      
-    static async getTasksByUsers(userId){
-        // ---- normalize input (string | string[] | { ids: string[] }) ----
-        let ids;
-        if (Array.isArray(userId)) {
-          ids = userId;
-        } else if (userId && Array.isArray(userId.ids)) {
-          ids = userId.ids;
-        } else if (typeof userId === "string") {
-          ids = [userId];
-        } else {
-          ids = [];
+      if (!ids.length) return [];
+    
+      // join participant -> task (include priority)
+      const { data, error } = await supabase
+        .from(Task.taskParticipantTable)
+        .select(
+          `profile_id,
+           is_owner,
+           task:${Task.taskTable} ( id, title, deadline, status, project_id, description, priority )`
+        )
+        .in("profile_id", ids);
+    
+      if (error) {
+        console.error("Error in getTasksByUsers:", error);
+        throw new DatabaseError("Failed to retrieve tasks by users", error);
+      }
+    
+      // aggregate per task
+      const byTask = new Map(); // taskId -> { ... }
+    
+      for (const row of data || []) {
+        const t = row.task;
+        if (!t) continue;
+    
+        let entry = byTask.get(t.id);
+        if (!entry) {
+          entry = {
+            id: t.id,
+            title: t.title,
+            deadline: t.deadline,
+            status: t.status,
+            project_id: t.project_id,
+            description: t.description,
+            priority: t.priority,          // <-- include priority
+            owner_id: null,
+            participants: new Set(),
+          };
+          byTask.set(t.id, entry);
         }
-        if (!ids.length) return [];
+    
+        if (row.profile_id) entry.participants.add(row.profile_id);
+        if (row.is_owner) entry.owner_id = row.profile_id;
+      }
+    
+      // finalize
+      const result = Array.from(byTask.values()).map(x => ({
+        ...x,
+        participants: Array.from(x.participants),
+      }));
+    
+      // sort by deadline asc (nulls last)
+      result.sort((a, b) => {
+        const da = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
+        const db = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
+        return da - db;
+      });
+    
+      return result;
+    }    
       
-        // ---- fetch participant rows joined to tasks ----
-        const { data, error } = await supabase
-          .from(Task.taskParticipantTable) // 'revamped_task_participant'
-          .select(
-            `profile_id,
-             is_owner,
-             task:${Task.taskTable} ( id, title, deadline, status, project_id, description )`
-          )
-          .in("profile_id", ids);
-      
-        if (error) {
-          console.error("Error in getTasksByUsers:", error);
-          throw new DatabaseError("Failed to retrieve tasks by users", error);
-        }
-      
-        // ---- aggregate per task: owner_id + participants[] ----
-        const byTask = new Map(); // taskId -> { ...task, owner_id, participants:Set<string> }
-      
-        for (const row of data || []) {
-          const t = row.task;
-          if (!t) continue;
-      
-          let entry = byTask.get(t.id);
-          if (!entry) {
-            entry = {
-              id: t.id,
-              title: t.title,
-              deadline: t.deadline,
-              status: t.status,
-              project_id: t.project_id,
-              description: t.description,
-              owner_id: null,
-              participants: new Set(),
-            };
-            byTask.set(t.id, entry);
-          }
-      
-          if (row.profile_id) entry.participants.add(row.profile_id);
-          if (row.is_owner) entry.owner_id = row.profile_id;
-        }
-      
-        // ---- finalize & sort by deadline asc (nulls last) ----
-        const result = Array.from(byTask.values()).map((x) => ({
-          ...x,
-          participants: Array.from(x.participants),
-        }));
-      
-        result.sort((a, b) => {
-          const da = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
-          const db = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
-          return da - db;
-        });
-      
-        return result;
-    }      
-
     constructor(data){
     this.id = data.id || null;
     this.parent_task_id = data.parent_task_id || null;

@@ -1,13 +1,13 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { type Task } from '@/lib/api';
+import { type TaskDTO } from '@/lib/api';
 import TaskCard from './TaskCard';
 import { useDroppable } from '@dnd-kit/core';
 
 interface KanbanColumnProps {
     id: string;
     title: string;
-    tasks: Task[];
+    tasks: TaskDTO[];
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks }) => {
