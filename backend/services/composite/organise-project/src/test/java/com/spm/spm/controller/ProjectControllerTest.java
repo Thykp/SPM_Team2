@@ -36,7 +36,7 @@ class ProjectControllerTest {
     void health_ShouldReturnHealthStatus() throws Exception {
         when(projectService.health()).thenReturn("{status: ok}");
 
-        mockMvc.perform(get("/api/v1/projects"))
+        mockMvc.perform(get("/projects"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("{status: ok}"));
     }
@@ -53,7 +53,7 @@ class ProjectControllerTest {
 
         when(projectService.getProjectById(projectId)).thenReturn(mockProject);
 
-        mockMvc.perform(get("/api/v1/projects/{id}", projectId))
+        mockMvc.perform(get("/projects/{id}", projectId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(projectId.toString()))
                 .andExpect(jsonPath("$.title").value("Test Project"))
@@ -66,7 +66,7 @@ class ProjectControllerTest {
 
         when(projectService.getProjectById(projectId)).thenReturn(null);
 
-        mockMvc.perform(get("/api/v1/projects/{id}", projectId))
+        mockMvc.perform(get("/projects/{id}", projectId))
                 .andExpect(status().isNotFound());
     }
 
@@ -86,7 +86,7 @@ class ProjectControllerTest {
 
         when(projectService.getAll()).thenReturn(mockProjects);  // ← FIXED: getAll() not getAllProjects()
 
-        mockMvc.perform(get("/api/v1/projects/all"))
+        mockMvc.perform(get("/projects/all"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(2))
@@ -109,7 +109,7 @@ class ProjectControllerTest {
 
         when(projectService.getProjectsByUser(userId)).thenReturn(mockProjects);
 
-        mockMvc.perform(get("/api/v1/projects/user/{userId}", userId))
+        mockMvc.perform(get("/projects/user/{userId}", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(1))
@@ -138,7 +138,7 @@ class ProjectControllerTest {
         when(projectService.create(any(NewProjectRequest.class)))
                 .thenReturn(mockResponse);
 
-        mockMvc.perform(post("/api/v1/projects")
+        mockMvc.perform(post("/projects")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newProject)))
                 .andExpect(status().isCreated())  // ← FIXED: POST should return 201 Created
@@ -162,7 +162,7 @@ class ProjectControllerTest {
         when(projectService.updateProject(eq(projectId), any(UpdateProjectRequest.class)))
                 .thenReturn(mockResponse);
 
-        mockMvc.perform(put("/api/v1/projects/{id}", projectId)
+        mockMvc.perform(put("/projects/{id}", projectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
@@ -183,7 +183,7 @@ class ProjectControllerTest {
         when(projectService.updateProject(eq(projectId), any(UpdateProjectRequest.class)))
                 .thenReturn(mockResponse);
 
-        mockMvc.perform(put("/api/v1/projects/{id}", projectId)
+        mockMvc.perform(put("/projects/{id}", projectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
@@ -208,7 +208,7 @@ class ProjectControllerTest {
         when(projectService.updateCollaborators(eq(projectId), any(UpdateCollaboratorsRequest.class)))
                 .thenReturn(mockResponse);
 
-        mockMvc.perform(put("/api/v1/projects/{id}/collaborators", projectId)
+        mockMvc.perform(put("/projects/{id}/collaborators", projectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -240,7 +240,7 @@ class ProjectControllerTest {
         // Note: JSON uses snake_case for the request body
         String requestBody = "{\"new_owner_id\":\"" + newOwnerId.toString() + "\"}";
 
-        mockMvc.perform(put("/api/v1/projects/{id}/owner", projectId)
+        mockMvc.perform(put("/projects/{id}/owner", projectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -255,7 +255,7 @@ class ProjectControllerTest {
         UUID projectId = UUID.randomUUID();
         String invalidRequest = "{\"new_owner_id\":\"not-a-uuid\"}";
 
-        mockMvc.perform(put("/api/v1/projects/{id}/owner", projectId)
+        mockMvc.perform(put("/projects/{id}/owner", projectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest))
                 .andExpect(status().isBadRequest());
@@ -273,7 +273,7 @@ class ProjectControllerTest {
 
         when(projectService.deleteProject(projectId)).thenReturn(mockResponse);
 
-        mockMvc.perform(delete("/api/v1/projects/{id}", projectId))
+        mockMvc.perform(delete("/projects/{id}", projectId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Project deleted successfully"));
