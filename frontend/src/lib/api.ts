@@ -9,15 +9,31 @@ const api = axios.create({
 });
 
 // ----- Types -----
+export type TaskPostRequestDto = {
+  title: string;
+  description: string;
+  status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
+  owner: string | null;
+  collaborators: string[];
+  deadline: string;
+  project_id?: string | null;
+  parent?: string | null;
+  priority: number; // Priority (1-10) required by atomic service
+};
+
 export type Task = {
   id: string;
   title: string;
   description: string;
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
-  owner: string;
+  owner: string | null;
   collaborators: string[];
   deadline: string;
   parent?: string | null;
+  project_id?: string | null;
+  ownerName?: string;
+  ownerDepartment?: string;
+  priority?: number;
 };
 
 export type ProjectDto = {
@@ -111,6 +127,12 @@ export const Project = {
     const { data } = await api.put<{ success: boolean; project: any }>(url, updates);
     return data;
   },
+
+  delete: async (projectId: string): Promise<{ success: boolean; message?: string }> => {
+    const url = `${KONG_BASE_URL}/organise-project/projects/${projectId}`;
+    const { data } = await api.delete<{ success: boolean; message?: string }>(url);
+    return data;
+  },
 };
 
 export const Task = {
@@ -145,12 +167,18 @@ export const Task = {
   },
 
   createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task`; // might be "new" instead of "task", TBC
+    const url = `${KONG_BASE_URL}/manage-task/api/task/new`;
     const { data } = await api.post<Task>(url, newTask);
     return data;
   },
 
-  updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
+  createTaskWithProjectData: async (taskData: TaskPostRequestDto): Promise<Task> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/new`;
+    const { data } = await api.post<Task>(url, taskData);
+    return data;
+  },
+
+  updateTask: async (taskId: string, updates: TaskPostRequestDto): Promise<Task> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
     const { data } = await api.put<Task>(url, updates);
     return data;

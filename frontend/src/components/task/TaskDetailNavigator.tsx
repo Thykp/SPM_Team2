@@ -42,6 +42,7 @@ export function TaskDetailNavigator({ initialTask, isOpen, onClose }: TaskDetail
 
     return (
         <TaskDetail
+            key={`task-detail-${currentTask.id}-${isOpen}`}
             currentTask={currentTask}
             isOpen={isOpen}
             onClose={handleClose}
