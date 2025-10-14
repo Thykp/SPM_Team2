@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task } from "@/lib/api";
+import { Task, Profile } from "@/lib/api";
 import { X, ChevronsUpDown, Check } from "lucide-react";
-import { CollaboratorPicker } from "@/components/CollaboratorPicker";
+// import { CollaboratorPicker } from "@/components/CollaboratorPicker";
+import CollaboratorPicker from "@/components/project/CollaboratorPickerNewProj";
 
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -29,9 +30,17 @@ interface LocalTask {
   ownerName?: string;
   ownerDepartment?: string;
   parent?: string | null;
+  project_id?: string | null;
   priority?: number;
   isEditingOwner?: boolean;
 }
+
+type UserRow = {
+  id: string;
+  display_name: string;
+  role: string;
+  department: string;
+};
 
 // Mock Data (to be replaced with actual API data)
 const ownerOptions = [
@@ -49,6 +58,8 @@ interface EditTaskProps {
 const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<UserRow[]>([]); // Add state for users
+  const [userSearchTerm, setUserSearchTerm] = useState(""); // Add state for search term
 
   // Fetch the task details when the component is mounted
   useEffect(() => {
@@ -62,6 +73,21 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
       }
     };
 
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const response = await Profile.getAllUsers();
+        const allUsers = Array.isArray(response) ? response : (response as any).data || [];
+        setUsers(allUsers);
+      } catch (err) {
+        console.error("Error loading users:", err);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
     fetchTask();
   }, [taskId]);
 
@@ -84,7 +110,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
         owner: task.owner,
         parent: task.parent,
         priority: task.priority || 5, // Default priority if not set
-        project_id: null, // Add required field
+        project_id: task.project_id
       });
 
       console.log("Task successfully updated:", updatedTask);
@@ -206,15 +232,22 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
 
             {/* Collaborators */}
             <div className="space-y-2">
-              <Label htmlFor="collaborators" className="text-base font-medium">
-                Collaborators
-              </Label>
               <CollaboratorPicker
-                projectId={task.id} // Use the task ID as the project ID
-                initialSelected={task.collaborators} // Pass the initial collaborators
-                onSaved={(selected) =>
-                  setTask((prev) => ({ ...prev!, collaborators: selected }))
-                } // Update the collaborators in the task state
+                users={users}
+                userSearchTerm={userSearchTerm}
+                onUserSearchChange={setUserSearchTerm}
+                selectedCollaborators={task.collaborators}
+                onToggleCollaborator={(userId) => {
+                  setTask((prev) => {
+                    if (!prev) return prev;
+                    const collaborators = prev.collaborators.includes(userId)
+                      ? prev.collaborators.filter((id) => id !== userId)
+                      : [...prev.collaborators, userId];
+                    return { ...prev, collaborators };
+                  });
+                }}
+                loadingUsers={loading}
+                currentUserId={task.owner ?? undefined} // Exclude the owner from the collaborator list
               />
             </div>
 
