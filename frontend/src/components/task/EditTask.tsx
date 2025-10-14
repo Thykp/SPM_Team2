@@ -100,12 +100,14 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
         throw new Error("Task data is missing");
       }
 
+      const utcDeadline = new Date(task.deadline).toISOString();
+
       // Call the API to update the task
       const updatedTask = await Task.updateTask(task.id, {
         title: task.title,
         description: task.description,
         status: task.status,
-        deadline: task.deadline,
+        deadline: utcDeadline,
         collaborators: task.collaborators,
         owner: task.owner,
         parent: task.parent,
@@ -122,6 +124,13 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatToLocalDatetime = (dateString: string) => {
+    const date = new Date(dateString);
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
+    return localDate.toISOString().slice(0, 16);
   };
 
   if (!task) {
@@ -189,28 +198,62 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
               />
             </div>
 
-            {/* Status */}
-            <div className="space-y-2">
-              <Label htmlFor="status" className="text-base font-medium">
-                Task Status
-              </Label>
-              <select
-                id="status"
-                value={task.status}
-                onChange={(e) =>
-                  setTask((prev) => ({
-                    ...prev!,
-                    status: e.target.value as LocalTask["status"],
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              >
-                <option value="Unassigned">Unassigned</option>
-                <option value="Ongoing">Ongoing</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Completed">Completed</option>
-                <option value="Overdue">Overdue</option>
-              </select>
+            {/* Status and Priority */}
+            <div className="flex gap-4">
+              {/* Status */}
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="status" className="text-base font-medium">
+                  Task Status
+                </Label>
+                <select
+                  id="status"
+                  value={task.status}
+                  onChange={(e) =>
+                    setTask((prev) => ({
+                      ...prev!,
+                      status: e.target.value as LocalTask["status"],
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="Unassigned">Unassigned</option>
+                  <option value="Ongoing">Ongoing</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Overdue">Overdue</option>
+                </select>
+              </div>
+
+              {/* Priority */}
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="priority" className="text-base font-medium">
+                  Priority (1-10)
+                </Label>
+                <select
+                  id="priority"
+                  value={task.priority || 5} // Default to 5 if priority is not set
+                  onChange={(e) =>
+                    setTask((prev) => ({
+                      ...prev!,
+                      priority: parseInt(e.target.value, 10),
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => {
+                    let label = `${priority}`;
+                    if (priority <= 3) label += " (Low)";
+                    else if (priority <= 7) label += " (Medium)";
+                    else label += " (High)";
+
+                    return (
+                      <option key={priority} value={priority}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             </div>
 
             {/* Deadline */}
@@ -221,7 +264,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
               <Input
                 id="deadline"
                 type="datetime-local"
-                value={new Date(task.deadline).toISOString().slice(0, 16)} // Convert to datetime-local format
+                value={formatToLocalDatetime(task.deadline)}
                 onChange={(e) =>
                   setTask((prev) => ({ ...prev!, deadline: e.target.value }))
                 }
