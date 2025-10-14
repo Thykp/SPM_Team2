@@ -16,8 +16,8 @@ COPY . .
 USER node
 
 # Expose the app port (your app defaults to 3040 if PORT isn't provided)
-ENV PORT=3040
-EXPOSE 3040
+ENV PORT=3042
+EXPOSE 3042
 
 # Start the server
 CMD ["node", "index.js"]
