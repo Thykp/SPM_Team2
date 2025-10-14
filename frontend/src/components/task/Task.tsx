@@ -8,14 +8,17 @@ import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
 
 type TaskProps = {
   taskContent: apiTask;
+  onTaskDeleted?: (taskId: string) => void;
 };
 
 export const Task: React.FC<TaskProps> = ({
-  taskContent
+  taskContent,
+  onTaskDeleted,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editing, setEditing] = useState(false); // State to toggle the EditTask modal
   const [showDetails, setShowDetails] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -33,6 +36,22 @@ export const Task: React.FC<TaskProps> = ({
         return "bg-gray-100 text-gray-800";
     }
   };
+
+    const deleteTask = async () => {
+      try {
+        setDeleting(true); // Set deleting state to true
+        await apiTask.deleteTask(taskContent.id); // Call the deleteTask API
+        console.log(`Task ${taskContent.id} deleted successfully`);
+        if (onTaskDeleted) {
+          onTaskDeleted(taskContent.id); // Notify the parent component
+        }
+      } catch (error) {
+        console.error("Failed to delete task:", error);
+        alert("Failed to delete task. Please try again.");
+      } finally {
+        setDeleting(false); // Reset deleting state
+      }
+    };
 
   return (
     <div className={`p-4 rounded relative ${getStatusColor(taskContent.status)}`}>
@@ -71,13 +90,14 @@ export const Task: React.FC<TaskProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setDropdownOpen(false);
-                    // onDelete();
+                    await deleteTask(); // Call the deleteTask function
                   }}
                   className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
+                  disabled={deleting} // Disable button while deleting
                 >
-                  Delete Task
+                  {deleting ? "Deleting..." : "Delete Task"}
                 </button>
               </li>
             </ul>

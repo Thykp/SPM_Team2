@@ -3,6 +3,7 @@ package com.spm.manage_task.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -65,6 +66,17 @@ public class TaskController {
     public ResponseEntity<List<TaskDto>> getSubTaskByTaskId(@PathVariable String taskId) {
         List<TaskDto> tasks = taskService.getSubTaskByTaskId(taskId);
         return ResponseEntity.ok(tasks);
+    }
+
+    // DELETE a task based on task id
+    @DeleteMapping("/{taskId}")
+    public ResponseEntity<String> deleteTask(@PathVariable String taskId) {
+        try {
+            taskService.deleteTask(taskId);
+            return ResponseEntity.ok("Task deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body("Failed to delete task: " + e.getMessage());
+        }
     }
     
 }

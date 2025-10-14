@@ -100,13 +100,21 @@ public class TaskService {
     }
 
     public List<TaskDto> getSubTaskByTaskId(String taskId){
-        ResponseEntity<TaskMicroserviceResponse[]> responseEntity = restTemplate.getForEntity(taskUrl+"/"+taskId+"/subtasks", TaskMicroserviceResponse[].class);
+        ResponseEntity<TaskMicroserviceResponse[]> responseEntity = restTemplate.getForEntity(taskUrl + "/" + taskId + "/subtasks", TaskMicroserviceResponse[].class);
 
         TaskMicroserviceResponse[] rawTasks = responseEntity.getBody();
         List<TaskDto> taskDtos = taskDTOWrapper.toTaskDtoList(rawTasks);
 
 
         return taskDtos == null ? List.of() : taskDtos;
+    }
+
+    public void deleteTask(String taskId) {
+        ResponseEntity<Void> responseEntity = restTemplate.exchange(taskUrl + "/" + taskId, HttpMethod.DELETE, null, Void.class);
+
+        if (!responseEntity.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Failed to delete task. Status code: " + responseEntity.getStatusCode());
+        }
     }
 
 }
