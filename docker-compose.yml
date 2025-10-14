@@ -5,7 +5,6 @@ volumes:
     name: spm_pgdata
   redis-data:
   kafka-data:
-  minio-data: {}
 
 networks:
   spm-net:
@@ -114,36 +113,6 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-
-  minio:
-    image: minio/minio:latest
-    container_name: minio
-    restart: unless-stopped
-    networks: [spm-net]
-    ports: ["9000:9000", "9001:9001"]
-    environment:
-      - MINIO_ROOT_USER=admin
-      - MINIO_ROOT_PASSWORD=adminadmin
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  gotenberg:
-    image: gotenberg/gotenberg:8
-    container_name: gotenberg
-    restart: unless-stopped
-    networks: [spm-net]
-    ports: ["3001:3000"]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
   manage-account:
     build:
