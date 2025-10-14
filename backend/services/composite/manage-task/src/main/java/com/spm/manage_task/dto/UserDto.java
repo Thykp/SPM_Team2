@@ -7,36 +7,75 @@ public class UserDto {
     @JsonProperty("id")
     private String userId;
 
+    @JsonProperty("department_id")
+    private String userDepartmentId;
+
+    @JsonProperty("team_id")
+    private String userTeamId;
+
     @JsonProperty("display_name")
-    private String displayName;
+    private String userDisplayName;
 
-    @JsonProperty("department")
-    private String department;
+    @JsonProperty("role")
+    private String userRole;
 
-    public UserDto(String userId, String displayName, String department) {
+    @JsonProperty("department_name")
+    private String userDepartmentName;
+
+    @JsonProperty("team_name")
+    private String userTeamName;
+
+    public UserDto(String userId, String userDepartmentId, String userTeamId, String userDisplayName, String userRole,
+            String userDepartmentName, String userTeamName) {
         this.userId = userId;
-        this.displayName = displayName;
-        this.department = department;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public String getDepartment() {
-        return department;
+        this.userDepartmentId = userDepartmentId;
+        this.userTeamId = userTeamId;
+        this.userDisplayName = userDisplayName;
+        this.userRole = userRole;
+        this.userDepartmentName = userDepartmentName;
+        this.userTeamName = userTeamName;
     }
 
     @Override
     public String toString() {
         return "UserDto{" +
                 "userId='" + userId + '\'' +
-                ", displayName='" + displayName + '\'' +
-                ", department='" + department + '\'' +
+                ", userDepartmentId='" + userDepartmentId + '\'' +
+                ", userTeamId='" + userTeamId + '\'' +
+                ", userDisplayName='" + userDisplayName + '\'' +
+                ", userRole='" + userRole + '\'' +
+                ", userDepartmentName='" + userDepartmentName + '\'' +
+                ", userTeamName='" + userTeamName + '\'' +
                 '}';
     }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getUserDepartmentId() {
+        return userDepartmentId;
+    }
+
+    public String getUserTeamId() {
+        return userTeamId;
+    }
+
+    public String getUserDisplayName() {
+        return userDisplayName;
+    }
+
+    public String getUserRole() {
+        return userRole;
+    }
+
+    public String getUserDepartmentName() {
+        return userDepartmentName;
+    }
+
+    public String getUserTeamName() {
+        return userTeamName;
+    }
+
+    
 }

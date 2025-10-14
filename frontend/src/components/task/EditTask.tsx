@@ -3,10 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task } from "@/lib/api"; // Import Task type and service
-import { X } from "lucide-react";
+import { Task } from "@/lib/api";
+import { X, ChevronsUpDown, Check } from "lucide-react";
 import { CollaboratorPicker } from "@/components/CollaboratorPicker";
-import Select from "react-select";
+
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 interface LocalTask {
   id: string;
@@ -15,10 +25,11 @@ interface LocalTask {
   description: string;
   status: "Unassigned" | "Ongoing" | "Under Review" | "Completed" | "Overdue";
   collaborators: string[];
-  owner: string;
+  owner: string | null;
   ownerName?: string;
   ownerDepartment?: string;
   parent?: string | null;
+  priority?: number;
   isEditingOwner?: boolean;
 }
 
@@ -72,6 +83,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
         collaborators: task.collaborators,
         owner: task.owner,
         parent: task.parent,
+        priority: task.priority || 5, // Default priority if not set
+        project_id: null, // Add required field
       });
 
       console.log("Task successfully updated:", updatedTask);
@@ -83,7 +96,6 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
     } finally {
       setLoading(false);
     }
-
   };
 
   if (!task) {
@@ -115,81 +127,81 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
           </div>
         </CardHeader>
         <CardContent className="overflow-y-auto max-h-[50vh]">
-        <form onSubmit={handleUpdateTask} className="space-y-6">
+          <form onSubmit={handleUpdateTask} className="space-y-6">
             {/* Title */}
             <div className="space-y-2">
-            <Label htmlFor="title" className="text-base font-medium">
+              <Label htmlFor="title" className="text-base font-medium">
                 Task Title
-            </Label>
-            <Input
+              </Label>
+              <Input
                 id="title"
                 type="text"
                 placeholder="Enter a descriptive task title"
                 value={task.title}
                 onChange={(e) =>
-                setTask((prev) => ({ ...prev!, title: e.target.value }))
+                  setTask((prev) => ({ ...prev!, title: e.target.value }))
                 }
                 className="h-11"
                 required
-            />
+              />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-            <Label htmlFor="description" className="text-base font-medium">
+              <Label htmlFor="description" className="text-base font-medium">
                 Task Description
-            </Label>
-            <textarea
+              </Label>
+              <textarea
                 id="description"
                 placeholder="Enter a detailed description of the task"
                 value={task.description}
                 onChange={(e) =>
-                setTask((prev) => ({ ...prev!, description: e.target.value }))
+                  setTask((prev) => ({ ...prev!, description: e.target.value }))
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
                 required
-            />
+              />
             </div>
 
             {/* Status */}
             <div className="space-y-2">
-            <Label htmlFor="status" className="text-base font-medium">
+              <Label htmlFor="status" className="text-base font-medium">
                 Task Status
-            </Label>
-            <select
+              </Label>
+              <select
                 id="status"
                 value={task.status}
                 onChange={(e) =>
-                setTask((prev) => ({
+                  setTask((prev) => ({
                     ...prev!,
                     status: e.target.value as LocalTask["status"],
-                }))
+                  }))
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
+              >
                 <option value="Unassigned">Unassigned</option>
                 <option value="Ongoing">Ongoing</option>
                 <option value="Under Review">Under Review</option>
                 <option value="Completed">Completed</option>
                 <option value="Overdue">Overdue</option>
-            </select>
+              </select>
             </div>
 
             {/* Deadline */}
             <div className="space-y-2">
-            <Label htmlFor="deadline" className="text-base font-medium">
+              <Label htmlFor="deadline" className="text-base font-medium">
                 Deadline
-            </Label>
-            <Input
+              </Label>
+              <Input
                 id="deadline"
                 type="datetime-local"
-                value={new Date(task.deadline).toISOString().slice(0, 16)} // Convert ISO to datetime-local format
+                value={new Date(task.deadline).toISOString().slice(0, 16)} // Convert to datetime-local format
                 onChange={(e) =>
-                setTask((prev) => ({ ...prev!, deadline: e.target.value }))
+                  setTask((prev) => ({ ...prev!, deadline: e.target.value }))
                 }
                 className="h-11"
                 required
-            />
+              />
             </div>
 
             {/* Collaborators */}
@@ -206,126 +218,99 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
               />
             </div>
 
-            {/* Owner */}
-            {/* <div className="space-y-2">
-            <Label htmlFor="owner" className="text-base font-medium">
-                Owner
-            </Label>
-            <Input
-                id="owner"
-                type="text"
-                placeholder="Enter the owner ID"
-                value={task.ownerName + " (" + task.ownerDepartment + ")" || ""}
-                onChange={(e) =>
-                setTask((prev) => ({ ...prev!, ownerName: e.target.value }))
-                }
-                className="h-11"
-                required
-            />
-            </div> */}
-
-            {/* Owner Dropdown Mock*/}
-            {/* <Select
-              options={ownerOptions}
-              value={ownerOptions.find((option) => option.value === task.owner) || null}
-              onChange={(selectedOption) =>
-                setTask((prev) => ({
-                  ...prev!,
-                  owner: selectedOption?.value || "",
-                  ownerName: selectedOption?.label || "",
-                }))
-              }
-              placeholder="Select an owner"
-              isSearchable
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  height: "44px", // Adjust height
-                  borderColor: "gray",
-                  boxShadow: "none",
-                  "&:hover": { borderColor: "black" },
-                }),
-              }}
-            /> */}
-
-            {/* Owner Field with Dropdown */}
+            {/* Owner (shadcn searchable combobox) */}
             <div className="space-y-2">
               <Label htmlFor="owner" className="text-base font-medium">
                 Owner
               </Label>
+
               {task.isEditingOwner ? (
-                // Show the dropdown when in editing mode
-                <Select
-                  options={ownerOptions}
-                  value={ownerOptions.find((option) => option.value === task.owner) || null}
-                  onChange={(selectedOption) => {
-                    setTask((prev) => ({
-                      ...prev!,
-                      owner: selectedOption?.value || "",
-                      ownerName: selectedOption?.label || "",
-                      isEditingOwner: false, // Exit editing mode after selection
-                    }));
-                  }}
-                  placeholder="Select an owner"
-                  isSearchable
-                  styles={{
-                    control: (base) => ({
-                      ...base,
-                      height: "44px",
-                      borderColor: "gray",
-                      boxShadow: "none",
-                      "&:hover": { borderColor: "black" },
-                    }),
-                  }}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded="false"
+                      className="w-full justify-between h-11"
+                    >
+                      {task.owner
+                        ? ownerOptions.find((o) => o.value === task.owner)?.label
+                        : "Select an owner"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-[--radix-popper-anchor-width] p-0 z-[60]">
+                    <Command>
+                      <CommandInput placeholder="Search owner..." />
+                      <CommandList>
+                        <CommandEmpty>No owner found.</CommandEmpty>
+                        <CommandGroup>
+                          {ownerOptions.map((opt) => {
+                            const selected = task.owner === opt.value;
+                            return (
+                              <CommandItem
+                                key={opt.value}
+                                value={opt.label}
+                                onSelect={() => {
+                                  setTask((prev) => ({
+                                    ...prev!,
+                                    owner: opt.value,
+                                    ownerName: opt.label,
+                                    isEditingOwner: false, // Exit editing mode
+                                  }));
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selected ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {opt.label}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               ) : (
-                // Show the plain text when not in editing mode
                 <div
                   className="cursor-pointer"
-                  onClick={() => setTask((prev) => ({ ...prev!, isEditingOwner: true }))}
+                  onClick={() =>
+                    setTask((prev) => ({ ...prev!, isEditingOwner: true }))
+                  }
                 >
                   <span>
-                    {task.ownerName} {task.ownerDepartment ? `(${task.ownerDepartment})` : ""}
+                    {task.ownerName}{" "}
+                    {task.ownerDepartment ? `(${task.ownerDepartment})` : ""}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Parent Task */}
-            {/* <div className="space-y-2">
-            <Label htmlFor="parent" className="text-base font-medium">
-                Parent Task
-            </Label>
-            <Input
-                id="parent"
-                type="text"
-                placeholder="Enter the parent task ID (optional)"
-                value={task.parent || ""} // Handle null values
-                onChange={(e) =>
-                setTask((prev) => ({ ...prev!, parent: e.target.value || null }))
-                }
-                className="h-11"
-            />
-            </div> */}
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
-            <Button
+              <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 className="flex-1 h-11"
-            >
+              >
                 Cancel
-            </Button>
-            <Button
+              </Button>
+              <Button
                 type="submit"
                 className="flex-1 h-11"
                 disabled={!task.title.trim()}
-            >
+              >
                 {loading ? "Updating..." : "Update Task"}
-            </Button>
+              </Button>
             </div>
-        </form>
+          </form>
         </CardContent>
       </Card>
     </div>

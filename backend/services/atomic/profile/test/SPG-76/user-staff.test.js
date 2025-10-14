@@ -1,39 +1,50 @@
 const request = require('supertest');
 
 jest.mock('../../model/user', () => ({
-  getStaffByDepartment: jest.fn(),
+  getStaffByScope: jest.fn(),
 }));
 
-const { getStaffByDepartment } = require('../../model/user');
+const { getStaffByScope } = require('../../model/user');
 const app = require('../../app');
 
-describe('GET /user/staff', () => {
-  beforeEach(() => jest.clearAllMocks());
+describe('GET /user/staff (revamped)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-  it('200: returns staff by dept+role', async () => {
-    const fake = [
-      { id: 'u1', display_name: 'Alice', role: 'staff', department: 'Engineering' },
-      { id: 'u2', display_name: 'Bob',   role: 'staff', department: 'Engineering' },
-    ];
-    getStaffByDepartment.mockResolvedValue(fake);
+  it('200: returns staff by department_id + role', async () => {
+    const fake = [{ id: 'u1', display_name: 'A', role: 'staff', department_id: 'dep-123' }];
+    getStaffByScope.mockResolvedValue(fake);
 
-    const res = await request(app).get('/user/staff?department=Engineering&role=staff');
+    const res = await request(app).get('/user/staff?department_id=dep-123&role=Staff');
 
-    expect(getStaffByDepartment).toHaveBeenCalledWith('Engineering', 'staff');
+    expect(getStaffByScope).toHaveBeenCalledWith({
+      team_id: null,
+      department_id: 'dep-123',
+      role: 'Staff',
+    });
     expect(res.status).toBe(200);
     expect(res.body).toEqual(fake);
   });
 
-  it('200: defaults role=staff', async () => {
-    getStaffByDepartment.mockResolvedValue([]);
-    const res = await request(app).get('/user/staff?department=HR');
-    expect(getStaffByDepartment).toHaveBeenCalledWith('HR', 'staff');
+  it('200: defaults role=staff when omitted', async () => {
+    getStaffByScope.mockResolvedValue([]);
+
+    const res = await request(app).get('/user/staff?team_id=team-999');
+
+    expect(getStaffByScope).toHaveBeenCalledWith({
+      team_id: 'team-999',
+      department_id: null,
+      role: 'Staff',
+    });
     expect(res.status).toBe(200);
   });
 
   it('500: bubbles model error', async () => {
-    getStaffByDepartment.mockRejectedValue(new Error('db down'));
-    const res = await request(app).get('/user/staff?department=Engineering');
+    getStaffByScope.mockRejectedValue(new Error('db down'));
+
+    const res = await request(app).get('/user/staff?department_id=dep-123');
+
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'db down' });
   });

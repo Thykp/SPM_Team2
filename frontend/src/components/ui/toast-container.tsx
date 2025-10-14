@@ -26,7 +26,6 @@ export function ToastContainer() {
         ))}
       </div>
 
-      {/* Expose addToast to window for simplicity */}
       {typeof window !== "undefined" && (window as any).addToast === undefined && ((window as any).addToast = addToast)}
     </>
   );

@@ -2,7 +2,6 @@ package profile_service
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -13,437 +12,306 @@ import (
 )
 
 // Create a mock HTTP server that mimics your profile service
-func createMockProfileServer(responses map[string][]User) *httptest.Server {
+func createMockProfileServer(responses map[string]User, allUsers []User) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract user ID from path /user/{id}
-		userId := r.URL.Path[len("/user/"):]
-
-		if users, exists := responses[userId]; exists {
+		if r.URL.Path == "/user/all" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(users)
+			json.NewEncoder(w).Encode(allUsers)
+			return
+		}
+		// Extract user ID from path /user/{id}
+		if len(r.URL.Path) > 6 && r.URL.Path[:6] == "/user/" {
+			userId := r.URL.Path[6:]
+			if user, exists := responses[userId]; exists {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(user)
+			} else {
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(User{})
+			}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode([]User{})
 		}
 	}))
 }
 
 // Test helper to create sample users
-func createTestUser(id, name, dept, role string) User {
+func createTestUser(id, name, dept, team, role, teamName, deptName string) User {
 	return User{
-		UserId:         id,
-		UserName:       &name,
-		UserDepartment: &dept,
-		UserRole:       &role,
+		UserId:             id,
+		UserName:           &name,
+		UserDepartmentId:   &dept,
+		UserTeamId:         &team,
+		UserRole:           &role,
+		UserTeamName:       &teamName,
+		UserDepartmentName: &deptName,
 	}
 }
 
 // Since your service has hardcoded URLs, we need to temporarily modify them for testing
 // This is a limitation - in production code, you'd want dependency injection
-func TestGetUserDetails_WithMockData(t *testing.T) {
-	t.Run("Should process multiple users correctly", func(t *testing.T) {
-		// Create test input - array of User structs with just UserIds
-		inputUsers := []User{
-			{UserId: "user1"},
-			{UserId: "user2"},
-			{UserId: "user3"},
+func TestGetAllUsers_Success(t *testing.T) {
+	// Setup mock data
+	allUsers := []User{
+		createTestUser("1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
+		createTestUser("2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
+	}
+
+	// Create mock server
+	server := createMockProfileServer(nil, allUsers)
+	defer server.Close()
+
+	// Parse server URL
+	u, _ := url.Parse(server.URL)
+	host, portStr, _ := net.SplitHostPort(u.Host)
+	port, _ := strconv.Atoi(portStr)
+
+	// Save original values
+	origAddr := userServiceAddress
+	origPort := userServicePort
+	defer func() {
+		userServiceAddress = origAddr
+		userServicePort = origPort
+	}()
+
+	// Set to mock server
+	userServiceAddress = "http://" + host
+	userServicePort = port
+
+	// Call the function
+	users, err := GetAllUsers()
+
+	// Assertions
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(users) != 2 {
+		t.Fatalf("Expected 2 users, got %d", len(users))
+	}
+	if users[0].UserId != "1" || users[1].UserId != "2" {
+		t.Errorf("Unexpected users: %+v", users)
+	}
+}
+
+func TestGetAllUsers_ServerError(t *testing.T) {
+	// Create mock server that returns error
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/user/all" {
+			w.WriteHeader(http.StatusInternalServerError)
 		}
+	}))
+	defer server.Close()
 
-		// Call the actual method
-		result := GetUserDetails(inputUsers)
+	// Parse server URL
+	u, _ := url.Parse(server.URL)
+	host, portStr, _ := net.SplitHostPort(u.Host)
+	port, _ := strconv.Atoi(portStr)
 
-		// Verify the method was called and returned something
-		// Note: This will fail against the real HTTP endpoint, but demonstrates proper testing structure
+	// Save original values
+	origAddr := userServiceAddress
+	origPort := userServicePort
+	defer func() {
+		userServiceAddress = origAddr
+		userServicePort = origPort
+	}()
 
-		// Basic validation - ensure no panic and result is a slice
-		if result == nil {
-			t.Error("Expected non-nil result")
-		}
+	// Set to mock server
+	userServiceAddress = "http://" + host
+	userServicePort = port
 
-		// The result should be a slice (even if empty due to failed HTTP calls)
-		if len(result) < 0 {
-			t.Error("Result length should not be negative")
-		}
+	// Call the function
+	_, err := GetAllUsers()
 
-		t.Logf("GetUserDetails processed %d input users and returned %d results", len(inputUsers), len(result))
-	})
+	// Assertions
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+}
+
+func TestGetUserDetails_Success(t *testing.T) {
+	// Setup mock data
+	responses := map[string]User{
+		"user1": createTestUser("user1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
+		"user2": createTestUser("user2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
+	}
+
+	// Create mock server
+	server := createMockProfileServer(responses, nil)
+	defer server.Close()
+
+	// Parse server URL
+	u, _ := url.Parse(server.URL)
+	host, portStr, _ := net.SplitHostPort(u.Host)
+	port, _ := strconv.Atoi(portStr)
+
+	// Save original values
+	origAddr := userServiceAddress
+	origPort := userServicePort
+	defer func() {
+		userServiceAddress = origAddr
+		userServicePort = origPort
+	}()
+
+	// Set to mock server
+	userServiceAddress = "http://" + host
+	userServicePort = port
+
+	// Input
+	inputUsers := []User{
+		{UserId: "user1"},
+		{UserId: "user2"},
+	}
+
+	// Call the function
+	result := GetUserDetails(inputUsers)
+
+	// Assertions
+	if len(result) != 2 {
+		t.Fatalf("Expected 2 users, got %d", len(result))
+	}
+	userMap := make(map[string]User)
+	for _, u := range result {
+		userMap[u.UserId] = u
+	}
+	if _, ok := userMap["user1"]; !ok {
+		t.Error("Missing user1")
+	}
+	if _, ok := userMap["user2"]; !ok {
+		t.Error("Missing user2")
+	}
 }
 
 func TestGetUserDetails_EmptyInput(t *testing.T) {
-	t.Run("Should handle empty input gracefully", func(t *testing.T) {
-		// Test with empty input
-		inputUsers := []User{}
+	// Input
+	inputUsers := []User{}
 
-		// Call the actual method
-		result := GetUserDetails(inputUsers)
+	// Call the function
+	result := GetUserDetails(inputUsers)
 
-		// Should return empty slice
-		if result == nil {
-			t.Error("Expected non-nil result, got nil")
-		}
-
-		if len(result) != 0 {
-			t.Errorf("Expected empty result for empty input, got %d users", len(result))
-		}
-	})
-}
-
-func TestUserDetailsBasedOnId_DirectCall(t *testing.T) {
-	t.Run("Should call UserDetailsBasedOnId method directly", func(t *testing.T) {
-		// Setup for actual method call
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-
-		wg.Add(1)
-
-		// Call the ACTUAL method - this will make real HTTP request
-		result, err := UserDetailsBasedOnId("test-user-123", ch, &wg)
-
-		// Wait for goroutine to complete
-		wg.Wait()
-		close(ch)
-
-		// Verify method behavior
-		// Note: This will likely fail due to network call, but that's proper unit testing
-		if err != nil {
-			t.Logf("Expected error due to no mock server: %v", err)
-		}
-
-		// Verify return structure
-		if result == nil {
-			t.Log("Result is nil - expected due to failed HTTP call")
-		} else {
-			t.Logf("Unexpected success: got %d users", len(result))
-		}
-
-		// Verify channel received data (or didn't due to error)
-		channelResults := make([]User, 0)
-		for users := range ch {
-			channelResults = append(channelResults, users...)
-		}
-
-		t.Logf("Channel received %d users", len(channelResults))
-	})
-}
-
-func TestGetUserDetails_SingleUser(t *testing.T) {
-	t.Run("Should call GetUserDetails with single user", func(t *testing.T) {
-		// Create actual input
-		inputUsers := []User{
-			{UserId: "single-test-user"},
-		}
-
-		// Call the ACTUAL method
-		result := GetUserDetails(inputUsers)
-
-		// Verify method was called and handled gracefully
-		if result == nil {
-			t.Error("Expected non-nil result")
-		}
-
-		// Due to hardcoded URL, this will likely return empty results
-		// But we're testing the method actually runs without panicking
-		t.Logf("Method executed successfully, returned %d users", len(result))
-
-		// Verify it's still a valid slice
-		if cap(result) < 0 {
-			t.Error("Result should have valid capacity")
-		}
-	})
-}
-
-func TestConcurrentAccess(t *testing.T) {
-	t.Run("Handles concurrent goroutines safely", func(t *testing.T) {
-		numGoroutines := 10
-		ch := make(chan []User, numGoroutines)
-		var wg sync.WaitGroup
-
-		// Launch multiple goroutines concurrently
-		for i := 0; i < numGoroutines; i++ {
-			wg.Add(1)
-			go func(index int) {
-				defer wg.Done()
-
-				name := fmt.Sprintf("Concurrent User %d", index)
-				dept := "Testing"
-				role := "Tester"
-
-				user := User{
-					UserId:         fmt.Sprintf("concurrent_user_%d", index),
-					UserName:       &name,
-					UserDepartment: &dept,
-					UserRole:       &role,
-				}
-
-				ch <- []User{user}
-			}(i)
-		}
-
-		wg.Wait()
-		close(ch)
-
-		// Collect and verify results
-		var results []User
-		for users := range ch {
-			results = append(results, users...)
-		}
-
-		if len(results) != numGoroutines {
-			t.Errorf("Expected %d users, got %d", numGoroutines, len(results))
-		}
-
-		// Verify all users are unique
-		userIds := make(map[string]bool)
-		for _, user := range results {
-			if userIds[user.UserId] {
-				t.Errorf("Duplicate user ID found: %s", user.UserId)
-			}
-			userIds[user.UserId] = true
-		}
-	})
-}
-
-// Benchmark test for performance
-func BenchmarkGetUserDetails(b *testing.B) {
-	inputUsers := []User{
-		{UserId: "bench_user_1"},
-		{UserId: "bench_user_2"},
-		{UserId: "bench_user_3"},
+	// Assertions
+	if result == nil {
+		t.Fatal("Expected non-nil result")
 	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		ch := make(chan []User, len(inputUsers))
-		var wg sync.WaitGroup
-
-		for _, user := range inputUsers {
-			wg.Add(1)
-			go func(userId string) {
-				defer wg.Done()
-
-				// Simulate lightweight processing
-				mockUser := User{
-					UserId: userId,
-				}
-				ch <- []User{mockUser}
-			}(user.UserId)
-		}
-
-		wg.Wait()
-		close(ch)
-
-		var resBody []User
-		for res := range ch {
-			resBody = append(resBody, res...)
-		}
+	if len(result) != 0 {
+		t.Errorf("Expected empty result, got %d users", len(result))
 	}
 }
 
-// New focused unit tests to exercise the JSON decode and status handling paths
-func TestUserDetailsBasedOnId_ResponseHandling(t *testing.T) {
-	t.Run("200 OK with valid JSON", func(t *testing.T) {
-		// Create a mock server that returns a JSON array with one user
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			users := []User{createTestUser("u1", "Alice", "Eng", "Dev")}
-			_ = json.NewEncoder(w).Encode(users)
-		}))
-		defer srv.Close()
+func TestUserDetailsBasedOnId_Success(t *testing.T) {
+	// Setup mock data
+	responses := map[string]User{
+		"user1": createTestUser("user1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
+	}
 
-		// Point the package variables to the test server by parsing its URL
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
+	// Create mock server
+	server := createMockProfileServer(responses, nil)
+	defer server.Close()
+
+	// Parse server URL
+	u, _ := url.Parse(server.URL)
+	host, portStr, _ := net.SplitHostPort(u.Host)
+	port, _ := strconv.Atoi(portStr)
+
+	// Save original values
+	origAddr := userServiceAddress
+	origPort := userServicePort
+	defer func() {
+		userServiceAddress = origAddr
+		userServicePort = origPort
+	}()
+
+	// Set to mock server
+	userServiceAddress = "http://" + host
+	userServicePort = port
+
+	// Setup
+	var wg sync.WaitGroup
+	ch := make(chan User, 1)
+	wg.Add(1)
+
+	// Call the function
+	result, err := UserDetailsBasedOnId("user1", ch, &wg)
+
+	// Wait
+	wg.Wait()
+	close(ch)
+
+	// Assertions
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+	if result.UserId != "user1" {
+		t.Errorf("Unexpected user: %+v", result)
+	}
+
+	// Check channel
+	select {
+	case user := <-ch:
+		if user.UserId != "user1" {
+			t.Errorf("Channel user mismatch: %+v", user)
 		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
+	default:
+		t.Error("Expected user in channel")
+	}
+}
+
+func TestUserDetailsBasedOnId_NotFound(t *testing.T) {
+	// Create mock server
+	server := createMockProfileServer(map[string]User{}, nil)
+	defer server.Close()
+
+	// Parse server URL
+	u, _ := url.Parse(server.URL)
+	host, portStr, _ := net.SplitHostPort(u.Host)
+	port, _ := strconv.Atoi(portStr)
+
+	// Save original values
+	origAddr := userServiceAddress
+	origPort := userServicePort
+	defer func() {
+		userServiceAddress = origAddr
+		userServicePort = origPort
+	}()
+
+	// Set to mock server
+	userServiceAddress = "http://" + host
+	userServicePort = port
+
+	// Setup
+	var wg sync.WaitGroup
+	ch := make(chan User, 1)
+	wg.Add(1)
+
+	// Call the function
+	result, err := UserDetailsBasedOnId("nonexistent", ch, &wg)
+
+	// Wait
+	wg.Wait()
+	close(ch)
+
+	// Assertions
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+	if result.UserId != "" {
+		t.Errorf("Expected empty user, got %+v", result)
+	}
+
+	// Check channel has the user
+	select {
+	case user := <-ch:
+		if user.UserId != "" {
+			t.Errorf("Expected empty user in channel, got %+v", user)
 		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
-
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
-
-		res, err := UserDetailsBasedOnId("u1", ch, &wg)
-		wg.Wait()
-		close(ch)
-
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-		if res == nil || len(res) != 1 {
-			t.Fatalf("expected one user in result, got %v", res)
-		}
-	})
-
-	t.Run("200 OK with invalid JSON", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			// write invalid JSON
-			w.Write([]byte("{invalid json}"))
-		}))
-		defer srv.Close()
-
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
-		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
-
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
-
-		res, err := UserDetailsBasedOnId("u2", ch, &wg)
-		wg.Wait()
-		close(ch)
-
-		if err == nil {
-			t.Fatalf("expected JSON decode error, got nil and res=%v", res)
-		}
-	})
-
-	t.Run("200 OK with empty array (index out of range)", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			// return empty array
-			w.Write([]byte("[]"))
-		}))
-		defer srv.Close()
-
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
-		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
-
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
-
-		// Call in a closure and recover from expected panic caused by indexing empty slice
-		didPanic := false
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					didPanic = true
-				}
-			}()
-			_, _ = UserDetailsBasedOnId("u3", ch, &wg)
-		}()
-
-		// Wait and cleanup
-		wg.Wait()
-		close(ch)
-
-		if !didPanic {
-			t.Fatalf("expected panic due to empty array indexing but did not panic")
-		}
-	})
-
-	t.Run("non-200 status code", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("server error"))
-		}))
-		defer srv.Close()
-
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		u, err := url.Parse(srv.URL)
-		if err != nil {
-			t.Fatalf("failed to parse server URL: %v", err)
-		}
-		host, portStr, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			t.Fatalf("failed to split host and port: %v", err)
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			t.Fatalf("failed to parse port: %v", err)
-		}
-		userServiceAddress = fmt.Sprintf("%s://%s", u.Scheme, host)
-		userServicePort = port
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
-
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
-
-		res, err := UserDetailsBasedOnId("u4", ch, &wg)
-		wg.Wait()
-		close(ch)
-
-		// Current production behavior returns nil error and an empty result when status != 200.
-		// That is arguably a bug (should return a non-nil error). Adjust the test to assert
-		// the existing behavior so tests reflect current code.
-		if err != nil {
-			t.Fatalf("expected nil error for current behavior, got err=%v res=%v", err, res)
-		}
-		if res != nil && len(res) != 0 {
-			t.Fatalf("expected empty result for non-200 status, got res=%v", res)
-		}
-	})
-
-	t.Run("network error (server closed)", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// immediate close to simulate network error
-		}))
-		// close server to simulate unreachable host
-		srv.Close()
-
-		oldAddr := userServiceAddress
-		oldPort := userServicePort
-		userServiceAddress = srv.URL
-		userServicePort = 0
-		defer func() { userServiceAddress = oldAddr; userServicePort = oldPort }()
-
-		var wg sync.WaitGroup
-		ch := make(chan []User, 1)
-		wg.Add(1)
-
-		res, err := UserDetailsBasedOnId("u5", ch, &wg)
-		wg.Wait()
-		close(ch)
-
-		if err == nil {
-			t.Fatalf("expected network error, got nil and res=%v", res)
-		}
-	})
+	default:
+		t.Error("Expected user in channel")
+	}
 }

@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Sidebar } from "./Sidebar"
 import { useAuth } from "@/contexts/AuthContext"
 import { NotificationsPanel } from "../notifications/notificationsPanel"
-import { NotificationPreferences } from "../notifications/notifications-settings"
+import { NotificationPreferences } from "../notifications/notificationsSettings"
 
 export function AppNavbar() {
   const [showMobileSearch, setShowMobileSearch] = useState(false)
@@ -93,7 +93,7 @@ export function AppNavbar() {
               <DropdownMenuItem asChild>
                 <Link to="/app/profile">Profile</Link>
               </DropdownMenuItem>
-              {(profile?.role === "Admin" || profile?.role === "Staff") && (
+              {(profile?.role === "Director" || profile?.role === "Staff" || profile?.role === "Manager" || profile?.role === "Senior Management") && (
                 <DropdownMenuItem asChild>
                   <Link to="/app/settings">Settings</Link>
                 </DropdownMenuItem>

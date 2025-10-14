@@ -1,40 +1,50 @@
-const request = require('supertest');
-const app = require('../../app');
-
-describe('Project API - Create New Project', () => {
-  test('POST /project/new should create a new project', async () => {
-    const newProject = {
+jest.mock('../../db/supabase', () => {
+  const mockSingle = jest.fn().mockResolvedValue({
+    data: {
+      id: '123e4567-e89b-12d3-a456-426614174000',
       title: 'Test Project',
       description: 'Test Description',
-      collaborators: ['588fb335-9986-4c93-872e-6ef103c97f92', 'c0cd847d-8c61-45dd-8dda-ecffe214943e'],
-      owner: 'testuser',
-      task_list: []
-    };
-
-    const response = await request(app)
-      .post('/project/new')
-      .send(newProject)
-      .expect(201);
-
-    // Expect the new response format with success, message, data, timestamp
-    expect(response.body).toBeDefined();
-    expect(response.body.success).toBe(true);
-    expect(response.body.message).toBe('Project created successfully');
-    expect(response.body.data).toBeDefined();
-    expect(response.body.timestamp).toBeDefined();
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    error: null,
   });
 
-  test('POST /project/new should handle missing data gracefully', async () => {
-    const incompleteProject = {
-      title: 'Test Project'
-      // Missing required fields
+  const mockSelect = jest.fn(() => ({
+    single: mockSingle,
+  }));
+
+  const mockInsert = jest.fn(() => ({
+    select: mockSelect,
+  }));
+
+  const mockFrom = jest.fn(() => ({
+    insert: mockInsert,
+  }));
+
+  return {
+    supabase: { from: mockFrom },
+  };
+});
+
+const project = require('../../model/project2');
+
+describe('Project Model', () => {
+  test('addNewProject should accept project data', async () => {
+    const testProject = {
+      title: 'Test Project',
+      description: 'Test Description',
     };
 
-    const response = await request(app)
-      .post('/project/new')
-      .send(incompleteProject);
+    const ownerId = '123e4567-e89b-12d3-a456-426614174000';
 
-    // Should either succeed with null data (due to mocks) or fail gracefully
-    expect([200, 201, 400, 500]).toContain(response.status);
+    const result = await project.addNewProject(testProject, ownerId);
+
+    expect(result).toBeDefined();
+    expect(result.id).toBeDefined();
+    expect(result.title).toBe('Test Project');
+    expect(result.description).toBe('Test Description');
+    expect(result.created_at).toBeDefined();
+    expect(result.updated_at).toBeDefined();
   });
 });

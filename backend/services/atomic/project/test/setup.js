@@ -10,7 +10,7 @@ jest.mock('@supabase/supabase-js', () => {
       from: () => ({
         select: async () => ({ data: [], error: null }),
         insert: () => ({
-          select: async () => ({ data: [{ id: 'test-id', title: 'Test Project' }], error: null }),
+          select: async () => ({ data: [{ id: 'test-id', title: 'Test Project', description: 'Test Description' }], error: null }),
         }),
         update: async () => ({ data: null, error: null }),
         delete: async () => ({ data: null, error: null }),

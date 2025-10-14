@@ -18,6 +18,8 @@ beforeEach(() => {
   ({ getAllUsers } = require('../../model/user'));
 });
 
+const user = require('../../model/user');
+
 describe('model/user.getAllUsers', () => {
   it('returns data on success', async () => {
     const rows = [{ id: 1, email: 'a@example.com' }];
@@ -25,7 +27,7 @@ describe('model/user.getAllUsers', () => {
 
     const out = await getAllUsers();
 
-    expect(mockFrom).toHaveBeenCalledWith('profiles');
+    expect(mockFrom).toHaveBeenCalledWith('revamped_profiles');
     expect(mockSelect).toHaveBeenCalledWith('*');
     expect(out).toEqual(rows);
   });
@@ -34,7 +36,7 @@ describe('model/user.getAllUsers', () => {
     mockSelect.mockResolvedValue({ data: null, error: { message: 'boom' } });
 
     await expect(getAllUsers()).rejects.toThrow('boom');
-    expect(mockFrom).toHaveBeenCalledWith('profiles');
+    expect(mockFrom).toHaveBeenCalledWith('revamped_profiles');
   });
 
   it('returns [] when there are no rows', async () => {
