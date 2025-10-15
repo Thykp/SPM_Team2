@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Task Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 0.75rem; }
+    th { background-color: #f9fafb; font-weight: 600; font-size: 0.75rem; }
+        tr:hover { background-color: #f9fafb; }
+        .chart-img { max-width: 100%; height: auto; display: block;}
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Your Personal Task Report</h1>
+            <p class="text-gray-600">{{ reportPeriod }}</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-3 gap-4 mb-8">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <p class="text-gray-600 text-sm mb-1">Total Tasks</p>
+                <p class="text-2xl font-bold text-blue-600">{{ kpis.totalTasks }}</p>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg">
+                <p class="text-gray-600 text-sm mb-1">Completed</p>
+                <p class="text-2xl font-bold text-green-600">{{ kpis.completedTasks }}</p>
+            </div>
+            <div class="bg-red-50 p-4 rounded-lg">
+                <p class="text-gray-600 text-sm mb-1">Overdue</p>
+                <p class="text-2xl font-bold text-red-600">{{ kpis.overdueTasks }}</p>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg">
+                <p class="text-gray-600 text-sm mb-1">High Priority</p>
+                <p class="text-2xl font-bold text-orange-600">{{ kpis.highPriorityTasks }}</p>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded-lg">
+                <p class="text-gray-600 text-sm mb-1">Under Review</p>
+                <p class="text-2xl font-bold text-yellow-600">{{ kpis.underReviewTasks }}</p>
+            </div>
+            <div class="bg-indigo-50 p-4 rounded-lg">
+                <p class="text-gray-600 text-sm mb-1">Ongoing</p>
+                <p class="text-2xl font-bold text-indigo-600">{{ kpis.ongoingTasks }}</p>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-2 gap-8 mb-8">
+            <!-- Status Distribution -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Status Distribution</h2>
+                <img src="{{ charts.statusBar }}" alt="Status Distribution Chart" class="chart-img">
+            </div>
+
+            <!-- Priority Distribution -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Priority Distribution</h2>
+                <img src="{{ charts.priorityPie }}" alt="Priority Distribution Chart" class="chart-img">
+            </div>
+        </div>
+
+        <!-- Owner Tasks Table -->
+        {% set ownerTasks = [] %}
+        {% for task in tasks %}
+            {% if task.role == 'Owner' %}
+                {% set ownerTasks = (ownerTasks.push(task), ownerTasks) %}
+            {% endif %}
+        {% endfor %}
+        
+        {% if ownerTasks.length > 0 %}
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Tasks I Own ({{ ownerTasks.length }})</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Deadline</th>
+                            <th>Project</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in ownerTasks %}
+                        <tr>
+                            <td class="font-medium">{{ task.title }}</td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-semibold
+                                    {% if task.status == 'Completed' %}bg-green-100 text-green-800
+                                    {% elif task.status == 'Ongoing' %}bg-blue-100 text-blue-800
+                                    {% elif task.status == 'Overdue' %}bg-red-100 text-red-800
+                                    {% elif task.status == 'Under Review' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ task.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-semibold
+                                    {% if task.priority <= 3 %}bg-red-100 text-red-800
+                                    {% elif task.priority <= 6 %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-green-100 text-green-800{% endif %}">
+                                    {{ task.priority }}
+                                </span>
+                            </td>
+                            <td>{{ task.deadline }}</td>
+                            <td>{{ task.project_name or 'No Project' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Collaborator Tasks Table -->
+        {% set collaboratorTasks = [] %}
+        {% for task in tasks %}
+            {% if task.role == 'Collaborator' %}
+                {% set collaboratorTasks = (collaboratorTasks.push(task), collaboratorTasks) %}
+            {% endif %}
+        {% endfor %}
+        
+        {% if collaboratorTasks.length > 0 %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Tasks I'm Collaborating On ({{ collaboratorTasks.length }})</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Deadline</th>
+                            <th>Project</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in collaboratorTasks %}
+                        <tr>
+                            <td class="font-medium">{{ task.title }}</td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-semibold
+                                    {% if task.status == 'Completed' %}bg-green-100 text-green-800
+                                    {% elif task.status == 'Ongoing' %}bg-blue-100 text-blue-800
+                                    {% elif task.status == 'Overdue' %}bg-red-100 text-red-800
+                                    {% elif task.status == 'Under Review' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ task.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-semibold
+                                    {% if task.priority <= 3 %}bg-red-100 text-red-800
+                                    {% elif task.priority <= 6 %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-green-100 text-green-800{% endif %}">
+                                    {{ task.priority }}
+                                </span>
+                            </td>
+                            <td>{{ task.deadline }}</td>
+                            <td>{{ task.project_name or 'No Project' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

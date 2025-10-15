@@ -1,28 +1,20 @@
-// html.js
-// Renders the HTML for the PDF report using Nunjucks and Tailwind CDN
 const path = require('path');
 const nunjucks = require('nunjucks');
 
-const TEMPLATE_PATH = path.resolve(__dirname, 'template.njk');
+const TEMPLATE_PATH = path.resolve(__dirname, 'personalReport.njk');
 
 // Configure Nunjucks to look in the current directory
 const env = nunjucks.configure(path.dirname(TEMPLATE_PATH), { autoescape: true });
 
-async function renderHtml({ userId, reportData }) {
-  // Add timestamp
-  const now = new Date();
-  const timestamp = now.toLocaleString();
-  // Precompute maxVal for bar chart
-  const statusList = ["Under Review", "Ongoing", "Completed", "Overdue", "Unassigned"];
-  const kpiVals = statusList.map(s => reportData.kpis[s] || 0);
-  const maxVal = Math.max(...kpiVals, 1); // avoid divide by zero
-  // Render template
-  return env.render('template.njk', {
+async function renderHtml({ userId, tasks, kpis, reportPeriod, charts }) {
+  // Render template with pre-processed data and chart images
+  return env.render('personalReport.njk', {
     userId,
-    timestamp,
-    maxVal,
-    ...reportData
+    tasks,
+    kpis,
+    reportPeriod,
+    charts
   });
 }
 
-module.exports = renderHtml;
+module.exports = {renderHtml};

@@ -245,8 +245,7 @@ function roleForUser(task, userId) {
 }
 
 async function fetchTasksForUser(userId, startDate, endDate) {
-  const ownerTasks = [];
-  const collaboratorTasks = [];
+  const taskList = [];
 
   try {
     const response = await axios.get(`${taskAddress}/task/users/${userId}?startDate=${startDate}&endDate=${endDate}`);
@@ -257,24 +256,27 @@ async function fetchTasksForUser(userId, startDate, endDate) {
         id: t.id,
         title: t.title,
         status: t.status,
-        role,
-        dueDate: t.deadline,
+        role: role,
+        deadline: t.deadline,
         priority: t.priority,
         projectId: t.project_id,
         updatedAt: t.updated_at
       };
-      if (role == "Owner") ownerTasks.push(normalized);
-      if (role == "Collaborator") collaboratorTasks.push(normalized);
+      taskList.push(normalized);
     }
-    console.log(ownerTasks);
-    console.log(collaboratorTasks);
-    return { ownerTasks, collaboratorTasks };
+    return taskList;
   } catch (error) {
     console.error(error);
     throw error;
   }
 }
 
+async function getProjectDetails(projectIds){
+  const sample = {
+    1:"Project 1",
+    2:"Project 2"
+  };
+  return sample;
+}
 
-
-module.exports = {fetchTasksForUser};
+module.exports = {fetchTasksForUser, getProjectDetails};

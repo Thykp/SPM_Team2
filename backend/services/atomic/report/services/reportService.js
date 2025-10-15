@@ -21,9 +21,7 @@ async function createReport(report, filePath){
     return data.filepath;
 }
 
-// Upload file from disk path
 async function createReportStorageFromPath(filePath) {
-    console.log("IN createReportStorageFromPath");
     const fileBuffer = await fs.readFile(filePath);
     const fileName = require('path').basename(filePath);
     
@@ -43,9 +41,7 @@ async function createReportStorageFromPath(filePath) {
     return data;
 }
 
-// Upload file from buffer/file object
 async function createReportStorageFromFile(fileName, fileBuffer) {
-    console.log("IN createReportStorageFromFile");
     const { data, error } = await supabase.storage
         .from(REPORT_STORAGE)
         .upload(fileName, fileBuffer, {
@@ -62,7 +58,6 @@ async function createReportStorageFromFile(fileName, fileBuffer) {
     return data;
 }
 
-// Backwards compatibility wrapper
 async function createReportStorage(filePathOrBuffer, fileName = null) {
     if (typeof filePathOrBuffer === 'string') {
         return await createReportStorageFromPath(filePathOrBuffer);
