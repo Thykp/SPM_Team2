@@ -49,6 +49,27 @@ router.get("/staff", async (req, res) => {
   }
 });
 
+// Filter users based on role, team_id, and department_id
+router.get("/assignees", async (req, res) => {
+  try {
+    const { role, team_id, department_id } = req.query;
+
+    console.log("Query Parameters:", { role, team_id, department_id });
+
+    // Call the model function to fetch users
+    const rows = await user.getUsersByRoleScope({
+      role: role || null,
+      team_id: team_id || null,
+      department_id: department_id || null,
+    });
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error fetching filtered users:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // By ID
 router.get("/:userId", async (req, res) => {
   const { userId } = req.params;

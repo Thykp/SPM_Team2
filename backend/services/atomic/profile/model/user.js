@@ -71,9 +71,45 @@ async function getUserDetailsWithId(user_id) {
   return result;
 }
 
+// Fetch users based on the current user's role, team_id, and department_id
+async function getUsersByRoleScope({ role, team_id, department_id }) {
+  console.log("getUsersByRoleScope called with:", { role, team_id, department_id });
+
+  let query = supabase
+    .from(PROFILE_TABLE)
+    .select("id, display_name, role, team_id, department_id")
+    .order("display_name", { ascending: true });
+
+  if (role === "Manager") {
+    if (team_id) {
+      query = query.eq("team_id", team_id).eq("role", "Staff");
+    } else {
+      return []; 
+    }
+  } else if (role === "Director") {
+    if (department_id) {
+      query = query.eq("department_id", department_id).in("role", ["Manager", "Staff"]);
+    } else {
+      return [];
+    }
+  } else if (role === "Senior Management") {
+    // No additional filters for Senior Management
+  } else {
+    // Default case: return an empty list for unsupported roles
+    return [];
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,
   getStaffByScope,
   getUserDetailsWithId,
+  getUsersByRoleScope,
 };

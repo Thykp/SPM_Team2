@@ -44,15 +44,25 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
     title: string;
     description: string;
     status: StatusType;
+    priority: number;
+    deadline: string;
   }>({
     title: "",
     description: "",
     status: "Unassigned",
+    priority: 5, // Default priority
+    deadline: new Date().toISOString().slice(0, 16), 
   });
   const [loading, setLoading] = useState(false);
 
   const resetForm = () =>
-    setNewTask({ title: "", description: "", status: "Unassigned" });
+    setNewTask({
+      title: "",
+      description: "",
+      status: "Unassigned",
+      priority: 5,
+      deadline: new Date().toISOString().slice(0, 16),
+    });
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +75,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
         status: newTask.status,
         owner: userId,
         collaborators: [],
-        deadline: new Date().toISOString(),
+        deadline: new Date(newTask.deadline).toISOString(),
+        priority: newTask.priority,
       };
 
       const createdTask = await Task.createTask(taskData);
@@ -139,28 +150,76 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
             />
           </div>
 
-          {/* Status */}
-          <div className="space-y-2">
-            <Label htmlFor="status" className="text-base font-medium">
-              Task Status
-            </Label>
-            <Select
-              value={newTask.status}
-              onValueChange={(val: StatusType) =>
-                setNewTask((prev) => ({ ...prev, status: val }))
-              }
-            >
-              <SelectTrigger id="status" className="h-11">
-                <SelectValue placeholder="Select a status" />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
+          {/* Status and Priority */}
+          <div className="flex gap-4">
+            {/* Status */}
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="status" className="text-base font-medium">
+                Task Status
+              </Label>
+              <select
+                id="status"
+                value={newTask.status}
+                onChange={(e) =>
+                  setNewTask((prev) => ({ ...prev, status: e.target.value as StatusType }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
+              </select>
+            </div>
+
+            {/* Priority */}
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="priority" className="text-base font-medium">
+                Priority (1-10)
+              </Label>
+              <select
+                id="priority"
+                value={newTask.priority}
+                onChange={(e) =>
+                  setNewTask((prev) => ({
+                    ...prev,
+                    priority: parseInt(e.target.value, 10),
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => {
+                  let label = `${priority}`;
+                  if (priority <= 3) label += " (Low)";
+                  else if (priority <= 7) label += " (Medium)";
+                  else label += " (High)";
+
+                  return (
+                    <option key={priority} value={priority}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+
+          {/* Deadline */}
+          <div className="space-y-2">
+            <Label htmlFor="deadline" className="text-base font-medium">
+              Deadline
+            </Label>
+            <Input
+              id="deadline"
+              type="datetime-local"
+              value={newTask.deadline}
+              onChange={(e) =>
+                setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
+              }
+              className="h-11"
+              required
+            />
           </div>
 
           {/* Actions */}
