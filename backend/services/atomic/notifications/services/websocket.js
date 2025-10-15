@@ -1,6 +1,6 @@
 const { WebSocketServer } = require("ws");
 
-const clients = new Map(); 
+const clients = new Map(); // Map<userId, Set<WebSocket>>
 
 function addClient(userId, ws) {
   if (!clients.has(userId)) clients.set(userId, new Set());
@@ -31,9 +31,14 @@ function initWebSocketServer(server) {
 
   wss.on("connection", (ws, req) => {
     try {
-      const url = new URL(req.url, `http://${req.headers.host}`);
-      const userId = url.searchParams.get("userId");
-      if (!userId) return ws.close();
+      // Parse userId from query string
+      const params = new URLSearchParams(req.url.split("?")[1]);
+      const userId = params.get("userId");
+
+      if (!userId) {
+        console.log("[ws] Missing userId, closing connection");
+        return ws.close();
+      }
 
       addClient(userId, ws);
       console.log(`[ws] Connected: ${userId}`);
@@ -43,14 +48,19 @@ function initWebSocketServer(server) {
     }
   });
 
-  // heartbeat
-  setInterval(() => {
+  // Heartbeat to detect dead connections
+  const interval = setInterval(() => {
     wss.clients.forEach((ws) => {
-      if (!ws.isAlive) return ws.terminate();
+      if (!ws.isAlive) {
+        console.log("[ws] Terminating dead connection");
+        return ws.terminate();
+      }
       ws.isAlive = false;
       ws.ping();
     });
   }, 30000);
+
+  wss.on("close", () => clearInterval(interval));
 
   return wss;
 }

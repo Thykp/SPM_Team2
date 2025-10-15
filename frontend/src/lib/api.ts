@@ -66,20 +66,20 @@ export type ProfileRequestDetailsDto = {
 }
 
 export type Notification = {
-  id: string;
+  id: string;                 
+  to_user_id: string;         
+  from_user_id: string;    
+  from_username: string;  
+  notif_type: string;         
+  resource_type: string;      
+  resource_id?: string;       
+  project_id?: string;        
+  task_priority?: number;     
   notif_text: string;
-  notif_type: string;
-  from_user: string;
-  from_username?: string;
-  to_user: string;
-  created_at?: string;
-  resource_type?: string;
-  resource_id?: string;
-  project_id?: string;
-  priority?: number;
+  link_url?: string;          
   read: boolean;
   user_set_read: boolean;
-}
+};
 
 // ----- Services -----
 export const Profile = {
@@ -219,17 +219,18 @@ export const Notification = {
   },
 
   getPreferences: async (userId: string): Promise<string[]> => {
-    const url = `${KONG_BASE_URL}/manage-notifications/${userId}`;
-    const response = await api.get<{ preferences: string[] }>(url);
-    return response.data.preferences;
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/${userId}`;
+    const response = await api.get(url);
+    console.log(response)
+    return response.data;
   },
 
   updatePreferences: async (userId: string, preferences: string[]): Promise<void> => {
     const validPrefs = ["in-app", "email"];
     const filteredPrefs = preferences.filter(p => validPrefs.includes(p));
 
-    const url = `${KONG_BASE_URL}/manage-notifications/${userId}`;
-    await api.put(url, { preferences: filteredPrefs });
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/${userId}`;
+    await api.post(url, filteredPrefs);
   },
 
   deleteNotification: async (userId: string, notifId: string): Promise<void> => {

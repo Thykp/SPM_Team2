@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const preferencesRoutes = require('./api/preferences');
+const preferencesRoutes = require('./api/preferencesRoutes');
 
 const app = express();
 app.use(cors());

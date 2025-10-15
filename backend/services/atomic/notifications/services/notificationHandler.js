@@ -4,6 +4,7 @@ const { supabase } = require("../db/supabase");
 
 async function handleIncomingNotification(notif) {
   try {
+    console.log(notif)
     // enrich with sender name
     let from_username = "Unknown";
     if (notif.from_user) {
@@ -17,7 +18,7 @@ async function handleIncomingNotification(notif) {
     }
 
     const enriched = { ...notif, from_username };
-    broadcastToUser(notif.to_user, enriched);
+    broadcastToUser(notif.to_user_id, enriched);
   } catch (err) {
     console.error("[handler] Error handling notification:", err);
   }

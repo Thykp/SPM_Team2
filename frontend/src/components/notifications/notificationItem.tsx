@@ -2,16 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import type { Notification } from "@/lib/api";
 
 type Props = {
-  notif: {
-    id: string;
-    notif_text: string;
-    from_user?: string | null;
-    created_at?: string;
-    read: boolean;
-    user_set_read: boolean;
-  };
+  notif: Notification;
   onDelete: (id: string) => void;
   onToggleUserSetRead: (id: string) => void;
 };
@@ -40,13 +34,8 @@ export function NotificationItem({ notif, onDelete, onToggleUserSetRead }: Props
 
       {/* Notification content */}
       <div className="flex-1">
-        <div className="font-medium">{notif.from_user ?? "Unknown"}</div>
+        <div className="font-medium">{notif.from_username ?? "Unknown"}</div>
         <div className="text-gray-600">{notif.notif_text}</div>
-        {notif.created_at && (
-          <div className="text-xs text-gray-400">
-            {new Date(notif.created_at).toLocaleString()}
-          </div>
-        )}
       </div>
 
       {/* Delete button */}
