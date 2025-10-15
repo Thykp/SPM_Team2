@@ -266,6 +266,8 @@ async function fetchTasksForUser(userId, startDate, endDate) {
       if (role == "Owner") ownerTasks.push(normalized);
       if (role == "Collaborator") collaboratorTasks.push(normalized);
     }
+    console.log(ownerTasks);
+    console.log(collaboratorTasks);
     return { ownerTasks, collaboratorTasks };
   } catch (error) {
     console.error(error);

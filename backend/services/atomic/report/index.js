@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path')
-require('dotenv').config({ path: path.resolve(__dirname, '../../../..', '.env') });
+require('dotenv').config();
 const { FE_ENDPOINT } = process.env
 const PORT = process.env.PORT || 8093;
 const cors = require('cors');
