@@ -77,7 +77,19 @@ export const Profile = {
     const url = `${KONG_BASE_URL}/manage-account/api/users/getUserDetails`;
     const { data } = await api.post<Profile[]>(url, listOfUserIds);
     return data;
-  }
+  },
+
+  getAllTeams: async (): Promise<{ data: { id: string; name: string; department_id: string }[] }> => {
+    const url = `${KONG_BASE_URL}/manage-account/api/users/teams`; // Call the manage-account composite service
+    const response = await api.get<{ data: { id: string; name: string; department_id: string }[] }>(url);
+    return response.data; // Return the full response object
+  },
+
+  getAllDepartments: async (): Promise<{ data: { id: string; name: string }[] }> => {
+    const url = `${KONG_BASE_URL}/manage-account/api/users/departments`; // Call the manage-account composite service
+    const response = await api.get<{ data: { id: string; name: string }[] }>(url);
+    return response.data; // Return the full response object
+  },
 };
 
 export type UpdateProjectRequest = {

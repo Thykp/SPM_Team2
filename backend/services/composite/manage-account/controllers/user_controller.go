@@ -43,6 +43,49 @@ func GetUserByID(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, response)
 }
 
+// GetAssignees handles requests to fetch assignees based on role, team_id, and department_id
+func GetAssignees(c *gin.Context) {
+    role := c.Query("role")
+    teamID := c.Query("team_id")
+    departmentID := c.Query("department_id")
+
+    // Call the service to fetch assignees
+    assignees, err := profile_service.GetAssignees(role, teamID, departmentID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Return the assignees as JSON
+    c.JSON(http.StatusOK, gin.H{"data": assignees})
+}
+
+// GetTeams handles requests to fetch all teams
+func GetTeams(c *gin.Context) {
+    // Call the service to fetch teams
+    teams, err := profile_service.GetTeams()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Return the teams as JSON
+    c.JSON(http.StatusOK, gin.H{"data": teams})
+}
+
+// GetDepartments handles requests to fetch all departments
+func GetDepartments(c *gin.Context) {
+    // Call the service to fetch departments
+    departments, err := profile_service.GetDepartments()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Return the departments as JSON
+    c.JSON(http.StatusOK, gin.H{"data": departments})
+}
+
 // CreateUser handles POST /api/users
 // func CreateUser(c *gin.Context) {
 // 	var newUser struct {

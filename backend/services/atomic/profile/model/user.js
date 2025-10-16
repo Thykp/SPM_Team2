@@ -105,6 +105,27 @@ async function getUsersByRoleScope({ role, team_id, department_id }) {
   return data || [];
 }
 
+// Fetch all teams (id, name, department_id)
+async function getAllTeams() {
+  const { data, error } = await supabase
+    .from(TEAM_TABLE)
+    .select("id, name, department_id")
+    .order("name", { ascending: true }); // Sort teams alphabetically by name
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+// Fetch all departments (id, name)
+async function getAllDepartments() {
+  const { data, error } = await supabase
+    .from(DEPT_TABLE)
+    .select("id, name")
+    .order("name", { ascending: true }); // Sort departments alphabetically by name
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
 
 module.exports = {
   getAllUsersDropdown,
@@ -112,4 +133,6 @@ module.exports = {
   getStaffByScope,
   getUserDetailsWithId,
   getUsersByRoleScope,
+  getAllTeams,
+  getAllDepartments,
 };

@@ -70,6 +70,28 @@ router.get("/assignees", async (req, res) => {
   }
 });
 
+// Fetch all teams
+router.get("/teams", async (_req, res) => {
+  try {
+    const rows = await user.getAllTeams();
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error fetching teams:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fetch all departments
+router.get("/departments", async (_req, res) => {
+  try {
+    const rows = await user.getAllDepartments();
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error fetching departments:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // By ID
 router.get("/:userId", async (req, res) => {
   const { userId } = req.params;
