@@ -234,6 +234,7 @@ services:
       FE_ENDPOINT: "http://localhost:5173"
       GOTENBERG_PATH: "http://gotenberg:3000"
       TASK_PATH: "http://task:3031"
+      PROJECT_PATH: "http://project:3040"
 
   notifications:
     build:

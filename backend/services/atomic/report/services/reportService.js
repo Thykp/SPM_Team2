@@ -1,4 +1,5 @@
-const { supabase } = require("../db/supabase")
+const { supabase } = require("../db/supabase");
+const { InternalError, ValidationError } = require("../model/AppError");
 const REPORT_TABLE = "revamped_report";
 const REPORT_STORAGE = "reports";
 const fs = require("fs").promises;
@@ -14,8 +15,7 @@ async function createReport(report, filePath){
         .select();
     
     if (error) {
-        console.error("Error inserting report:", error);
-        throw error;
+        throw new InternalError('save report metadata to database', error);
     }
 
     return data.filepath;
@@ -34,8 +34,7 @@ async function createReportStorageFromPath(filePath) {
         });
 
     if (error) {
-        console.error("Error uploading file:", error);
-        throw error;
+        throw new InternalError('upload report to storage', error);
     }
     
     return data;
@@ -52,22 +51,33 @@ async function createReportStorageFromFile(fileName, fileBuffer) {
         });
 
     if (error) {
-        console.error("Error uploading file:", error);
-        throw error;
+        throw new InternalError('upload report to storage', error);
     }
     
     return data;
 }
 
 async function createReportStorage(filePathOrBuffer, fileName = null) {
+    let uploadData;
+    
     if (typeof filePathOrBuffer === 'string') {
-        return await createReportStorageFromPath(filePathOrBuffer);
+        uploadData = await createReportStorageFromPath(filePathOrBuffer);
     } else {
         if (!fileName) {
-            throw new Error('fileName is required when uploading from buffer');
+            throw new ValidationError('fileName is required when uploading from buffer');
         }
-        return await createReportStorageFromFile(fileName, filePathOrBuffer);
+        uploadData = await createReportStorageFromFile(fileName, filePathOrBuffer);
     }
+    
+    // Get the public URL for the uploaded file
+    const { data: publicUrlData } = supabase.storage
+        .from(REPORT_STORAGE)
+        .getPublicUrl(uploadData.path);
+    
+    return {
+        uploadData,
+        publicUrl: publicUrlData.publicUrl
+    };
 }
 
 module.exports = {

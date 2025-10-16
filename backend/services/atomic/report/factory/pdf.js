@@ -3,8 +3,6 @@ const fs = require('fs/promises');
 const { pipe, gotenberg, convert, html, please, to, set, a4 } = require('gotenberg-js-client');
 
 const GOTENBERG_PATH = process.env.GOTENBERG_PATH || 'http://localhost:3001';
-// const GOTENBERG_PATH = 'http://localhost:3001';
-// const GOTENBERG_PATH = 'http://gotenberg:3000';
 
 async function gotenRenderPdf(inputHtml){
   const toPDF = pipe(
@@ -18,6 +16,7 @@ async function gotenRenderPdf(inputHtml){
       marginLeft: 0,
       marginRight: 0,
     }),
+    set(a4),
     please
   );
 

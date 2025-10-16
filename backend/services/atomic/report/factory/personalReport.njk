@@ -109,7 +109,13 @@
                                 </span>
                             </td>
                             <td>{{ task.deadline }}</td>
-                            <td>{{ task.project_name or 'No Project' }}</td>
+                            <td>
+                                {% if task.projectName %}
+                                    <span class="text-gray-900">{{ task.projectName }}</span>
+                                {% else %}
+                                    <span class="text-gray-400 font-light">No Project</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -163,7 +169,13 @@
                                 </span>
                             </td>
                             <td>{{ task.deadline }}</td>
-                            <td>{{ task.project_name or 'No Project' }}</td>
+                            <td>
+                                {% if task.projectName %}
+                                    <span class="text-gray-900">{{ task.projectName }}</span>
+                                {% else %}
+                                    <span class="text-gray-400 font-light">No Project</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
