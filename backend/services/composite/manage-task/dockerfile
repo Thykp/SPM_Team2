@@ -27,7 +27,7 @@ ENV JAVA_OPTS=""
 EXPOSE 8091
 
 # Copy the jar built by Maven
-COPY --from=build /app/target/manage-task.jar /app/app.jar
+COPY --from=build /app/target/manage_task-0.0.1-SNAPSHOT.jar /app/app.jar
 
 # Optional TCP healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \

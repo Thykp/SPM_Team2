@@ -3,8 +3,17 @@
 const express = require("express");
 const router = express.Router();
 const notificationService = require("../services/notificationService");
+const notificationPreferencesService = require("../services/notificationPreferencesService")
 
-router.get("/", (_req, res) => res.json("Health Check: Success!"));
+// Health check route
+router.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'notifications',
+    timestamp: new Date().toISOString(),
+  });
+
+});
 
 // Fetch notifications
 router.get("/:userId", async (req, res) => {
@@ -66,5 +75,69 @@ router.patch("/toggle/:notifId", async(req,res) => {
     res.status(500).json({ error: err.message });
   }
 })
+
+
+// GET notifications/preferences/delivery-method/:userId
+router.get("/preferences/delivery-method/:userId", async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ error: "Missing user ID" });
+
+  try {
+    const prefs = await notificationPreferencesService.getNotificationDeliveryPreferences(userId);
+    if (!prefs) return res.status(404).json({ error: "User not found" });
+
+    res.status(200).json({preferences: prefs});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT notifications/preferences/delivery-method/:userId
+// Body: { notification_preferences: ["in-app", "email"] }
+router.put("/preferences/delivery-method/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const { delivery_method } = req.body;
+
+  if (!userId) return res.status(400).json({ error: "Missing user ID" });
+  if (!Array.isArray(delivery_method))
+    return res.status(400).json({ error: "delivery_method must be an array" });
+  try {
+    const updated = await notificationPreferencesService.updateNotificationDeliveryPreferences(userId, delivery_method);
+    res.status(200).json({
+      message: "Delivery methods updated successfully",
+      delivery_method: updated
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/preferences/frequency/:userId", async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ error: "Missing user ID" });
+
+  try {
+    const prefs = await notificationPreferencesService.getNotificationFrequencyPreferences(userId);
+    if (!prefs) return res.status(404).json({ error: "User not found" });
+
+    res.status(200).json({data: prefs});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/preferences/frequency/:userId", async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ error: "Missing user ID" });
+
+  try {
+    const prefs = await notificationPreferencesService.updateNotificationFrequencyPreferences(userId, req.body);
+    if (!prefs) return res.status(404).json({ error: "User not found" });
+
+    res.status(200).json({data: prefs});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router;

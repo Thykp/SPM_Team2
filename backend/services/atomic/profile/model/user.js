@@ -71,37 +71,10 @@ async function getUserDetailsWithId(user_id) {
   return result;
 }
 
-// Get notification preferences
-async function getNotificationPreferences(userId) {
-  const { data, error } = await supabase
-    .from(PROFILE_TABLE)
-    .select('notification_delivery')
-    .eq('id', userId)
-    .single();
-
-  if (error) throw error;
-  return data.notification_delivery;
-}
-
-// Update notification preferences
-async function updateNotificationPreferences(userId, prefs) {
-  const { data, error } = await supabase
-    .from(PROFILE_TABLE)
-    .update({ notification_delivery: prefs })
-    .eq('id', userId)
-    .select('notification_delivery')
-    .single();
-
-  if (error) throw error;
-  return data.notification_delivery;
-}
-
 
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,
   getStaffByScope,
   getUserDetailsWithId,
-  updateNotificationPreferences,
-  getNotificationPreferences
 };

@@ -4,6 +4,8 @@ const { json } = require("express");
 const { supabase } = require("../db/supabase");
 const { publishNotification } = require("./redisPublisher");
 
+// NOTIFICATIONS TABLE
+
 async function getUserNotifications(userId) {
   const { data, error } = await supabase
     .from("notifications_with_user")
@@ -83,7 +85,7 @@ async function createNotification(notif) {
   return data;
 }
 
-// API call
+
 async function toggleRead(notifId) {
   if (!notifId) throw new Error("No notification ID provided");
 
@@ -116,5 +118,5 @@ module.exports = {
   deleteAll,
   deleteOne,
   createNotification,
-  toggleRead
+  toggleRead,
 };

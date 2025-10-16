@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Notification } from "../../lib/api";
 
-type Props = { userId: string };
+type Props = { userId?: string };
 
 export function NotificationPreferences({ userId }: Props) {
   const [preferences, setPreferences] = useState<string[]>([]);
@@ -19,22 +19,18 @@ export function NotificationPreferences({ userId }: Props) {
     });
   };
 
-  // Fetch preferences on mount / when userId changes
   useEffect(() => {
+    if (!userId) return;
+
     let cancelled = false;
 
     const fetchPrefs = async () => {
       try {
-        const prefs = await Notification.getPreferences(userId);
+        const prefs = await Notification.getDeliveryPreferences(userId);
         if (!cancelled && prefs) setPreferences(prefs);
       } catch (err) {
         console.error("Failed to fetch preferences", err);
-        showToast(
-          "Error",
-          "Failed to fetch notification preferences",
-          "#f3c7c7ff",
-          "#3b0000ff"
-        );
+        showToast("Error", "Failed to fetch notification preferences", "#f3c7c7ff", "#3b0000ff");
       }
     };
 
@@ -44,13 +40,14 @@ export function NotificationPreferences({ userId }: Props) {
     };
   }, [userId]);
 
-  // Toggle preference with one retry and fallback message
   const handleTogglePreference = async (pref: string) => {
+    if (!userId) return; // ✅ Defensive check
+
     const updated = preferences.includes(pref)
       ? preferences.filter((p) => p !== pref)
       : [...preferences, pref];
 
-    setPreferences(updated); // Optimistic UI
+    setPreferences(updated);
     setLoading(true);
 
     let attempt = 1;
@@ -58,30 +55,21 @@ export function NotificationPreferences({ userId }: Props) {
     const tryUpdate = async () => {
       try {
         if (attempt > 1) {
-          showToast("Error", `Unable to update preferences now. Retrying...`, "#f3c7c7ff", "#3b0000ff");
-          // wait 1 second before retry
+          showToast("Error", "Unable to update preferences now. Retrying...", "#f3c7c7ff", "#3b0000ff");
           await new Promise((res) => setTimeout(res, 3000));
         }
-        await Notification.updatePreferences(userId, updated);
+        await Notification.updateDeliveryPreferences(userId, updated);
         showToast("Success", "Notification preferences updated", "#c1ffe8ff", "#044b00ff");
       } catch (error) {
         if (attempt === 1) {
           attempt++;
-          return tryUpdate(); // retry once
+          return tryUpdate();
         } else {
           console.error("Failed to update notification preferences after retry:", error);
-          // Revert optimistic update
           setPreferences((prev) =>
-            prev.includes(pref)
-              ? prev.filter((p) => p !== pref)
-              : [...prev, pref]
+            prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]
           );
-          showToast(
-            "Error",
-            "Unable to update now. Please try again later.",
-            "#f3c7c7ff",
-            "#3b0000ff"
-          );
+          showToast("Error", "Unable to update now. Please try again later.", "#f3c7c7ff", "#3b0000ff");
         }
       } finally {
         setLoading(false);
@@ -91,16 +79,20 @@ export function NotificationPreferences({ userId }: Props) {
     tryUpdate();
   };
 
+  if (!userId) {
+    return <div className="text-gray-500">Please log in to manage preferences.</div>;
+  }
+
   return (
-    <div className="px-4 py-2 space-y-2">
-      <p className="text-sm font-medium">Notification Preferences</p>
+    <div>
+      <h2 className="text-xl mb-2 font-bold">Notification Preferences</h2>
       {options.map((pref) => (
-        <label key={pref} className="flex items-center gap-2 text-sm">
+        <label key={pref} className="flex items-center gap-2 text-md">
           <input
             type="checkbox"
             checked={preferences.includes(pref)}
             onChange={() => handleTogglePreference(pref)}
-            className="accent-primary"
+            className="accent-blue-600"
             disabled={loading}
           />
           {pref[0].toUpperCase() + pref.slice(1)}

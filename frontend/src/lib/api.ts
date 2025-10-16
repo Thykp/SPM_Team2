@@ -218,20 +218,48 @@ export const Notification = {
     await api.patch(url, { ids });
   },
 
-  getPreferences: async (userId: string): Promise<string[]> => {
-    const url = `${KONG_BASE_URL}/manage-notifications/preferences/${userId}`;
+  getDeliveryPreferences: async (userId: string): Promise<string[]> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/delivery/${userId}`;
     const response = await api.get(url);
     console.log(response)
-    return response.data;
+    return response.data.preferences;
   },
 
-  updatePreferences: async (userId: string, preferences: string[]): Promise<void> => {
+  updateDeliveryPreferences: async (userId: string, preferences: string[]): Promise<void> => {
     const validPrefs = ["in-app", "email"];
     const filteredPrefs = preferences.filter(p => validPrefs.includes(p));
 
-    const url = `${KONG_BASE_URL}/manage-notifications/preferences/${userId}`;
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/delivery/${userId}`;
     await api.post(url, filteredPrefs);
   },
+
+  getFrequencyPreferences: async (userId: string): Promise<{
+    delivery_frequency: string;
+    delivery_time: string;
+    delivery_day: string;
+  }> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/frequency/${userId}`;
+    const response = await api.get(url);
+    return response.data.data; 
+  },
+
+  updateFrequencyPreferences: async (
+    userId: string,
+    payload: {
+      delivery_frequency: string;
+      delivery_time?: string | "00:00"; 
+      delivery_day?: string | null;
+    }
+  ): Promise<{
+    delivery_frequency: string;
+    delivery_time: string;
+    delivery_day: string;
+  }> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/frequency/${userId}`;
+    const response = await api.post(url, payload);
+    return response.data.data;
+  },
+
 
   deleteNotification: async (userId: string, notifId: string): Promise<void> => {
     const url = `${KONG_BASE_URL}/notifications/${userId}/${notifId}`;
