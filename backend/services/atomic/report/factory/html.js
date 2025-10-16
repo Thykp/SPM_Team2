@@ -6,9 +6,9 @@ const TEMPLATE_PATH = path.resolve(__dirname, 'personalReport.njk');
 // Configure Nunjucks to look in the current directory
 const env = nunjucks.configure(path.dirname(TEMPLATE_PATH), { autoescape: true });
 
-async function renderHtml({ userId, tasks, kpis, reportPeriod, charts }) {
+async function renderHtml({ userId, tasks, kpis, reportPeriod, charts, template_file }) {
   // Render template with pre-processed data and chart images
-  return env.render('personalReport.njk', {
+  return env.render(template_file, {
     userId,
     tasks,
     kpis,

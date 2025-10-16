@@ -4,7 +4,7 @@ const path = require('path');
 const { prepareReportData } = require('../factory/aggregatePersonalTask');
 const { fetchTasksForUser } = require('../services/taskService');
 const { renderHtml } = require('../factory/html');
-const { renderPdf } = require('../factory/pdf');
+const { gotenRenderPdf } = require('../factory/pdf');
 const { createReportStorage } = require('../services/reportService');
 
 // Health check endpoint
@@ -21,14 +21,14 @@ router.post('/:userId', async (req, res) => {
     const taskList = await fetchTasksForUser(userId, startDate, endDate);
     const { tasks, kpis, reportPeriod, charts } = await prepareReportData(taskList, startDate, endDate);
 
-    const html = await renderHtml({ userId, tasks, kpis, reportPeriod, charts });
-
-    const pdfPath = await renderPdf({ userId, html });
+    const html = await renderHtml({ userId, tasks, kpis, reportPeriod, charts, template_file:'personalReport.njk' });
+    const pdf = await gotenRenderPdf(html);
     
-    // // Upload to Supabase Storage
-    const result = await createReportStorage(pdfPath);
+    const ts = new Date();
+    const fileName = `${userId}-PersonalTasks-${ts}`;
+    const result = await createReportStorage(pdf, fileName);
     
-    res.json({ success: true, pdfPath });
+    res.json({ success: true });
 
   } catch (err) {
     console.error(err);

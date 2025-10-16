@@ -5,9 +5,13 @@ FROM node:20-alpine
 ENV NODE_ENV=production
 WORKDIR /app
 
+# Install build dependencies for canvas package
+RUN apk add --no-cache python3 make g++ pkgconfig pixman-dev cairo-dev pango-dev jpeg-dev giflib-dev
+
 # Install only production deps
 COPY package*.json ./
 RUN npm ci --omit=dev
+
 
 # Copy the rest of the source
 COPY . .

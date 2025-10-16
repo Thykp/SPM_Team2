@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const taskAddress = "http://localhost:3031";
+const taskAddress = process.env.TASK_PATH || "http://localhost:3031";
 // const taskAddress = "http://task:3031";
 
 const TASKS = [

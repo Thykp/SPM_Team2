@@ -1,30 +1,31 @@
 const path = require('path');
 const fs = require('fs/promises');
-const { chromium } = require('playwright');
+const { pipe, gotenberg, convert, html, please, to, set, a4 } = require('gotenberg-js-client');
 
-const REPORTS_DIR = path.resolve(__dirname, '../generated-reports');
+const GOTENBERG_PATH = process.env.GOTENBERG_PATH || 'http://localhost:3001';
+// const GOTENBERG_PATH = 'http://localhost:3001';
+// const GOTENBERG_PATH = 'http://gotenberg:3000';
 
-async function renderPdf({ userId, html }) {
-  // Ensure reports directory exists
-  await fs.mkdir(REPORTS_DIR, { recursive: true });
+async function gotenRenderPdf(inputHtml){
+  const toPDF = pipe(
+    gotenberg(GOTENBERG_PATH),
+    convert,
+    html,
+    to({
+      a4: true,
+      marginTop: 0,
+      marginBottom: 0,
+      marginLeft: 0,
+      marginRight: 0,
+    }),
+    please
+  );
 
-  // Launch Playwright and render PDF
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: 'domcontentloaded' });
-  
-  
-  const pdfPath = path.join(REPORTS_DIR, `${userId}-report.pdf`);
-  await page.pdf({ 
-    path: pdfPath, 
-    format: 'A4', 
-    printBackground: true,
-    // margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+  const pdf = await toPDF({
+    'index.html': inputHtml
   });
-  
-  await browser.close();
 
-  return pdfPath;
+  return pdf;
 }
 
-module.exports = {renderPdf};
+module.exports = {gotenRenderPdf};

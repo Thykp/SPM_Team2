@@ -45,6 +45,7 @@ async function createReportStorageFromFile(fileName, fileBuffer) {
     const { data, error } = await supabase.storage
         .from(REPORT_STORAGE)
         .upload(fileName, fileBuffer, {
+            duplex: 'half',
             cacheControl: '3600',
             upsert: true,
             contentType: 'application/pdf'
