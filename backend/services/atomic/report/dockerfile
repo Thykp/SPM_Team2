@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1
+FROM node:20-alpine
+
+# Set env + working directory
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Install only production deps
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy the rest of the source
+COPY . .
+
+# Run as non-root for safety
+USER node
+
+# Expose the app port (your app defaults to 3040 if PORT isn't provided)
+ENV PORT=3042
+EXPOSE 3042
+
+# Start the server
+CMD ["node", "index.js"]

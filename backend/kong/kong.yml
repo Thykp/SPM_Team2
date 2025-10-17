@@ -36,6 +36,13 @@ services:
       - name: manage-notification-route
         paths:
           - /manage-notifications
+          
+  - name: report-service
+    url: http://report:3032
+    routes:
+      - name: report-route
+        paths:
+          - /report
 
   - name: manage-account-service
     url: http://manage-account:8090

@@ -157,6 +157,25 @@ create trigger revamped_task_set_updated_at
 before update on public.revamped_task
 for each row execute procedure extensions.moddatetime(updated_at);
 
+
+-- Table: report
+create table public.revamped_report (
+    id uuid not null default uuid_generate_v4(),
+    profile_id uuid not null,
+    report_title text,
+    report_file_location text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    constraint pk_report primary key (id, profile_id),
+    constraint fk_report_profile_id_profile foreign key (profile_id) references public.revamped_profiles(id) on delete cascade
+);
+
+drop trigger if exists revamped_report_set_updated_at on public.revamped_report;
+create trigger revamped_report_set_updated_at
+before update on public.revamped_report
+for each row execute procedure extensions.moddatetime(updated_at);
+
 -- =========================
 -- task participant
 -- =========================
@@ -185,6 +204,8 @@ create table public.revamped_project_participant (
     constraint fk_project_participant_project_id_project foreign key (project_id) references public.revamped_project(id) on delete cascade,
     constraint fk_project_participant_profile_id_profile foreign key (profile_id) references public.revamped_profiles(id) on delete restrict
 );
+
+
 
 -- =========================
 -- INDEXES FOR PERFORMANCE OPTIMIZATION
