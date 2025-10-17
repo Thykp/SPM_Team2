@@ -65,6 +65,22 @@ export type ProfileRequestDetailsDto = {
   id:string;
 }
 
+export type Notification = {
+  id: string;                 
+  to_user_id: string;         
+  from_user_id: string;    
+  from_username: string;  
+  notif_type: string;         
+  resource_type: string;      
+  resource_id?: string;       
+  project_id?: string;        
+  task_priority?: number;     
+  notif_text: string;
+  link_url?: string;          
+  read: boolean;
+  user_set_read: boolean;
+};
+
 // ----- Services -----
 export const Profile = {
   getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
@@ -189,5 +205,76 @@ export const Task = {
     await api.delete(url);
   },
 };
+
+export const Notification = {
+  getNotifications: async (userId: string): Promise<Notification[]> => {
+    const url = `${KONG_BASE_URL}/notifications/${userId}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  markAsRead: async (ids: string[]): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/read`;
+    await api.patch(url, { ids });
+  },
+
+  getDeliveryPreferences: async (userId: string): Promise<string[]> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/delivery/${userId}`;
+    const response = await api.get(url);
+    console.log(response)
+    return response.data.preferences;
+  },
+
+  updateDeliveryPreferences: async (userId: string, preferences: string[]): Promise<void> => {
+    const validPrefs = ["in-app", "email"];
+    const filteredPrefs = preferences.filter(p => validPrefs.includes(p));
+
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/delivery/${userId}`;
+    await api.post(url, filteredPrefs);
+  },
+
+  getFrequencyPreferences: async (userId: string): Promise<{
+    delivery_frequency: string;
+    delivery_time: string;
+    delivery_day: string;
+  }> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/frequency/${userId}`;
+    const response = await api.get(url);
+    return response.data.data; 
+  },
+
+  updateFrequencyPreferences: async (
+    userId: string,
+    payload: {
+      delivery_frequency: string;
+      delivery_time?: string | "00:00"; 
+      delivery_day?: string | null;
+    }
+  ): Promise<{
+    delivery_frequency: string;
+    delivery_time: string;
+    delivery_day: string;
+  }> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/frequency/${userId}`;
+    const response = await api.post(url, payload);
+    return response.data.data;
+  },
+
+
+  deleteNotification: async (userId: string, notifId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/${userId}/${notifId}`;
+    await api.delete(url);
+  },
+
+  deleteAllNotification: async (userId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/all/${userId}`;
+    await api.delete(url);
+  },
+
+  toggleReadNotification: async (notifId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/toggle/${notifId}`
+    await api.patch(url)
+  }
+}
 
 export default api;
