@@ -8,7 +8,6 @@ const api = axios.create({
   baseURL: KONG_BASE_URL,
   headers: { "Content-Type": "application/json" },
   timeout: 15000,
-  withCredentials: true,
 });
 
 // ----- Types -----
@@ -251,23 +250,17 @@ export async function fetchStaffByScope(params: {
   const url = new URL(`${PROFILE_API}/user/staff`);
   if (params.team_id) url.searchParams.set("team_id", params.team_id);
   if (params.department_id) url.searchParams.set("department_id", params.department_id);
-  url.searchParams.set("role", params.role ?? "staff");
+  url.searchParams.set("role", params.role ?? "Staff");
 
-  const res = await fetch(url.toString(), { credentials: "include" });
-  if (!res.ok) throw new Error(`fetchStaffByScope failed: ${res.status}`);
-  return res.json();
+  const { data } = await api.get<Staff[]>(url.toString());
+  return data;
 }
 
 // Fetch tasks for many users (owner or collaborator via revamped_task_participant)
 export async function fetchTasksByUsers(ids: string[]): Promise<TaskRow[]> {
-  const res = await fetch(`${TASK_API}/users`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ ids }),
-  });
-  if (!res.ok) throw new Error(`fetchTasksByUsers failed: ${res.status}`);
-  return res.json();
+  const url = `${TASK_API}/task/users`;
+  const { data } = await api.post<TaskRow[]>(url, { ids });
+  return data;
 }
 
 export default api;

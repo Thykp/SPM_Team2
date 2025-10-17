@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchStaffByScope, fetchTasksByUsers } from "@/lib/api";
+import Loader from "@/components/layout/Loader";
 import type { TaskRow, Staff } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
@@ -54,7 +55,7 @@ export default function StaffTasks() {
         const staffList = await fetchStaffByScope({
           team_id: me?.team_id ?? undefined,
           department_id: me?.team_id ? undefined : me?.department_id,
-          role: "staff",
+          role: "Staff",
         });
         setStaff(staffList);
 
@@ -105,7 +106,10 @@ export default function StaffTasks() {
     return map;
   }, [staff, tasks]);
 
-  if (loading) return <div className="p-6">Loading staff tasks…</div>;
+  if (loading) return       
+    <div className="flex items-center justify-center min-h-[60vh]" aria-busy="true" aria-live="polite">
+      <Loader />
+    </div>;
   if (err) return <div className="p-6 text-red-600">Failed to load: {err}</div>;
 
   return (

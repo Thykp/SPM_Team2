@@ -1,34 +1,32 @@
 const { supabase } = require("../db/supabase");
 
-const profileTable = "revamped_profiles";
-const deptTable = "revamped_departments";
-const teamTable = "revamped_teams";
+const PROFILE_TABLE = "revamped_profiles"; // Main table
+const TEAM_TABLE = "revamped_teams";       // id, name, department_id
+const DEPT_TABLE = "revamped_departments"; // id, name
 
-// Columns: id, display_name, role, department_id, team_id
-// Sorted by display_name
+// Minimal list of users for dropdowns.
 async function getAllUsersDropdown() {
   const { data, error } = await supabase
-    .from(profileTable)
-    .select("id, display_name, role, department_id, team_id")
+    .from(PROFILE_TABLE)
+    .select("id, display_name, role, team_id, department_id")
     .order("display_name", { ascending: true });
 
   if (error) throw new Error(error.message);
   return data || [];
 }
 
-// Full list
-// returns full profile rows (*) from revamped_profiles
+// Full list (revamped_profiles).
 async function getAllUsers() {
-  const { data, error } = await supabase.from(profileTable).select("*");
+  const { data, error } = await supabase.from(PROFILE_TABLE).select("*");
   if (error) throw new Error(error.message);
   return data || [];
 }
 
-// Filter staff by team_id OR department_id (role defaults to "Staff")
-// If both are provided, team_id takes precedence
+// Filter: by team_id OR department_id (UUIDs), with role (default "Staff").
+// If both are provided, team_id takes precedence.
 async function getStaffByScope({ team_id, department_id, role = "Staff" }) {
   let q = supabase
-    .from(profileTable)
+    .from(PROFILE_TABLE)
     .select("id, display_name, role, team_id, department_id")
     .eq("role", role);
 
@@ -43,15 +41,34 @@ async function getStaffByScope({ team_id, department_id, role = "Staff" }) {
   return data || [];
 }
 
-// Get user details by ID
+// Single user by id.
 async function getUserDetailsWithId(user_id) {
   const { data, error } = await supabase
-  .from(profileTable)
-  .select("*")
-  .eq("id",user_id)
+    .from(PROFILE_TABLE)
+    .select(`
+      *,
+      department:${DEPT_TABLE}(name),
+      team:${TEAM_TABLE}(name)
+    `)
+    .eq("id", user_id)
+    .single();
 
   if (error) throw new Error(error.message);
-  return data || [];
+
+  if (!data) return [];
+
+  // Flatten department and team objects
+  const result = {
+    ...data,
+    department_name: data.department?.name || null,
+    team_name: data.team?.name || null,
+  };
+
+  // Remove nested objects
+  delete result.department;
+  delete result.team;
+
+  return result;
 }
 
 module.exports = {

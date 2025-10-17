@@ -4,8 +4,6 @@ const { TaskNotFoundError, ValidationError, DatabaseError } = require("../../mod
 
 jest.mock("../../db/supabase");
 
-let consoleErrorSpy;
-
 describe('Task Class Test', () => {
     beforeEach(()=>{
         jest.clearAllMocks();
@@ -348,31 +346,8 @@ describe('Task Class Test', () => {
         });
     });
 
-    // helper to mock chained select().in()
-    function mockSelectInOnce(payload, err = null) {
-        const inFn = jest.fn().mockResolvedValue({ data: payload, error: err });
-        supabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({ in: inFn }),
-        });
-        return inFn;
-    }
-
     describe('getTasksByUsers()', () => {
         test('Should retrieve tasks for a single user', async () => {
-            mockSelectInOnce([
-                {
-                  profile_id: 'user-1',
-                  is_owner: true,
-                  task: {
-                    id: 't1',
-                    title: 'T1',
-                    deadline: null,
-                    status: 'Ongoing',
-                    project_id: 'p1',
-                    description: ''
-                  }
-                }
-              ]);
             const mockTasks = [
                 { 
                     id: 'task-1', 
@@ -393,37 +368,67 @@ describe('Task Class Test', () => {
                 },
             ];
 
-              const rows = await Task.getTasksByUsers('user-1');
-              expect(rows).toHaveLength(1);
-              expect(rows[0]).toMatchObject({ id: 't1' });
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockResolvedValue({
+                    data: mockTasks,
+                    error: null
+                })
             });
 
-            it('Should handle array of user IDs', async () => {
-                mockSelectInOnce([
-                  {
-                    profile_id: 'user-1',
-                    is_owner: true,
-                    task: { id: 't1', title: 'T1', deadline: null, status: 'Ongoing', project_id: 'p1', description: '' }
-                  },
-                  {
-                    profile_id: 'user-2',
-                    is_owner: false,
-                    task: { id: 't2', title: 'T2', deadline: '2025-02-02T00:00:00Z', status: 'Completed', project_id: 'p1', description: '' }
-                  }
-                ]);
-              
-                const rows = await Task.getTasksByUsers(['user-1', 'user-2']);
-                expect(rows.map(r => r.id).sort()).toEqual(['t1', 't2']);
-              });
+            const result = await Task.getTasksByUsers('user-1');
 
-              it('Should throw DatabaseError on query failure', async () => {
-                mockSelectInOnce(null, { message: 'boom' });
-              
-                await expect(Task.getTasksByUsers('user-1'))
-                  .rejects
-                  .toThrow(DatabaseError);
-              });   
-    });           
+            expect(result).toEqual(mockTasks);
+            expect(supabase.from).toHaveBeenCalledWith('revamped_task');
+        });
+
+        test('Should handle array of user IDs', async () => {
+            const mockTasks = [
+                { 
+                    id: 'task-1', 
+                    title: 'Task 1', 
+                    participants: [
+                        { profile_id: 'user-1' }
+                    ],
+                    priority: 5
+                },
+                { 
+                    id: 'task-2', 
+                    title: 'Task 2', 
+                    participants: [
+                        { profile_id: 'user-1' },
+                        { profile_id: 'user-2' }                        
+                    ],
+                    priority: 5
+                },
+            ];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockResolvedValue({
+                    data: mockTasks,
+                    error: null
+                })
+            });
+
+            const result = await Task.getTasksByUsers(['user-1', 'user-2']);
+
+            expect(result).toHaveLength(2);
+        });
+
+        test('Should throw DatabaseError on query failure', async () => {
+            const mockError = { message: 'Query failed' };
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockResolvedValue({
+                    data: null,
+                    error: mockError
+                })
+            });
+
+            await expect(Task.getTasksByUsers('user-1'))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+    });
 
     describe('getTaskDetails()', () => {
         test('Should retrieve task details successfully', async () => {

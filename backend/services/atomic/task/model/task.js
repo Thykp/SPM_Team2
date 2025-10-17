@@ -56,78 +56,44 @@ class Task {
         return data;
     }
 
-    static async getTasksByUsers(userId) {
-      // normalize input
-      let ids;
-      if (Array.isArray(userId)) {
-        ids = userId;
-      } else if (userId && Array.isArray(userId.ids)) {
-        ids = userId.ids;
-      } else if (typeof userId === "string") {
-        ids = [userId];
-      } else {
-        ids = [];
-      }
-      if (!ids.length) return [];
-    
-      // join participant -> task (include priority)
-      const { data, error } = await supabase
-        .from(Task.taskParticipantTable)
-        .select(
-          `profile_id,
-           is_owner,
-           task:${Task.taskTable} ( id, title, deadline, status, project_id, description, priority )`
-        )
-        .in("profile_id", ids);
-    
-      if (error) {
-        console.error("Error in getTasksByUsers:", error);
-        throw new DatabaseError("Failed to retrieve tasks by users", error);
-      }
-    
-      // aggregate per task
-      const byTask = new Map(); // taskId -> { ... }
-    
-      for (const row of data || []) {
-        const t = row.task;
-        if (!t) continue;
-    
-        let entry = byTask.get(t.id);
-        if (!entry) {
-          entry = {
-            id: t.id,
-            title: t.title,
-            deadline: t.deadline,
-            status: t.status,
-            project_id: t.project_id,
-            description: t.description,
-            priority: t.priority,          // <-- include priority
-            owner_id: null,
-            participants: new Set(),
-          };
-          byTask.set(t.id, entry);
+    static async getTasksByUsers(userId, startDate, endDate){
+        const userIdArray = !Array.isArray(userId) ? [userId]: userId;
+        let query = supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `);
+
+        if (startDate && endDate) {
+            startDate = new Date(startDate).toISOString();
+            endDate = new Date(endDate).toISOString();
+
+            query = query.gte('created_at', startDate).lte('created_at', endDate);
         }
-    
-        if (row.profile_id) entry.participants.add(row.profile_id);
-        if (row.is_owner) entry.owner_id = row.profile_id;
-      }
-    
-      // finalize
-      const result = Array.from(byTask.values()).map(x => ({
-        ...x,
-        participants: Array.from(x.participants),
-      }));
-    
-      // sort by deadline asc (nulls last)
-      result.sort((a, b) => {
-        const da = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
-        const db = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
-        return da - db;
-      });
-    
-      return result;
-    }    
-      
+
+        const { data, error } = await query;
+        if (error){
+            console.error("Error in getTasksByUsers:", error);
+            throw new DatabaseError("Failed to retrieve tasks by users", error);
+        }
+        
+        // Filter tasks where at least one participant matches the userIdArray
+        const filteredTasks = [];
+        for (const task of data) {
+            if (task.participants) {
+                for (const participant of task.participants) {
+                    if (userIdArray.includes(participant.profile_id)) {
+                        filteredTasks.push(task);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        return filteredTasks;
+    }
+
     constructor(data){
     this.id = data.id || null;
     this.parent_task_id = data.parent_task_id || null;
