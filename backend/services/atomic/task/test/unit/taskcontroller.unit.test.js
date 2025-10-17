@@ -217,48 +217,39 @@ describe('TaskController', () => {
     });
 
     describe('getTaskPerUser', () => {
-        test('Should retrieve tasks by userId from params', async () => {
-			const mockTasks = [
-				{ id: 'task-1', priority: 5, participants: [{ profile_id: 'user-1' }] },
-			];
 
+        test('Should retrieve tasks by userId from params (no dates)', async () => {
+            const mockTasks = [
+                { id: 'task-1', priority: 5, participants: [{ profile_id: 'user-1' }] },
+            ];
             req.params.userId = 'user-1';
-
+            req.query = {};
             Task.getTasksByUsers.mockResolvedValue(mockTasks);
-
             await TaskController.getTaskPerUser(req, res);
-
-            expect(Task.getTasksByUsers).toHaveBeenCalledWith('user-1');
+            expect(Task.getTasksByUsers).toHaveBeenCalledWith('user-1', undefined, undefined);
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith(mockTasks);
         });
 
-        test('Should retrieve tasks using req.body when params.userId is missing', async () => {
-			const mockTasks = [
-				{ id: 'task-1', priority: 5, participants: [{ profile_id: 'user-2' }] },
-			];
-
-            req.body = { userId: 'user-2' };
-            // params.userId is undefined
-
+        test('Should retrieve tasks by userId from params with startDate and endDate', async () => {
+            const mockTasks = [
+                { id: 'task-1', priority: 5, participants: [{ profile_id: 'user-1' }] },
+            ];
+            req.params.userId = 'user-1';
+            req.query = { startDate: '2025-01-01', endDate: '2025-12-31' };
             Task.getTasksByUsers.mockResolvedValue(mockTasks);
-
             await TaskController.getTaskPerUser(req, res);
-
-            expect(Task.getTasksByUsers).toHaveBeenCalledWith(req.body);
+            expect(Task.getTasksByUsers).toHaveBeenCalledWith('user-1', '2025-01-01', '2025-12-31');
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith(mockTasks);
         });
 
         test('Should return 500 on DatabaseError', async () => {
             const dbError = new DatabaseError('Failed to retrieve tasks by user');
-
             req.params.userId = 'user-1';
-
+            req.query = {};
             Task.getTasksByUsers.mockRejectedValue(dbError);
-
             await TaskController.getTaskPerUser(req, res);
-
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
         });

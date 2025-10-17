@@ -76,8 +76,12 @@ module.exports = {
 
     async getTaskPerUser(req, res){
         try {
-            const arg = req.params.userId ? req.params.userId : req.body;
-            const tasks = await Task.getTasksByUsers(arg);
+            const userId = !req.params.userId ? req.body : req.params.userId;
+            const startDate = req.query.startDate;
+            const endDate = req.query.endDate;
+
+
+            const tasks = await Task.getTasksByUsers(userId, startDate, endDate);
             res.status(200).json(tasks);
         } catch (error) {
             if (error instanceof DatabaseError) {

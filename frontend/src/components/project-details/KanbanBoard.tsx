@@ -1,11 +1,22 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
 import { type TaskDTO, TaskApi as TaskService } from '@/lib/api';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Filter, List, GitBranch } from 'lucide-react';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import KanbanColumn from './KanbanColumn';
+import ParentTaskRow from './ParentTaskRow';
+import { TaskDetailNavigator } from '../task/TaskDetailNavigator';
 import {
   DndContext,
   type DragEndEvent,
@@ -18,10 +29,16 @@ import {
 } from '@dnd-kit/core';
 import TaskCard from './TaskCard';
 
+interface TaskWithSubtasks {
+    task: TaskDTO;
+    subtasks: TaskDTO[];
+}
+
 interface KanbanColumn {
     id: string;
     title: string;
     tasks: TaskDTO[];
+    tasksWithSubtasks?: TaskWithSubtasks[];
 }
 
 // interface KanbanBoardProps {
@@ -38,6 +55,9 @@ interface KanbanBoardProps {
       tasks?: TaskDTO[]; // if you still want to allow injection
     }
 
+type TaskFilter = 'all' | 'owner' | 'collaborator' | 'involved';
+type ViewType = 'flat' | 'hierarchical';
+
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
     projectId,
     onTaskUpdate,
@@ -49,6 +69,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(new Set());
+    const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
+    const [viewType, setViewType] = useState<ViewType>('flat');
+    const [selectedSubtask, setSelectedSubtask] = useState<TaskDTO | null>(null);
 
     // Stabilize callback functions to prevent infinite re-subscriptions
     const handleRealtimeTaskUpdate = useCallback((updatedTask: TaskDTO) => {
@@ -140,6 +163,75 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         onTaskDelete: handleRealtimeTaskDelete,
     });
 
+    // Filter tasks based on user's role in the task
+    // Also exclude subtasks (tasks with a parent) from the board
+    const filteredTasks = useMemo(() => {
+        // First, filter out subtasks (tasks with a parent)
+        const mainTasks = realtimeTasks.filter((task: TaskDTO) => !task.parent);
+
+        // If no user filter is applied, return all main tasks
+        if (!user?.id || taskFilter === 'all') {
+            return mainTasks;
+        }
+
+        // Apply user-based filters
+        return mainTasks.filter((task: TaskDTO) => {
+            const isOwner = task.owner === user.id;
+            const isCollaborator = task.collaborators.includes(user.id);
+
+            switch (taskFilter) {
+                case 'owner':
+                    return isOwner;
+                case 'collaborator':
+                    return isCollaborator;
+                case 'involved':
+                    return isOwner || isCollaborator;
+                default:
+                    return true;
+            }
+        });
+    }, [realtimeTasks, taskFilter, user?.id]);
+
+    // Build hierarchical structure: parent tasks with their subtasks
+    // Sort by priority (highest priority = highest number = appears first)
+    const tasksWithSubtasks = useMemo(() => {
+        // Helper function to sort tasks by priority (descending)
+        const sortByPriority = (tasks: TaskDTO[]) => {
+            return [...tasks].sort((a, b) => {
+                const priorityA = a.priority || 0;
+                const priorityB = b.priority || 0;
+                return priorityB - priorityA; // Higher priority first
+            });
+        };
+
+        if (viewType === 'flat') {
+            const sorted = sortByPriority(filteredTasks);
+            return sorted.map(task => ({ task, subtasks: [] }));
+        }
+
+        // Get all subtasks from realtimeTasks (including those with parents)
+        const subtasksMap = new Map<string, TaskDTO[]>();
+        
+        realtimeTasks.forEach((task: TaskDTO) => {
+            if (task.parent) {
+                const parentId = task.parent;
+                if (!subtasksMap.has(parentId)) {
+                    subtasksMap.set(parentId, []);
+                }
+                subtasksMap.get(parentId)!.push(task);
+            }
+        });
+
+        // Sort parent tasks by priority
+        const sortedParents = sortByPriority(filteredTasks);
+
+        // Map parent tasks to include their subtasks (also sorted by priority)
+        return sortedParents.map(task => ({
+            task,
+            subtasks: sortByPriority(subtasksMap.get(task.id) || [])
+        }));
+    }, [filteredTasks, realtimeTasks, viewType]);
+
     // Map column IDs to status values
     const columnStatusMap: Record<string, TaskDTO['status']> = {
         'unassigned': 'Unassigned',
@@ -149,13 +241,50 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         'overdue': 'Overdue',
     };
 
+    // Status configuration for ParentTaskRow
+    const statuses = [
+        { id: 'unassigned', title: 'Unassigned' },
+        { id: 'ongoing', title: 'Ongoing' },
+        { id: 'under-review', title: 'Under Review' },
+        { id: 'completed', title: 'Completed' },
+        { id: 'overdue', title: 'Overdue' },
+    ];
+
     // Kanban columns configuration
+    // Extract sorted tasks from tasksWithSubtasks for consistency
+    const sortedTasks = tasksWithSubtasks.map(({ task }) => task);
+    
     const columns: KanbanColumn[] = [
-        { id: 'unassigned', title: 'Unassigned', tasks: realtimeTasks.filter((task: TaskDTO) => task.status === 'Unassigned') },
-        { id: 'ongoing', title: 'Ongoing', tasks: realtimeTasks.filter((task: TaskDTO) => task.status === 'Ongoing') },
-        { id: 'under-review', title: 'Under Review', tasks: realtimeTasks.filter((task: TaskDTO) => task.status === 'Under Review') },
-        { id: 'completed', title: 'Completed', tasks: realtimeTasks.filter((task: TaskDTO) => task.status === 'Completed') },
-        { id: 'overdue', title: 'Overdue', tasks: realtimeTasks.filter((task: TaskDTO) => task.status === 'Overdue') },
+        { 
+            id: 'unassigned', 
+            title: 'Unassigned', 
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Unassigned'),
+            tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Unassigned')
+        },
+        { 
+            id: 'ongoing', 
+            title: 'Ongoing', 
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Ongoing'),
+            tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Ongoing')
+        },
+        { 
+            id: 'under-review', 
+            title: 'Under Review', 
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Under Review'),
+            tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Under Review')
+        },
+        { 
+            id: 'completed', 
+            title: 'Completed', 
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Completed'),
+            tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Completed')
+        },
+        { 
+            id: 'overdue', 
+            title: 'Overdue', 
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Overdue'),
+            tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Overdue')
+        },
     ];
 
     // Configure sensors for drag detection
@@ -340,24 +469,107 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">Project Board</h2>
                     <div className="flex items-center gap-2">
-                        <Badge variant="outline">{realtimeTasks.length} tasks</Badge>
+                        {/* View Type Toggle */}
+                        <div className="flex gap-1 border rounded-lg p-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewType('flat')}
+                                className={viewType === 'flat' ? 'bg-slate-100' : 'bg-transparent'}
+                                title="Flat view - Show parent tasks only"
+                            >
+                                <List className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewType('hierarchical')}
+                                className={viewType === 'hierarchical' ? 'bg-slate-100' : 'bg-transparent'}
+                                title="Hierarchical view - Show tasks with subtasks"
+                            >
+                                <GitBranch className="h-4 w-4" />
+                            </Button>
+                        </div>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="gap-2 bg-transparent">
+                                    <Filter className="h-4 w-4" />
+                                    Filter
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-64">
+                                <DropdownMenuLabel>Show Tasks</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup
+                                    value={taskFilter}
+                                    onValueChange={(v) => setTaskFilter(v as TaskFilter)}
+                                >
+                                    <DropdownMenuRadioItem value="all">All Tasks</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="owner">Tasks I Own</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="collaborator">Tasks I Collaborate On</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="involved">Tasks I'm Involved In</DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
 
                         <Button variant="outline" size="sm">
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
+
+                        <Badge variant="outline">
+                            {filteredTasks.length} of {realtimeTasks.length} tasks
+                        </Badge>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 min-h-96">
-                    {columns.map((column) => (
-                        <KanbanColumn 
-                            key={column.id} 
-                            id={column.id}
-                            title={column.title} 
-                            tasks={column.tasks} 
-                        />
-                    ))}
-                </div>
+                {viewType === 'flat' ? (
+                    /* Flat View: Traditional Kanban columns */
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 min-h-96">
+                        {columns.map((column) => (
+                            <KanbanColumn 
+                                key={column.id} 
+                                id={column.id}
+                                title={column.title} 
+                                tasks={column.tasks}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    /* Hierarchical View: Jira-style with parent task headers */
+                    <div>
+                        {/* Column Headers */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4 pl-8">
+                            {statuses.map((status) => (
+                                <div key={status.id} className="p-3 bg-white/80 rounded-lg shadow-sm">
+                                    <h3 className="font-semibold text-gray-800 text-center">{status.title}</h3>
+                                    <Badge variant="secondary" className="text-xs mx-auto block w-fit mt-1">
+                                        {columns.find(c => c.id === status.id)?.tasksWithSubtasks?.reduce((acc, t) => acc + t.subtasks.length, 0) || 0}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Parent Task Rows with Subtasks */}
+                        <div className="space-y-2">
+                            {tasksWithSubtasks.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    No tasks to display
+                                </div>
+                            ) : (
+                                tasksWithSubtasks.map(({ task, subtasks }) => (
+                                    <ParentTaskRow
+                                        key={task.id}
+                                        parentTask={task}
+                                        subtasks={subtasks}
+                                        statuses={statuses}
+                                        onSubtaskClick={setSelectedSubtask}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Drag Overlay */}
                 <DragOverlay>
@@ -367,6 +579,16 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         </div>
                     ) : null}
                 </DragOverlay>
+
+                {/* Subtask Detail Modal */}
+                {selectedSubtask && (
+                    <TaskDetailNavigator
+                        key={selectedSubtask.id}
+                        initialTask={selectedSubtask}
+                        isOpen={true}
+                        onClose={() => setSelectedSubtask(null)}
+                    />
+                )}
             </div>
         </DndContext>
     );

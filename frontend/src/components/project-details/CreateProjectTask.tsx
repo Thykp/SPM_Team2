@@ -50,11 +50,13 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
     description: string;
     status: StatusType;
     priority: number;
+    deadline: string;
   }>({
     title: "",
     description: "",
     status: "Unassigned",
     priority: 5,
+    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default 7 days from now, formatted as YYYY-MM-DD
   });
   const [loading, setLoading] = useState(false);
 
@@ -64,6 +66,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       description: "", 
       status: "Unassigned",
       priority: 5,
+      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     });
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -78,7 +81,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
         status: newTask.status,
         owner: userId,
         collaborators: [],
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default 7 days from now
+        deadline: new Date(newTask.deadline).toISOString(), // User-selected deadline
         project_id: projectId, // Include project ID
         parent: null,
         priority: newTask.priority,
@@ -110,7 +113,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>
+        <Button variant="outline" size="sm">
           <Plus className="mr-2 h-4 w-4" />
           New Task
         </Button>
@@ -216,6 +219,24 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
                 })}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Deadline */}
+          <div className="space-y-2">
+            <Label htmlFor="deadline" className="text-base font-medium">
+              Task Deadline
+            </Label>
+            <Input
+              id="deadline"
+              type="date"
+              value={newTask.deadline}
+              onChange={(e) =>
+                setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
+              }
+              min={new Date().toISOString().split('T')[0]}
+              className="h-11"
+              required
+            />
           </div>
 
           {/* Actions */}
