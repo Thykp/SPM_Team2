@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { type Task } from '@/lib/api';
+import { type TaskDTO } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SubtaskCard from './SubtaskCard';
 
 interface ParentTaskRowProps {
-    parentTask: Task;
-    subtasks: Task[];
+    parentTask: TaskDTO;
+    subtasks: TaskDTO[];
     statuses: Array<{ id: string; title: string }>;
-    onSubtaskClick?: (subtask: Task) => void;
+    onSubtaskClick?: (subtask: TaskDTO) => void;
 }
 
 const ParentTaskRow: React.FC<ParentTaskRowProps> = ({ 
@@ -30,7 +30,7 @@ const ParentTaskRow: React.FC<ParentTaskRowProps> = ({
             .slice(0, 2);
     };
 
-    const getStatusColor = (status: Task['status']) => {
+    const getStatusColor = (status: TaskDTO['status']) => {
         switch (status) {
             case 'Unassigned':
                 return 'bg-gray-100 text-gray-700';
@@ -48,10 +48,10 @@ const ParentTaskRow: React.FC<ParentTaskRowProps> = ({
     };
 
     // Group subtasks by status
-    const subtasksByStatus: Record<string, Task[]> = {};
+    const subtasksByStatus: Record<string, TaskDTO[]> = {};
     statuses.forEach(status => {
         subtasksByStatus[status.id] = subtasks.filter(st => {
-            const statusMap: Record<string, Task['status']> = {
+            const statusMap: Record<string, TaskDTO['status']> = {
                 'unassigned': 'Unassigned',
                 'ongoing': 'Ongoing',
                 'under-review': 'Under Review',
