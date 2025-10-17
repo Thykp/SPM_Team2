@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { type TaskDTO, TaskApi as TaskService } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -11,7 +12,6 @@ import {
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Filter, List, GitBranch } from 'lucide-react';
-import { type Task, Task as TaskService } from '@/lib/api';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import KanbanColumn from './KanbanColumn';
@@ -30,22 +30,30 @@ import {
 import TaskCard from './TaskCard';
 
 interface TaskWithSubtasks {
-    task: Task;
-    subtasks: Task[];
+    task: TaskDTO;
+    subtasks: TaskDTO[];
 }
 
 interface KanbanColumn {
     id: string;
     title: string;
-    tasks: Task[];
+    tasks: TaskDTO[];
     tasksWithSubtasks?: TaskWithSubtasks[];
 }
 
+// interface KanbanBoardProps {
+//     tasks: TaskDTO[];
+//     projectId: string; // Add projectId prop for realtime filtering
+//     onTaskUpdate?: (updatedTask: TaskDTO) => void;
+//     refreshTrigger?: number; // Add trigger for external refresh
+// }
+
 interface KanbanBoardProps {
-    projectId: string; // Only need projectId to filter tasks
-    onTaskUpdate?: (updatedTask: Task) => void;
-    refreshTrigger?: number; // Add trigger for external refresh
-}
+      projectId: string;
+      onTaskUpdate?: (updatedTask: TaskDTO) => void;
+      refreshTrigger?: number;
+      tasks?: TaskDTO[]; // if you still want to allow injection
+    }
 
 type TaskFilter = 'all' | 'owner' | 'collaborator' | 'involved';
 type ViewType = 'flat' | 'hierarchical';
@@ -55,22 +63,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     onTaskUpdate,
     refreshTrigger 
 }) => {
+    const [activeTask, setActiveTask] = useState<TaskDTO | null>(null);
     const { user } = useAuth();
-    const [activeTask, setActiveTask] = useState<Task | null>(null);
-    const [initialTasks, setInitialTasks] = useState<Task[]>([]);
+    const [initialTasks, setInitialTasks] = useState<TaskDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(new Set());
     const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
     const [viewType, setViewType] = useState<ViewType>('flat');
-    const [selectedSubtask, setSelectedSubtask] = useState<Task | null>(null);
+    const [selectedSubtask, setSelectedSubtask] = useState<TaskDTO | null>(null);
 
     // Stabilize callback functions to prevent infinite re-subscriptions
-    const handleRealtimeTaskUpdate = useCallback((updatedTask: Task) => {
+    const handleRealtimeTaskUpdate = useCallback((updatedTask: TaskDTO) => {
         onTaskUpdate?.(updatedTask);
     }, [onTaskUpdate]);
 
-    const handleRealtimeTaskInsert = useCallback((newTask: Task) => {
+    const handleRealtimeTaskInsert = useCallback((newTask: TaskDTO) => {
         console.log('New task inserted via realtime:', newTask);
         
         // Check if this task belongs to the current project
@@ -159,7 +167,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     // Also exclude subtasks (tasks with a parent) from the board
     const filteredTasks = useMemo(() => {
         // First, filter out subtasks (tasks with a parent)
-        const mainTasks = realtimeTasks.filter((task: Task) => !task.parent);
+        const mainTasks = realtimeTasks.filter((task: TaskDTO) => !task.parent);
 
         // If no user filter is applied, return all main tasks
         if (!user?.id || taskFilter === 'all') {
@@ -167,7 +175,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         }
 
         // Apply user-based filters
-        return mainTasks.filter((task: Task) => {
+        return mainTasks.filter((task: TaskDTO) => {
             const isOwner = task.owner === user.id;
             const isCollaborator = task.collaborators.includes(user.id);
 
@@ -188,7 +196,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     // Sort by priority (highest priority = highest number = appears first)
     const tasksWithSubtasks = useMemo(() => {
         // Helper function to sort tasks by priority (descending)
-        const sortByPriority = (tasks: Task[]) => {
+        const sortByPriority = (tasks: TaskDTO[]) => {
             return [...tasks].sort((a, b) => {
                 const priorityA = a.priority || 0;
                 const priorityB = b.priority || 0;
@@ -202,9 +210,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         }
 
         // Get all subtasks from realtimeTasks (including those with parents)
-        const subtasksMap = new Map<string, Task[]>();
+        const subtasksMap = new Map<string, TaskDTO[]>();
         
-        realtimeTasks.forEach((task: Task) => {
+        realtimeTasks.forEach((task: TaskDTO) => {
             if (task.parent) {
                 const parentId = task.parent;
                 if (!subtasksMap.has(parentId)) {
@@ -225,7 +233,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }, [filteredTasks, realtimeTasks, viewType]);
 
     // Map column IDs to status values
-    const columnStatusMap: Record<string, Task['status']> = {
+    const columnStatusMap: Record<string, TaskDTO['status']> = {
         'unassigned': 'Unassigned',
         'ongoing': 'Ongoing',
         'under-review': 'Under Review',
@@ -250,31 +258,31 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         { 
             id: 'unassigned', 
             title: 'Unassigned', 
-            tasks: sortedTasks.filter((task: Task) => task.status === 'Unassigned'),
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Unassigned'),
             tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Unassigned')
         },
         { 
             id: 'ongoing', 
             title: 'Ongoing', 
-            tasks: sortedTasks.filter((task: Task) => task.status === 'Ongoing'),
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Ongoing'),
             tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Ongoing')
         },
         { 
             id: 'under-review', 
             title: 'Under Review', 
-            tasks: sortedTasks.filter((task: Task) => task.status === 'Under Review'),
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Under Review'),
             tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Under Review')
         },
         { 
             id: 'completed', 
             title: 'Completed', 
-            tasks: sortedTasks.filter((task: Task) => task.status === 'Completed'),
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Completed'),
             tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Completed')
         },
         { 
             id: 'overdue', 
             title: 'Overdue', 
-            tasks: sortedTasks.filter((task: Task) => task.status === 'Overdue'),
+            tasks: sortedTasks.filter((task: TaskDTO) => task.status === 'Overdue'),
             tasksWithSubtasks: tasksWithSubtasks.filter(({ task }) => task.status === 'Overdue')
         },
     ];
@@ -290,7 +298,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     const handleDragStart = useCallback((event: DragStartEvent) => {
         const { active } = event;
-        const task = realtimeTasks.find((t: Task) => t.id === active.id);
+        const task = realtimeTasks.find((t: TaskDTO) => t.id === active.id);
         setActiveTask(task || null);
     }, [realtimeTasks]);
 
@@ -316,7 +324,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             return;
         }
 
-        const task = realtimeTasks.find((t: Task) => t.id === taskId);
+        const task = realtimeTasks.find((t: TaskDTO) => t.id === taskId);
         if (!task || task.status === newStatus) {
             return;
         }
