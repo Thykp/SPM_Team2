@@ -114,6 +114,19 @@ services:
       kafka:
         condition: service_healthy
 
+  gotenberg:
+    image: thecodingmachine/gotenberg:6
+    container_name: gotenberg
+    restart: unless-stopped
+    networks: 
+      - spm-net
+    ports: ["3001:3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   manage-account:
     build:
       context: ./backend/services/composite/manage-account
@@ -204,21 +217,24 @@ services:
       PORT: "3040"
       FE_ENDPOINT: "http://localhost:5173"  
 
-  # report:
-  #   build:
-  #     context: ./backend/services/atomic/report
-  #     dockerfile: dockerfile
-  #   container_name: report
-  #   restart: unless-stopped
-  #   networks:
-  #     - spm-net
-  #   env_file:
-  #     - ./backend/services/atomic/report/.env
-  #   ports:
-  #     - "3042:3042"
-  #   environment:
-  #     PORT: "3042"
-  #     FE_ENDPOINT: "http://localhost:5173"  
+  report:
+    build:
+      context: ./backend/services/atomic/report
+      dockerfile: dockerfile
+    container_name: report
+    restart: unless-stopped
+    networks:
+      - spm-net
+    env_file:
+      - ./backend/services/atomic/report/.env
+    ports:
+      - "3042:3042"
+    environment:
+      PORT: "3042"
+      FE_ENDPOINT: "http://localhost:5173"
+      GOTENBERG_PATH: "http://gotenberg:3000"
+      TASK_PATH: "http://task:3031"
+      PROJECT_PATH: "http://project:3040"
 
   notifications:
     build:
