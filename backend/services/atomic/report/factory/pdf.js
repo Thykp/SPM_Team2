@@ -11,10 +11,11 @@ async function gotenRenderPdf(inputHtml){
     html,
     to({
       a4: true,
-      marginTop: 0,
-      marginBottom: 0,
-      marginLeft: 0,
-      marginRight: 0,
+      marginTop: 0.4, marginRight: 0.4, marginBottom: 0.4, marginLeft: 0.4, // in inches
+      emulatedMediaType: 'print',
+      preferCssPageSize: true,
+      printBackground: true,
+      scale: 0.94
     }),
     set(a4),
     please

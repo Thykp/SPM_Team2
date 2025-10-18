@@ -7,62 +7,65 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         table { border-collapse: collapse; width: 100%; }
-    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 0.75rem; }
-    th { background-color: #f9fafb; font-weight: 600; font-size: 0.75rem; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 0.85rem; }
+        th { background-color: #f3f4f6; font-weight: 700; font-size: 0.85rem; }
         tr:hover { background-color: #f9fafb; }
         .chart-img { max-width: 100%; height: auto; display: block;}
+        .brand { font-size: 1.1rem; font-weight: 600; color: #6366f1; letter-spacing: 1px; }
     </style>
 </head>
 <body class="bg-gray-50 p-8">
     <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Your Personal Task Report</h1>
-            <p class="text-gray-600">{{ reportPeriod }}</p>
-        </div>
+        <!-- Professional Header -->
+        <header class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-1">Personal Task Report</h1>
+                <p class="text-gray-500 text-lg">{{ reportPeriod }}</p>
+            </div>
+            <div class="brand">SPM Team 2</div>
+        </header>
 
-        <!-- KPI Cards -->
-        <div class="grid grid-cols-3 gap-4 mb-8">
-            <div class="bg-blue-50 p-4 rounded-lg">
-                <p class="text-gray-600 text-sm mb-1">Total Tasks</p>
-                <p class="text-2xl font-bold text-blue-600">{{ kpis.totalTasks }}</p>
+        <!-- Summary Section -->
+        <section class="mb-8">
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-blue-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Total Tasks</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ kpis.totalTasks }}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Completed</p>
+                    <p class="text-2xl font-bold text-green-600">{{ kpis.completedTasks }}</p>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Overdue</p>
+                    <p class="text-2xl font-bold text-red-600">{{ kpis.overdueTasks }}</p>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">High Priority</p>
+                    <p class="text-2xl font-bold text-orange-600">{{ kpis.highPriorityTasks }}</p>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Under Review</p>
+                    <p class="text-2xl font-bold text-yellow-600">{{ kpis.underReviewTasks }}</p>
+                </div>
+                <div class="bg-indigo-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Ongoing</p>
+                    <p class="text-2xl font-bold text-indigo-600">{{ kpis.ongoingTasks }}</p>
+                </div>
             </div>
-            <div class="bg-green-50 p-4 rounded-lg">
-                <p class="text-gray-600 text-sm mb-1">Completed</p>
-                <p class="text-2xl font-bold text-green-600">{{ kpis.completedTasks }}</p>
-            </div>
-            <div class="bg-red-50 p-4 rounded-lg">
-                <p class="text-gray-600 text-sm mb-1">Overdue</p>
-                <p class="text-2xl font-bold text-red-600">{{ kpis.overdueTasks }}</p>
-            </div>
-            <div class="bg-orange-50 p-4 rounded-lg">
-                <p class="text-gray-600 text-sm mb-1">High Priority</p>
-                <p class="text-2xl font-bold text-orange-600">{{ kpis.highPriorityTasks }}</p>
-            </div>
-            <div class="bg-yellow-50 p-4 rounded-lg">
-                <p class="text-gray-600 text-sm mb-1">Under Review</p>
-                <p class="text-2xl font-bold text-yellow-600">{{ kpis.underReviewTasks }}</p>
-            </div>
-            <div class="bg-indigo-50 p-4 rounded-lg">
-                <p class="text-gray-600 text-sm mb-1">Ongoing</p>
-                <p class="text-2xl font-bold text-indigo-600">{{ kpis.ongoingTasks }}</p>
-            </div>
-        </div>
+        </section>
 
         <!-- Charts Section -->
-        <div class="grid grid-cols-2 gap-8 mb-8">
-            <!-- Status Distribution -->
+        <section class="grid grid-cols-2 gap-8 mb-8">
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-xl font-bold text-gray-900 mb-4">Status Distribution</h2>
                 <img src="{{ charts.statusBar }}" alt="Status Distribution Chart" class="chart-img">
             </div>
-
-            <!-- Priority Distribution -->
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-xl font-bold text-gray-900 mb-4">Priority Distribution</h2>
                 <img src="{{ charts.priorityPie }}" alt="Priority Distribution Chart" class="chart-img">
             </div>
-        </div>
+        </section>
 
         <!-- Owner Tasks Table -->
         {% set ownerTasks = [] %}
@@ -71,10 +74,9 @@
                 {% set ownerTasks = (ownerTasks.push(task), ownerTasks) %}
             {% endif %}
         {% endfor %}
-        
         {% if ownerTasks.length > 0 %}
-        <div class="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Tasks I Own ({{ ownerTasks.length }})</h2>
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Tasks I Own <span class="text-gray-400">({{ ownerTasks.length }})</span></h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full">
                     <thead>
