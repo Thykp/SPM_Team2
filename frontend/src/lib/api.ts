@@ -3,6 +3,7 @@ import axios from "axios";
 const KONG_BASE_URL = import.meta.env.VITE_KONG_BASE_URL || "http://localhost:8000";
 const PROFILE_API = import.meta.env.VITE_PROFILE_API || `${KONG_BASE_URL}/profile`;
 const TASK_API    = import.meta.env.VITE_TASK_API    || `${KONG_BASE_URL}/task`;
+const REPORT_API    = import.meta.env.VITE_REPORT_API    || `${KONG_BASE_URL}/report`;
 
 const api = axios.create({
   baseURL: KONG_BASE_URL,
@@ -122,9 +123,16 @@ export async function updateTaskParticipants(
 
 // ----- Services -----
 export const Profile = {
-  getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
+  getAllUsers: async (): Promise<Array<{
+    id: string;
+    display_name: string;
+    role: string;
+    department: string | null;
+    department_id?: string | null;
+    team_id?: string | null;
+  }>> => {
     const url = `${KONG_BASE_URL}/profile/user/all`;
-    const { data } = await api.get<Array<{ id: string; display_name: string; role: string; department: string }>>(url);
+    const { data } = await api.get(url);
     return data;
   },
 
@@ -262,5 +270,21 @@ export async function fetchTasksByUsers(ids: string[]): Promise<TaskRow[]> {
   const { data } = await api.post<TaskRow[]>(url, { ids });
   return data;
 }
+
+export type GenerateReportBody = {
+  startDate: string;
+  endDate: string;
+};
+
+export const Report = {
+  generate: async (
+    userId: string,
+    body: GenerateReportBody
+  ): Promise<{ jobId?: string; message?: string; url?: string }> => {
+    const url = `${REPORT_API}/${userId}`;
+    const { data } = await api.post(url, body);
+    return data;
+  },
+};
 
 export default api;
