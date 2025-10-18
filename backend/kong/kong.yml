@@ -24,7 +24,7 @@ services:
           - /task
 
   - name: report-service
-    url: http://report:3032
+    url: http://report:3042
     routes:
       - name: report-route
         paths:
