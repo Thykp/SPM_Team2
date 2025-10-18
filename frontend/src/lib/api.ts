@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const KONG_BASE_URL = import.meta.env.VITE_KONG_BASE_URL || "http://localhost:8000";
-const PROFILE_API = import.meta.env.VITE_PROFILE_API || `${KONG_BASE_URL}/profile`;
-const TASK_API    = import.meta.env.VITE_TASK_API    || `${KONG_BASE_URL}/task`;
+const PROFILE_API   = import.meta.env.VITE_PROFILE_API   || `${KONG_BASE_URL}/profile`;
+const TASK_API      = import.meta.env.VITE_TASK_API      || `${KONG_BASE_URL}/task`;
 const REPORT_API    = import.meta.env.VITE_REPORT_API    || `${KONG_BASE_URL}/report`;
 
 const api = axios.create({
@@ -12,7 +12,6 @@ const api = axios.create({
 });
 
 // ----- Types -----
-// Staff & Task fetchers for Manager View
 export type Staff = {
   id: string;
   display_name: string | null;
@@ -28,7 +27,7 @@ export type TaskRow = {
   status?: string | null;
   project_id?: string | null;
   description?: string | null;
-  owner_id?: string | null;      // returned by /task/users (backend aggregation)
+  owner_id?: string | null;       // returned by /task/users (backend aggregation)
   participants?: string[] | null; // returned by /task/users (backend aggregation)
 };
 
@@ -88,8 +87,8 @@ export type Profile = {
 };
 
 export type ProfileRequestDetailsDto = {
-  id:string;
-}
+  id: string;
+};
 
 // --- Task participants ---
 export type TaskParticipant = { profile_id: string; is_owner: boolean };
@@ -121,26 +120,49 @@ export async function updateTaskParticipants(
   return res.json();
 }
 
+type GetAllUsersRaw = {
+  id: string;
+  display_name: string;
+  role: string | null;
+  department: string | null;
+  department_id?: string | null;
+  team_id?: string | null;
+};
+
+/** Normalized shape we expose to the app (note: department is string, not null) */
+export type GetAllUsers = {
+  id: string;
+  display_name: string;
+  role: string;
+  department: string;
+  department_id?: string | null;
+  team_id?: string | null;
+};
+
 // ----- Services -----
 export const Profile = {
-  getAllUsers: async (): Promise<Array<{
-    id: string;
-    display_name: string;
-    role: string;
-    department: string | null;
-    department_id?: string | null;
-    team_id?: string | null;
-  }>> => {
+  getAllUsers: async (): Promise<GetAllUsers[]> => {
     const url = `${KONG_BASE_URL}/profile/user/all`;
-    const { data } = await api.get(url);
-    return data;
+    const { data } = await api.get<GetAllUsersRaw[]>(url);
+
+    // Normalize: coerce role to string and department to non-null string
+    const normalized: GetAllUsers[] = (Array.isArray(data) ? data : []).map((u) => ({
+      id: u.id,
+      display_name: u.display_name,
+      role: u.role ?? "Staff",
+      department: u.department ?? "",
+      department_id: u.department_id ?? null,
+      team_id: u.team_id ?? null,
+    }));
+
+    return normalized;
   },
 
-  getProfileDetailsWithId: async (listOfUserIds: ProfileRequestDetailsDto[]): Promise<Profile[]> =>{
+  getProfileDetailsWithId: async (listOfUserIds: ProfileRequestDetailsDto[]): Promise<Profile[]> => {
     const url = `${KONG_BASE_URL}/manage-account/api/users/getUserDetails`;
     const { data } = await api.post<Profile[]>(url, listOfUserIds);
     return data;
-  }
+  },
 };
 
 export type UpdateProjectRequest = {
