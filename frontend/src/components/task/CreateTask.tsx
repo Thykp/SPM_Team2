@@ -21,11 +21,12 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { Task } from "@/lib/api";
+import { TaskApi } from "@/lib/api";
+import type { TaskDTO } from "@/lib/api";
 
 interface CreateTaskProps {
   userId: string;
-  onTaskCreated: (task: Task) => void;
+  onTaskCreated: (task: TaskDTO) => void;
 }
 
 const STATUSES = [
@@ -66,9 +67,10 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
         owner: userId,
         collaborators: [],
         deadline: new Date().toISOString(),
+        priority: 5,
       };
 
-      const createdTask = await Task.createTask(taskData);
+      const createdTask = await TaskApi.createTask(taskData);
       onTaskCreated(createdTask);
       resetForm();
       setOpen(false);

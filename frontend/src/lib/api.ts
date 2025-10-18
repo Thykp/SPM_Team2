@@ -1,6 +1,8 @@
 import axios from "axios";
 
 const KONG_BASE_URL = import.meta.env.VITE_KONG_BASE_URL || "http://localhost:8000";
+const PROFILE_API = import.meta.env.VITE_PROFILE_API || `${KONG_BASE_URL}/profile`;
+const TASK_API    = import.meta.env.VITE_TASK_API    || `${KONG_BASE_URL}/task`;
 
 const api = axios.create({
   baseURL: KONG_BASE_URL,
@@ -9,6 +11,27 @@ const api = axios.create({
 });
 
 // ----- Types -----
+// Staff & Task fetchers for Manager View
+export type Staff = {
+  id: string;
+  display_name: string | null;
+  role: string | null;
+  team_id: string | null;
+  department_id: string | null;
+};
+
+export type TaskRow = {
+  id: string;
+  title: string | null;
+  deadline: string | null;
+  status?: string | null;
+  project_id?: string | null;
+  description?: string | null;
+  owner_id?: string | null;      // returned by /task/users (backend aggregation)
+  participants?: string[] | null; // returned by /task/users (backend aggregation)
+};
+
+// Task payload for create/update (atomic service)
 export type TaskPostRequestDto = {
   title: string;
   description: string;
@@ -18,10 +41,11 @@ export type TaskPostRequestDto = {
   deadline: string;
   project_id?: string | null;
   parent?: string | null;
-  priority: number; // Priority (1-10) required by atomic service
+  priority: number; // 1-10
 };
 
-export type Task = {
+// Canonical Task shape returned by most endpoints
+export type TaskDTO = {
   id: string;
   title: string;
   description: string;
@@ -38,7 +62,8 @@ export type Task = {
 
 export type ProjectDto = {
   id: string;
-  created_at: string | null;
+  createdat?: string | null;
+  created_at?: string | null; // should standardise to either createdat or created_at later
   title: string;
   tasklist: string[] | null;
   description: string;
@@ -50,7 +75,7 @@ export type NewProjectRequest = {
   title: string;
   description: string;
   tasklist?: string[];
-  ownerId: string;
+  owner: string; // keep as "owner" to align with existing API
   collaborators?: string[];
 };
 
@@ -65,10 +90,40 @@ export type ProfileRequestDetailsDto = {
   id:string;
 }
 
+// --- Task participants ---
+export type TaskParticipant = { profile_id: string; is_owner: boolean };
+
+export async function getTaskWithParticipants(
+  taskId: string
+): Promise<{ id: string; participants?: TaskParticipant[] } & Record<string, any>> {
+  const res = await fetch(`${TASK_API}/${taskId}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(`getTaskWithParticipants failed: ${res.status}`);
+  return res.json();
+}
+
+export async function updateTaskParticipants(
+  taskId: string,
+  participants: TaskParticipant[]
+): Promise<{ message: string }> {
+  const res = await fetch(`${TASK_API}/${taskId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ participants }),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`updateTaskParticipants failed: ${res.status} ${txt}`);
+  }
+  return res.json();
+}
+
 // ----- Services -----
 export const Profile = {
   getAllUsers: async (): Promise<Array<{ id: string; display_name: string; role: string; department: string }>> => {
-    const url = `${KONG_BASE_URL}/manage-account/api/users`;
+    const url = `${KONG_BASE_URL}/profile/user/all`;
     const { data } = await api.get<Array<{ id: string; display_name: string; role: string; department: string }>>(url);
     return data;
   },
@@ -135,52 +190,48 @@ export const Project = {
   },
 };
 
-export const Task = {
-  getAllTask: async (): Promise<Task[]> => {
+export const TaskApi = {
+  getAllTask: async (): Promise<TaskDTO[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/`;
-    const { data } = await api.get<Task[]>(url);
+    const { data } = await api.get<TaskDTO[]>(url);
     return data;
   },
 
-  getTasksByUserId: async (userId: string): Promise<Task[]> => {
+  getTasksByUserId: async (userId: string): Promise<TaskDTO[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/${userId}`;
-    const { data } = await api.get<Task[]>(url);
+    const { data } = await api.get<TaskDTO[]>(url);
     return data;
   },
 
-  getTasksById: async (taskId: string): Promise<Task> => {
+  getTasksById: async (taskId: string): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
-    const { data } = await api.get<Task>(url);
+    const { data } = await api.get<TaskDTO>(url);
     return data;
   },
 
-  getTaskByIdWithOwner: async (taskId: string): Promise<Task & { ownerName: string; ownerDepartment: string }> => {
+  getTaskByIdWithOwner: async (taskId: string): Promise<TaskDTO & { ownerName: string; ownerDepartment: string }> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/id/${taskId}`;
-    const { data } = await api.get<Task & { ownerName: string; ownerDepartment: string }>(url);
+    const { data } = await api.get<TaskDTO & { ownerName: string; ownerDepartment: string }>(url);
     return data;
   },
 
-  getSubTaskOfTask: async (taskId: string): Promise<Task[]> => {
+  getSubTaskOfTask: async (taskId: string): Promise<TaskDTO[]> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/subtask/${taskId}`;
-    const { data } = await api.get<Task[]>(url);
+    const { data } = await api.get<TaskDTO[]>(url);
     return data;
   },
 
-  createTask: async (newTask: Omit<Task, "id">): Promise<Task> => {
+  // CREATE via atomic service
+  createTask: async (newTask: TaskPostRequestDto): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/new`;
-    const { data } = await api.post<Task>(url, newTask);
+    const { data } = await api.post<TaskDTO>(url, newTask);
     return data;
   },
 
-  createTaskWithProjectData: async (taskData: TaskPostRequestDto): Promise<Task> => {
-    const url = `${KONG_BASE_URL}/manage-task/api/task/new`;
-    const { data } = await api.post<Task>(url, taskData);
-    return data;
-  },
-
-  updateTask: async (taskId: string, updates: TaskPostRequestDto): Promise<Task> => {
+  // UPDATE via atomic service
+  updateTask: async (taskId: string, updates: TaskPostRequestDto): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
-    const { data } = await api.put<Task>(url, updates);
+    const { data } = await api.put<TaskDTO>(url, updates);
     return data;
   },
 
@@ -189,5 +240,27 @@ export const Task = {
     await api.delete(url);
   },
 };
+
+// Fetch staff under scope (team or department)
+export async function fetchStaffByScope(params: {
+  team_id?: string;
+  department_id?: string;
+  role?: string; // default 'staff'
+}): Promise<Staff[]> {
+  const url = new URL(`${PROFILE_API}/user/staff`);
+  if (params.team_id) url.searchParams.set("team_id", params.team_id);
+  if (params.department_id) url.searchParams.set("department_id", params.department_id);
+  url.searchParams.set("role", params.role ?? "Staff");
+
+  const { data } = await api.get<Staff[]>(url.toString());
+  return data;
+}
+
+// Fetch tasks for many users (owner or collaborator via revamped_task_participant)
+export async function fetchTasksByUsers(ids: string[]): Promise<TaskRow[]> {
+  const url = `${TASK_API}/task/users`;
+  const { data } = await api.post<TaskRow[]>(url, { ids });
+  return data;
+}
 
 export default api;
