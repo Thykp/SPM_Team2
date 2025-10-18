@@ -13,7 +13,35 @@ import Loader from "@/components/layout/Loader";
 import { cn } from "@/lib/utils";
 import { Users, Building2, FileDown } from "lucide-react";
 
-// Inline user type as returned by /profile/user/all
+type CacheEntry<T> = { ts: number; data: T };
+const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
+const CACHE_TTL_PCT_MS   = 2 * 60 * 1000;   // 2 minutes
+
+function setCache<T>(key: string, data: T) {
+  try {
+    const entry: CacheEntry<T> = { ts: Date.now(), data };
+    localStorage.setItem(key, JSON.stringify(entry));
+  } catch {}
+}
+
+function getCache<T>(key: string): CacheEntry<T> | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as CacheEntry<T>;
+  } catch {
+    return null;
+  }
+}
+
+function isFresh(entry: CacheEntry<any> | null, ttl: number) {
+  if (!entry) return false;
+  return Date.now() - entry.ts < ttl;
+}
+
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+// Inline user type as returned by /profile/user/all (we allow nullable for safety)
 type UserRow = {
   id: string;
   display_name: string;
@@ -21,7 +49,6 @@ type UserRow = {
   email?: string | null;
   department_id: string | null;
   team_id: string | null;
-  // Optional friendly fields if your gateway ever adds them:
   department?: string | null;
   team?: string | null;
 };
@@ -96,7 +123,6 @@ function isReportForMe(
   }
 
   if (myRole === "Manager") {
-    // Team-based visibility: show Staff in my team
     if (!myTeamId) return false;
     return u.role === "Staff" && u.team_id === myTeamId;
   }
@@ -116,6 +142,8 @@ export default function ManageUser() {
   const [selected, setSelected] = useState<UserRow | null>(null);
   const [tasks, setTasks] = useState<TaskType[] | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
+
+  // progress % per user
   const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
 
   // report date range (default last 30 days)
@@ -127,47 +155,64 @@ export default function ManageUser() {
   const myRole = (profile?.role as string | undefined) ?? undefined;
 
   const [reportBusy, setReportBusy] = useState<"team" | "department" | null>(null);
-  const [banner, setBanner] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
+
+  // Cache keys (namespaced by current viewer for pct, so manager A and manager B don't overwrite each other)
+  const USERS_CACHE_KEY = "manageUser:users:all";
+  const PCT_CACHE_KEY   = myUserId ? `manageUser:pct:${myUserId}` : "manageUser:pct:anon";
 
   useEffect(() => {
-    const run = async () => {
+    // load users (SWR: render from cache then revalidate)
+    const loadUsers = async () => {
       setLoading(true);
       setError(null);
-      try {
-        const all = (await Profile.getAllUsers()) as UserRow[];
 
-        // Find the current user in the directory to obtain canonical IDs
-        const myself = myUserId ? all.find(u => u.id === myUserId) : undefined;
+      const cached = getCache<UserRow[]>(USERS_CACHE_KEY);
+      let all: UserRow[] | null = null;
 
-        // Compute who reports to me using ID-based rules
-        const mine = all.filter(u =>
-          isReportForMe(myRole, myself?.team_id ?? null, myUserId, u)
-        );
+      if (cached?.data && isFresh(cached, CACHE_TTL_USERS_MS)) {
+        all = cached.data;
+      }
+
+      if (all) {
+        const me = myUserId ? all.find(u => u.id === myUserId) : undefined;
+        const mine = all.filter(u => isReportForMe(myRole, me?.team_id ?? null, myUserId, u));
         setUsers(mine);
+        setLoading(false);
+      }
 
-        // Prefetch per-user progress for the grid
-        const entries = await Promise.all(
-          mine.map(async (u) => {
-            try {
-              const ts = await TaskAPI.getTasksByUserId(u.id);
-              const total = ts.length;
-              const done = ts.filter(t => statusToProgress(t.status) >= 100).length;
-              const pct = total ? Math.round((done / total) * 100) : 0;
-              return [u.id, pct] as const;
-            } catch {
-              return [u.id, 0] as const;
-            }
-          })
-        );
-        setPerUserPct(Object.fromEntries(entries));
-      } catch (e) {
-        console.error(e);
-        setError("Failed to load your team. Please try again.");
+      try {
+        const freshAll = await Profile.getAllUsers() as unknown as UserRow[];
+        setCache(USERS_CACHE_KEY, freshAll);
+
+        const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
+        const mineFresh = freshAll.filter(u => isReportForMe(myRole, meFresh?.team_id ?? null, myUserId, u));
+        setUsers(mineFresh);
+
+        void prefetchPct(mineFresh);
+      } catch (e: any) {
+        if (!all) {
+          // we had nothing to show
+          setError("Failed to load your team. Please try again.");
+        } else {
+          // setBanner({ type: "info", msg: "Using cached data due to network limits." });
+        }
       } finally {
         setLoading(false);
       }
     };
-    run();
+
+    const loadPct = async () => {
+      // show cached pct immediately if fresh
+      const cachedPct = getCache<Record<string, number>>(PCT_CACHE_KEY);
+      if (cachedPct?.data && isFresh(cachedPct, CACHE_TTL_PCT_MS)) {
+        setPerUserPct(cachedPct.data);
+      }
+    };
+
+    loadPct();
+    loadUsers();
+
   }, [myUserId, myRole]);
 
   const filtered = useMemo(() => {
@@ -177,7 +222,6 @@ export default function ManageUser() {
       [
         u.display_name,
         u.role ?? "",
-        // try to search by friendly fields if present
         u.department ?? "",
         u.team ?? "",
       ].some(v => v.toLowerCase().includes(q))
@@ -199,6 +243,45 @@ export default function ManageUser() {
       setTasksLoading(false);
     }
   }
+
+  const prefetchPct = async (list: UserRow[]) => {
+    if (!list || list.length === 0) return;
+
+    const cachedPct = getCache<Record<string, number>>(PCT_CACHE_KEY);
+    const basePct = (cachedPct?.data && isFresh(cachedPct, CACHE_TTL_PCT_MS)) ? cachedPct.data : {};
+    if (Object.keys(basePct).length > 0) {
+      setPerUserPct(basePct);
+    }
+
+    const nextPct: Record<string, number> = { ...basePct };
+
+    try {
+      for (const u of list) {
+
+        if (basePct[u.id] !== undefined) continue;
+
+        // Space out calls a bit to be nice to the API gateway
+        await sleep(100);
+
+        try {
+          const ts = await TaskAPI.getTasksByUserId(u.id);
+          const total = ts.length;
+          const done = ts.filter(t => statusToProgress(t.status) >= 100).length;
+          const pct = total ? Math.round((done / total) * 100) : 0;
+          nextPct[u.id] = pct;
+          // update UI progressively
+          setPerUserPct(prev => ({ ...prev, [u.id]: pct }));
+        } catch (err) {
+          // If an individual user call fails, set 0 for now (or leave undefined)
+          nextPct[u.id] = nextPct[u.id] ?? 0;
+        }
+      }
+      setCache(PCT_CACHE_KEY, nextPct);
+    } catch (e) {
+      // If we hit a burst error (e.g., 429), keep whatever we have
+      setBanner(prev => prev ?? { type: "info", msg: "Some progress data is cached due to rate limits." });
+    }
+  };
 
   // Both actions hit the same report endpoint; backend decides scope by role
   async function callReport(kind: "team" | "department") {
@@ -233,7 +316,9 @@ export default function ManageUser() {
               "rounded-md border p-3 text-sm",
               banner.type === "success"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/20"
-                : "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/20"
+                : banner.type === "error"
+                ? "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/20"
+                : "border-border bg-muted/30 text-foreground"
             )}
             role="status"
           >
