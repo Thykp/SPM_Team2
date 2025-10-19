@@ -75,7 +75,7 @@ export type NewProjectRequest = {
   title: string;
   description: string;
   tasklist?: string[];
-  owner: string; // keep as "owner" to align with existing API
+  ownerId: string; // Changed from "owner" to match backend @JsonProperty
   collaborators?: string[];
 };
 

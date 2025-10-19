@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type TaskDTO as taskType, TaskApi as taskAPI, type Profile as profileType, Profile as profileAPI } from "@/lib/api";
+import { type TaskDTO as taskType, TaskApi as taskAPI, Profile as profileAPI } from "@/lib/api";
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
@@ -23,7 +23,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
     const [subTasks, setSubTasks] = useState<taskType[]>([]);
     const [loading, setLoading] = useState(false);
     const [userLoading, setUserLoading] = useState(false);
-    const [userProfiles, setUserProfiles] = useState<{[key: string]: profileType}>({});
+    const [userProfiles, setUserProfiles] = useState<{[key: string]: any}>({});
 
     // Helper function to display user name or "You"
     const getDisplayName = (userId: string): string => {
@@ -59,28 +59,16 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
     const getUserProfiles = async() => {
         setUserLoading(true);
         try {
-            // Filter out null values and concatenate owner and collaborators into a single array of user IDs
-            const ownerIds = currentTask.owner ? [currentTask.owner] : [];
-            const collaboratorIds = currentTask.collaborators || [];
-            const allUserIds = [...ownerIds, ...collaboratorIds].filter(id => id !== null);
+            // Fetch all users to get a complete mapping of user ID to profile
+            const allUsers = await profileAPI.getAllUsers();
             
-            // Format user IDs as objects with "id" property for the API
-            const userIdObjects = allUserIds.map(userId => ({ id: userId }));
+            // Create a mapping of user ID to user data for easy lookup
+            const profileMap: {[key: string]: any} = {};
+            allUsers.forEach((user) => {
+                profileMap[user.id] = user;
+            });
             
-            if (userIdObjects.length > 0) {
-                const profiles = await profileAPI.getProfileDetailsWithId(userIdObjects);
-                
-                // Create a mapping of user ID to profile for easy lookup
-                const profileMap: {[key: string]: profileType} = {};
-                profiles.forEach((profile, index) => {
-                    const userId = allUserIds[index];
-                    if (userId) {
-                        profileMap[userId] = profile;
-                    }
-                });
-                
-                setUserProfiles(profileMap);
-            }
+            setUserProfiles(profileMap);
         } catch (error) {
             console.error("Error fetching user profiles:", error);
         } finally {
@@ -208,21 +196,27 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                           <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
                           <p className="text-sm text-muted-foreground">Loading...</p>
                         </div>
-                      ) : currentTask.collaborators && currentTask.collaborators.length > 0 ? (
-                        <div className="space-y-1 mt-1">
-                          {currentTask.collaborators.map((collaborator, index) => (
-                            <p key={index} className="text-sm text-muted-foreground">
-                              {getDisplayName(collaborator) === "You" ? (
-                                <span className="font-bold">You</span>
-                              ) : (
-                                getDisplayName(collaborator)
-                              )}
-                            </p>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No collaborators assigned</p>
-                      )}
+                      ) : (() => {
+                        // Filter out the owner and any null/undefined values
+                        const filteredCollaborators = (currentTask.collaborators || [])
+                          .filter(collaborator => collaborator && collaborator !== currentTask.owner);
+                        
+                        return filteredCollaborators.length > 0 ? (
+                          <div className="space-y-1 mt-1">
+                            {filteredCollaborators.map((collaborator, index) => (
+                              <p key={index} className="text-sm text-muted-foreground">
+                                {getDisplayName(collaborator) === "You" ? (
+                                  <span className="font-bold">You</span>
+                                ) : (
+                                  getDisplayName(collaborator)
+                                )}
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No collaborators assigned</p>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
