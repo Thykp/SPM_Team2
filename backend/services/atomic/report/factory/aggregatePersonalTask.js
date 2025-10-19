@@ -35,6 +35,8 @@ async function prepareReportData(taskList, startDate, endDate){
         priority: task.priority,
         projectName: task.projectId != null ? projectInfo[task.projectId] : null,
         role: task.role,
+        isSubtask: !!task.parent_task_id,
+        parentTaskId: task.parent_task_id || null,
       }))
       .sort((a, b) => {
         const dateA = a.rawDeadline ? new Date(a.rawDeadline) : new Date(8640000000000000);

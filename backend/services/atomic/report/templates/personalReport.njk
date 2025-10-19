@@ -12,6 +12,9 @@
         tr:hover { background-color: #f9fafb; }
         .chart-img { max-width: 100%; height: auto; display: block;}
         .brand { font-size: 1.1rem; font-weight: 600; color: #6366f1; letter-spacing: 1px; }
+        .subtask-row { background-color: #f8fafc; border-left: 3px solid #e2e8f0; }
+        .subtask-title { padding-left: 20px; color: #64748b; font-style: italic; }
+        .subtask-icon { color: #94a3b8; margin-right: 8px; }
     </style>
 </head>
 <body class="bg-gray-50 p-8">
@@ -90,8 +93,13 @@
                     </thead>
                     <tbody>
                         {% for task in ownerTasks %}
-                        <tr>
-                            <td class="font-medium">{{ task.title }}</td>
+                        <tr {% if task.isSubtask %}class="subtask-row"{% endif %}>
+                            <td class="font-medium {% if task.isSubtask %}subtask-title{% endif %}">
+                                {% if task.isSubtask %}
+                                    <span class="subtask-icon">└─</span>
+                                {% endif %}
+                                {{ task.title }}
+                            </td>
                             <td>
                                 <span class="px-2 py-1 rounded text-xs font-semibold
                                     {% if task.status == 'Completed' %}bg-green-100 text-green-800
@@ -150,8 +158,13 @@
                     </thead>
                     <tbody>
                         {% for task in collaboratorTasks %}
-                        <tr>
-                            <td class="font-medium">{{ task.title }}</td>
+                        <tr {% if task.isSubtask %}class="subtask-row"{% endif %}>
+                            <td class="font-medium {% if task.isSubtask %}subtask-title{% endif %}">
+                                {% if task.isSubtask %}
+                                    <span class="subtask-icon">└─</span>
+                                {% endif %}
+                                {{ task.title }}
+                            </td>
                             <td>
                                 <span class="px-2 py-1 rounded text-xs font-semibold
                                     {% if task.status == 'Completed' %}bg-green-100 text-green-800

@@ -30,7 +30,8 @@ describe('AggregatePersonalTask', () => {
                 deadline: '2024-01-15T10:00:00Z',
                 priority: 2,
                 projectId: 'project1',
-                role: 'Owner'
+                role: 'Owner',
+                parent_task_id: null
             },
             {
                 id: 'task2',
@@ -39,7 +40,18 @@ describe('AggregatePersonalTask', () => {
                 deadline: '2024-01-20T10:00:00Z',
                 priority: 5,
                 projectId: 'project1',
-                role: 'Collaborator'
+                role: 'Collaborator',
+                parent_task_id: null
+            },
+            {
+                id: 'subtask1',
+                title: 'Subtask 1',
+                status: 'Completed',
+                deadline: '2024-01-18T10:00:00Z',
+                priority: 3,
+                projectId: 'project1',
+                role: 'Owner',
+                parent_task_id: 'task1'
             },
             {
                 id: 'task3',
@@ -48,7 +60,8 @@ describe('AggregatePersonalTask', () => {
                 deadline: '2024-01-25T10:00:00Z',
                 priority: 8,
                 projectId: 'project2',
-                role: 'Owner'
+                role: 'Owner',
+                parent_task_id: null
             },
             {
                 id: 'task4',
@@ -57,7 +70,8 @@ describe('AggregatePersonalTask', () => {
                 deadline: '2024-01-10T10:00:00Z',
                 priority: 1,
                 projectId: null,
-                role: 'Owner'
+                role: 'Owner',
+                parent_task_id: null
             }
         ];
 
@@ -89,11 +103,11 @@ describe('AggregatePersonalTask', () => {
             // Verify charts were generated
             expect(generateBar).toHaveBeenCalledWith(
                 ['Completed', 'Ongoing', 'Under Review', 'Overdue'],
-                [1, 1, 1, 1] // One task in each status
+                [2, 1, 1, 1] // Two completed tasks (including subtask), one in each other status
             );
             expect(generatePie).toHaveBeenCalledWith(
                 ['High (1-3)', 'Medium (4-7)', 'Low (8-10)'],
-                [2, 1, 1] // 2 high priority, 1 medium, 1 low
+                [3, 1, 1] // 3 high priority, 1 medium, 1 low
             );
 
             // Verify result structure
@@ -103,7 +117,7 @@ describe('AggregatePersonalTask', () => {
             expect(result).toHaveProperty('charts');
 
             // Verify tasks transformation
-            expect(result.tasks).toHaveLength(4);
+            expect(result.tasks).toHaveLength(5);
             expect(result.tasks[0]).toMatchObject({
                 id: 'task4', // Should be sorted by deadline first
                 title: 'Task 4',
@@ -114,14 +128,14 @@ describe('AggregatePersonalTask', () => {
                 role: 'Owner'
             });
 
-            // Verify KPIs
+            // Verify KPIs (including subtasks)
             expect(result.kpis).toEqual({
-                totalTasks: 4,
-                completedTasks: 1,
+                totalTasks: 5,
+                completedTasks: 2,
                 underReviewTasks: 1,
                 ongoingTasks: 1,
                 overdueTasks: 1,
-                highPriorityTasks: 2,
+                highPriorityTasks: 3,
                 mediumPriorityTasks: 1,
                 lowPriorityTasks: 1
             });
@@ -134,6 +148,25 @@ describe('AggregatePersonalTask', () => {
                 statusBar: mockCharts.statusBar,
                 priorityPie: mockCharts.priorityPie
             });
+        });
+
+        test('Should correctly identify and mark subtasks', async () => {
+            const startDate = '2024-01-01';
+            const endDate = '2024-01-31';
+
+            const result = await prepareReportData(mockTaskList, startDate, endDate);
+
+            // Find the subtask
+            const subtask = result.tasks.find(task => task.id === 'subtask1');
+            expect(subtask).toBeDefined();
+            expect(subtask.isSubtask).toBe(true);
+            expect(subtask.parentTaskId).toBe('task1');
+
+            // Find a parent task
+            const parentTask = result.tasks.find(task => task.id === 'task1');
+            expect(parentTask).toBeDefined();
+            expect(parentTask.isSubtask).toBe(false);
+            expect(parentTask.parentTaskId).toBeNull();
         });
 
         test('Should handle tasks with null project IDs', async () => {

@@ -28,6 +28,7 @@ describe('CallingService', () => {
                 deadline: '2024-01-15T10:00:00Z',
                 priority: 5,
                 project_id: 'project-456',
+                parent_task_id: null,
                 updated_at: '2024-01-10T10:00:00Z',
                 participants: [
                     { profile_id: 'user-123', is_owner: true },
@@ -41,10 +42,24 @@ describe('CallingService', () => {
                 deadline: '2024-01-20T10:00:00Z',
                 priority: 3,
                 project_id: 'project-789',
+                parent_task_id: null,
                 updated_at: '2024-01-12T10:00:00Z',
                 participants: [
                     { profile_id: 'user-123', is_owner: false },
                     { profile_id: 'user-789', is_owner: true }
+                ]
+            },
+            {
+                id: 'subtask-789',
+                title: 'Subtask 1',
+                status: 'Completed',
+                deadline: '2024-01-18T10:00:00Z',
+                priority: 2,
+                project_id: 'project-456',
+                parent_task_id: 'task-123',
+                updated_at: '2024-01-15T10:00:00Z',
+                participants: [
+                    { profile_id: 'user-123', is_owner: true }
                 ]
             }
         ];
@@ -58,7 +73,7 @@ describe('CallingService', () => {
                 'http://localhost:3031/task/users/user-123?startDate=2024-01-01&endDate=2024-01-31'
             );
 
-            expect(result).toHaveLength(2);
+            expect(result).toHaveLength(3);
             expect(result[0]).toEqual({
                 id: 'task-123',
                 title: 'Test Task 1',
@@ -67,6 +82,7 @@ describe('CallingService', () => {
                 deadline: '2024-01-15T10:00:00Z',
                 priority: 5,
                 projectId: 'project-456',
+                parent_task_id: null,
                 updatedAt: '2024-01-10T10:00:00Z'
             });
             expect(result[1]).toEqual({
@@ -77,7 +93,21 @@ describe('CallingService', () => {
                 deadline: '2024-01-20T10:00:00Z',
                 priority: 3,
                 projectId: 'project-789',
+                parent_task_id: null,
                 updatedAt: '2024-01-12T10:00:00Z'
+            });
+            
+            // Verify subtask has parent_task_id
+            expect(result[2]).toEqual({
+                id: 'subtask-789',
+                title: 'Subtask 1',
+                status: 'Completed',
+                role: 'Owner', // user-123 is owner
+                deadline: '2024-01-18T10:00:00Z',
+                priority: 2,
+                projectId: 'project-456',
+                parent_task_id: 'task-123',
+                updatedAt: '2024-01-15T10:00:00Z'
             });
         });
 
