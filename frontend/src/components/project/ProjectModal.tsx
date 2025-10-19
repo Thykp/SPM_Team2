@@ -77,7 +77,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
     const projectData: NewProjectRequest = {
       title: newProject.title,
       description: newProject.description,
-      ownerId: currentUserId,
+      owner: currentUserId,
       collaborators: selectedCollaborators,
       // tasklist: [],
     };

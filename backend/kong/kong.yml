@@ -23,6 +23,13 @@ services:
         paths:
           - /task
 
+  - name: report-service
+    url: http://report:3042
+    routes:
+      - name: report-route
+        paths:
+          - /report
+
   - name: manage-account-service
     url: http://manage-account:8090
     routes:

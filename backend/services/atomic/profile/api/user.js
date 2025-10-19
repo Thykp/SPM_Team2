@@ -95,7 +95,9 @@ router.get("/departments", async (_req, res) => {
 // By ID
 router.get("/:userId", async (req, res) => {
   const { userId } = req.params;
-  if (!userId) return res.status(400).json({ error: "Missing user ID" });
+  
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user ID" });}
 
   try {
     const profile = await user.getUserDetailsWithId(userId);

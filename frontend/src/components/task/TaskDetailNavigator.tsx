@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Task as taskType } from "@/lib/api";
+import type { TaskDTO as taskType } from "@/lib/api";
 import { TaskDetail } from "./TaskDetail";
 
 type TaskDetailNavigatorProps = {

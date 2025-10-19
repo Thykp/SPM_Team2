@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task, Profile } from "@/lib/api";
+import { TaskApi, Profile} from "@/lib/api";
 import { X, ChevronsUpDown, Check } from "lucide-react";
 // import { CollaboratorPicker } from "@/components/CollaboratorPicker";
-import CollaboratorPicker from "@/components/project/CollaboratorPickerNewProj";
+import { CollaboratorPicker } from "@/components/CollaboratorPicker";
 
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -55,7 +55,7 @@ interface EditTaskProps {
   onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose, onTaskUpdated }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]); // Add state for users
@@ -65,7 +65,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
   useEffect(() => {
     const fetchTask = async () => {
       try {
-        const data = await Task.getTaskByIdWithOwner(taskId); // Use the new function
+        const data = await TaskApi.getTaskByIdWithOwner(taskId); // Use the new function
         console.log("Fetched task data:", data);
         setTask(data); // Set the fetched task
       } catch (error) {
@@ -103,7 +103,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
       const utcDeadline = new Date(task.deadline).toISOString();
 
       // Call the API to update the task
-      const updatedTask = await Task.updateTask(task.id, {
+      const updatedTask = await TaskApi.updateTask(task.id, {
         title: task.title,
         description: task.description,
         status: task.status,
@@ -119,6 +119,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
 
       // Close the modal after updating
       onClose();
+      if (typeof onTaskUpdated === "function") onTaskUpdated();
     } catch (err) {
       console.error("Failed to update task:", err);
     } finally {
@@ -276,21 +277,17 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
             {/* Collaborators */}
             <div className="space-y-2">
               <CollaboratorPicker
-                users={users}
-                userSearchTerm={userSearchTerm}
-                onUserSearchChange={setUserSearchTerm}
-                selectedCollaborators={task.collaborators}
-                onToggleCollaborator={(userId) => {
-                  setTask((prev) => {
-                    if (!prev) return prev;
-                    const collaborators = prev.collaborators.includes(userId)
-                      ? prev.collaborators.filter((id) => id !== userId)
-                      : [...prev.collaborators, userId];
-                    return { ...prev, collaborators };
-                  });
-                }}
-                loadingUsers={loading}
-                currentUserId={task.owner ?? undefined} // Exclude the owner from the collaborator list
+                mode="task"
+                taskId={task.id}
+                initialSelected={[task.owner, ...task.collaborators.filter((id) => id !== task.owner)]
+                  .filter((x): x is string => !!x)}
+                onSaved={(selected, owner) =>
+                  setTask((prev) => ({
+                    ...prev!,
+                    owner,
+                    collaborators: selected.filter((id) => id !== owner),
+                  }))
+                }
               />
             </div>
 

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EditTask from "./EditTask"; // Import the EditTask component
-import { Task as apiTask } from "@/lib/api";
+import type { TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
  
 

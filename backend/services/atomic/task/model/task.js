@@ -56,17 +56,23 @@ class Task {
         return data;
     }
 
-    static async getTasksByUsers(userId){
+    static async getTasksByUsers(userId, startDate, endDate){
         const userIdArray = !Array.isArray(userId) ? [userId]: userId;
-        
-        // Get all tasks with their full participants array
-        const { data, error } = await supabase
+        let query = supabase
             .from(Task.taskTable)
             .select(`
                 *,
                 participants:${Task.taskParticipantTable}(profile_id, is_owner)
             `);
-        
+
+        if (startDate && endDate) {
+            startDate = new Date(startDate).toISOString();
+            endDate = new Date(endDate).toISOString();
+
+            query = query.gte('created_at', startDate).lte('created_at', endDate);
+        }
+
+        const { data, error } = await query;
         if (error){
             console.error("Error in getTasksByUsers:", error);
             throw new DatabaseError("Failed to retrieve tasks by users", error);
