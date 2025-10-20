@@ -58,6 +58,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, onClose, onT
   const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null);
+  const [error, setError] = useState<string | null>(null); // State to store error messages
 
 
 
@@ -167,6 +168,7 @@ useEffect(() => {
   const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
       if (!task) {
@@ -193,8 +195,30 @@ useEffect(() => {
       // Close the modal after updating
       onClose();
       if (typeof onTaskUpdated === "function") onTaskUpdated();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to update task:", err);
+
+      if (err.response && err.response.data) {
+        try {
+          // Parse the response data
+          const errorData = typeof err.response.data === "string"
+            ? JSON.parse(err.response.data) // Parse if it's a string
+            : err.response.data;
+
+          if (errorData.error) {
+            setError(errorData.error); // Use the error message from the backend
+          } else {
+            setError("An unexpected error occurred."); // Fallback if no error field exists
+          }
+        } catch (parseError) {
+          console.error("Error parsing response data:", parseError);
+          setError("An unexpected error occurred."); // Fallback for parsing errors
+        }
+      } else if (err.message) {
+        setError(err.message); // Use the generic error message
+      } else {
+        setError("An unexpected error occurred."); // Fallback for unknown errors
+      }
     } finally {
       setLoading(false);
     }
@@ -253,6 +277,8 @@ useEffect(() => {
                 className="h-11"
                 required
               />
+              {/* Error Message */}
+              {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
 
             {/* Description */}

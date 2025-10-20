@@ -16,6 +16,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import type { User } from "@supabase/supabase-js";
 
 type UserRow = {
   id: string;
@@ -64,6 +65,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
   const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAssignableUsers = async () => {
@@ -73,7 +75,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
         setUsers(allUsers);
 
         // Find the current user's profile
-        const currentUserProfile = allUsers.find((user) => user.id === userId);
+        const currentUserProfile = allUsers.find((user: UserRow) => user.id === userId);
         if (!currentUserProfile) {
           console.error("Current user profile not found");
           return;
@@ -82,25 +84,25 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
         const { role: currentUserRole, team_id: currentUserTeamId, department_id: currentUserDepartmentId } = currentUserProfile;
 
         // Filter assignable users based on the current user's role
-        let filteredUsers = allUsers.filter((user) => {
+        let filteredUsers = allUsers.filter((user: UserRow) => {
           switch (currentUserRole) {
             case "Senior Management":
               return true; // Senior Management can assign anyone
             case "Director":
               return (
                 user.role !== "Senior Management" &&
-                user.department_id === currentUserDepartmentId
+                user.department === currentUserDepartmentId
               );
             case "Manager":
-              return user.role === "Staff" && user.team_id === currentUserTeamId;
+              return user.role === "Staff" && user.team === currentUserTeamId;
             default:
               return false; // Other roles cannot assign owners
           }
         });
 
         // Ensure the current user is included in the filtered users
-        if (!filteredUsers.some((user) => user.id === userId)) {
-          const currentUser = allUsers.find((user) => user.id === userId);
+        if (!filteredUsers.some((user: UserRow) => user.id === userId)) {
+          const currentUser = allUsers.find((user: UserRow) => user.id === userId);
           if (currentUser) {
             filteredUsers = [currentUser, ...filteredUsers];
           }
@@ -108,7 +110,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
 
         setAssignableUsers(filteredUsers);
         setOwnerOptions(
-          filteredUsers.map((user) => ({
+          filteredUsers.map((user: UserRow) => ({
             value: user.id,
             label: user.display_name,
           }))
@@ -124,6 +126,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null); 
 
     try {
       const taskData = {
@@ -139,8 +142,30 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
       const createdTask = await TaskApi.createTask(taskData);
       onTaskCreated(createdTask);
       onClose();
-    } catch (err) {
-      console.error("Failed to create task:", err);
+    } catch (err: any) {
+        console.error("Failed to create task:", err);
+
+        if (err.response && err.response.data) {
+          try {
+            // Check if response.data is a string and parse it if necessary
+            const errorData = typeof err.response.data === "string"
+              ? JSON.parse(err.response.data.split(": ", 2)[1]) // Extract the JSON part
+              : err.response.data;
+
+            if (errorData.error) {
+              setError(errorData.error); // Use the error message from the backend
+            } else {
+              setError("An unexpected error occurred."); // Fallback if no error field exists
+            }
+          } catch (parseError) {
+            console.error("Error parsing response data:", parseError);
+            setError("An unexpected error occurred."); // Fallback for parsing errors
+          }
+        } else if (err.message) {
+          setError(err.message); // Use the generic error message
+        } else {
+          setError("An unexpected error occurred."); // Fallback for unknown errors
+        }
     } finally {
       setLoading(false);
     }
@@ -187,6 +212,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
                 className="h-11"
                 required
               />
+            {/* Error Message */}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
 
             {/* Description */}

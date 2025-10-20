@@ -175,6 +175,21 @@ class Task {
     }
 
     async createTask(){
+        const { data: existingTask, error: findError } = await supabase
+            .from(Task.taskTable)
+            .select("*")
+            .eq("title", this.title)
+            .single();
+
+        if (findError && findError.code !== "PGRST116") { // Ignore "row not found" errors
+            console.error("Error checking for duplicate task title:", findError);
+            throw new DatabaseError("Failed to check for duplicate task title", findError);
+        }
+
+        if (existingTask) {
+            throw new ValidationError(`A task with the title "${this.title}" already exists.`);
+        }
+
         const { data, error } = await supabase
         .from(Task.taskTable)
         .insert({
@@ -202,6 +217,22 @@ class Task {
     }
 
     async updateTask(){
+        const { data: existingTask, error: findError } = await supabase
+            .from(Task.taskTable)
+            .select("*")
+            .eq("title", this.title)
+            .neq("id", this.id) // Exclude the current task
+            .single();
+
+        if (findError && findError.code !== "PGRST116") { // Ignore "row not found" errors
+            console.error("Error checking for duplicate task title:", findError);
+            throw new DatabaseError("Failed to check for duplicate task title", findError);
+        }
+
+        if (existingTask) {
+            throw new ValidationError(`A task with the title "${this.title}" already exists.`);
+        }
+
         const { error } = await supabase
             .from(Task.taskTable)
             .update({

@@ -10,8 +10,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.spm.manage_task.components.TaskDTOWrapperComponent;
 import com.spm.manage_task.dto.TaskDto;
 import com.spm.manage_task.dto.TaskPostRequestDto;
@@ -54,17 +57,30 @@ public class TaskService {
         return taskDtos == null ? List.of() : taskDtos;
     }
 
-    public void createTask(TaskPostRequestDto newTaskBody){
+    public void createTask(TaskPostRequestDto newTaskBody) {
         TaskMicroserviceUpsertRequest upsertRequest = taskDTOWrapper.toTaskMicroserviceUpsert(newTaskBody);
-        
+
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<TaskMicroserviceUpsertRequest> entity = new HttpEntity<>(upsertRequest, httpHeaders);
 
-        ResponseEntity<TaskMicroserviceResponse> resp = restTemplate.exchange(taskUrl+"/", HttpMethod.POST, entity, TaskMicroserviceResponse.class);
+        try {
+            ResponseEntity<TaskMicroserviceResponse> resp = restTemplate.exchange(taskUrl+"/", HttpMethod.POST, entity, TaskMicroserviceResponse.class);
 
-        if (resp.getStatusCode().value() != 200) {
-            throw new RuntimeException("Failed to create task. Status code: " + resp.getStatusCode());
+            if (!resp.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("Failed to create task. Status code: " + resp.getStatusCode());
+            }
+        } catch (HttpClientErrorException.BadRequest e) {
+            // Parse the error message from the atomic service
+            String responseBody = e.getResponseBodyAsString();
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode jsonNode = objectMapper.readTree(responseBody);
+                String errorMessage = jsonNode.get("error").asText();
+                throw new RuntimeException(errorMessage);
+            } catch (Exception parseException) {
+                throw new RuntimeException("Task creation failed: " + responseBody);
+            }
         }
     }
 
@@ -77,10 +93,23 @@ public class TaskService {
 
         HttpEntity<TaskMicroserviceUpsertRequest> entity = new HttpEntity<>(upsertRequest, httpHeaders);
 
-        ResponseEntity<TaskMicroserviceResponse> responseEntity = restTemplate.exchange(taskUrl + "/" + taskId, HttpMethod.PUT, entity, TaskMicroserviceResponse.class);
+        try {
+            ResponseEntity<TaskMicroserviceResponse> responseEntity = restTemplate.exchange(taskUrl + "/" + taskId, HttpMethod.PUT, entity, TaskMicroserviceResponse.class);
 
-        if (responseEntity.getStatusCode().value() != 200) {
-            throw new RuntimeException("Failed to update task. Status code: " + responseEntity.getStatusCode());
+            if (!responseEntity.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("Failed to update task. Status code: " + responseEntity.getStatusCode());
+            }
+        } catch (HttpClientErrorException.BadRequest e) {
+            // Parse the error message from the atomic service
+            String responseBody = e.getResponseBodyAsString();
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode jsonNode = objectMapper.readTree(responseBody);
+                String errorMessage = jsonNode.get("error").asText();
+                throw new RuntimeException(errorMessage); // Pass only the error message
+            } catch (Exception parseException) {
+                throw new RuntimeException("Task update failed: " + responseBody);
+            }
         }
     }
 
