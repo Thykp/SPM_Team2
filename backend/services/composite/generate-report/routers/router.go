@@ -14,7 +14,7 @@ func RegisterRoutes(r *gin.Engine, producer kafkaSvc.Producer, httpClient *http.
 	reportClient := report.NewClient(httpClient, reportBaseURL)
 	ctrl := controllers.NewGenerateController(producer, reportClient)
 
-	grp := r.Group("/generate-report")
+	grp := r.Group("/")
 	{
 		grp.GET("/health", ctrl.Health)
 		grp.POST("/:userId", ctrl.Generate) // body: {startDate,endDate}

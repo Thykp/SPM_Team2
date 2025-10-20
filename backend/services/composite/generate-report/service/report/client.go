@@ -30,7 +30,7 @@ func (c *client) Generate(ctx context.Context, userID, startDate, endDate, corre
 		"endDate":   endDate,
 	}
 	buf, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/%s", c.base, userID), bytes.NewReader(buf))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/report/%s", c.base, userID), bytes.NewReader(buf))
 	if err != nil {
 		return models.ReportServiceResponse{}, 0, err
 	}
