@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task } from "@/lib/api";
+import { TaskApi } from "@/lib/api";
 import { X, ChevronsUpDown, Check } from "lucide-react";
 import { CollaboratorPicker } from "@/components/CollaboratorPicker";
 
@@ -46,7 +46,7 @@ interface EditTaskProps {
   onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose, onTaskUpdated }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +54,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
   useEffect(() => {
     const fetchTask = async () => {
       try {
-        const data = await Task.getTaskByIdWithOwner(taskId); // Use the new function
+        const data = await TaskApi.getTaskByIdWithOwner(taskId); // Use the new function
         console.log("Fetched task data:", data);
         setTask(data); // Set the fetched task
       } catch (error) {
@@ -75,7 +75,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
       }
 
       // Call the API to update the task
-      const updatedTask = await Task.updateTask(task.id, {
+      const updatedTask = await TaskApi.updateTask(task.id, {
         title: task.title,
         description: task.description,
         status: task.status,
@@ -91,6 +91,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
 
       // Close the modal after updating
       onClose();
+      if (typeof onTaskUpdated === "function") onTaskUpdated();
     } catch (err) {
       console.error("Failed to update task:", err);
     } finally {
@@ -195,7 +196,20 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
               <Input
                 id="deadline"
                 type="datetime-local"
-                value={new Date(task.deadline).toISOString().slice(0, 16)} // Convert to datetime-local format
+                value={
+                    task.deadline
+                      ? (() => {
+                          const d = new Date(task.deadline);
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          const yyyy = d.getFullYear();
+                          const mm = pad(d.getMonth()+1);
+                          const dd = pad(d.getDate());
+                          const hh = pad(d.getHours());
+                          const mi = pad(d.getMinutes());
+                          return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+                        })()
+                      : ""
+                  }
                 onChange={(e) =>
                   setTask((prev) => ({ ...prev!, deadline: e.target.value }))
                 }
@@ -210,11 +224,17 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose }) => {
                 Collaborators
               </Label>
               <CollaboratorPicker
-                projectId={task.id} // Use the task ID as the project ID
-                initialSelected={task.collaborators} // Pass the initial collaborators
-                onSaved={(selected) =>
-                  setTask((prev) => ({ ...prev!, collaborators: selected }))
-                } // Update the collaborators in the task state
+                mode="task"
+                taskId={task.id}
+                initialSelected={[task.owner, ...task.collaborators.filter((id) => id !== task.owner)]
+                  .filter((x): x is string => !!x)}
+                onSaved={(selected, owner) =>
+                  setTask((prev) => ({
+                    ...prev!,
+                    owner,
+                    collaborators: selected.filter((id) => id !== owner),
+                  }))
+                }
               />
             </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Task as taskType, Task as taskAPI, Profile as profileType, Profile as profileAPI } from "@/lib/api";
+import { type TaskDTO as taskType, TaskApi as taskAPI, type Profile as profileType, Profile as profileAPI } from "@/lib/api";
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";

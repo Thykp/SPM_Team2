@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { type Task } from '@/lib/api';
+import { type TaskDTO } from '@/lib/api';
 
 interface UseRealtimeTasksProps {
   projectId: string;
-  initialTasks: Task[];
-  onTaskUpdate?: (updatedTask: Task) => void;
+  initialTasks: TaskDTO[];
+  onTaskUpdate?: (updatedTask: TaskDTO) => void;
   onTaskDelete?: (taskId: string) => void;
-  onTaskInsert?: (newTask: Task) => void;
+  onTaskInsert?: (newTask: TaskDTO) => void;
 }
 
 export const useRealtimeTasks = ({
@@ -17,7 +17,7 @@ export const useRealtimeTasks = ({
   onTaskDelete,
   onTaskInsert,
 }: UseRealtimeTasksProps) => {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<TaskDTO[]>(initialTasks);
   const [isConnected, setIsConnected] = useState(false);
 
   // Use refs to avoid including callbacks in dependencies
@@ -42,7 +42,7 @@ export const useRealtimeTasks = ({
 
   useEffect(() => {
     // Extract state update functions to reduce nesting
-    const updateTaskInState = (updatedTask: Task) => {
+    const updateTaskInState = (updatedTask: TaskDTO) => {
       setTasks(prevTasks => {
         const taskIndex = prevTasks.findIndex(task => task.id === updatedTask.id);
         if (taskIndex === -1) return prevTasks;
@@ -57,7 +57,7 @@ export const useRealtimeTasks = ({
       setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
     };
 
-    const addTaskToState = (newTask: Task) => {
+    const addTaskToState = (newTask: TaskDTO) => {
       setTasks(prevTasks => {
         // Check if task already exists to avoid duplicates
         const taskExists = prevTasks.some(task => task.id === newTask.id);
@@ -116,7 +116,7 @@ export const useRealtimeTasks = ({
 };
 
 // Helper function to transform database record to Task type
-const transformTaskFromDb = (dbRecord: any): Task => {
+const transformTaskFromDb = (dbRecord: any): TaskDTO => {
   return {
     id: dbRecord.id,
     title: dbRecord.title || '',

@@ -1,5 +1,6 @@
-const {getProjectDetails} = require("../services/taskService");
+const {getProjectDetails} = require("../services/callingService");
 const { generateBar, generatePie } = require("./makeCharts");
+const { InternalError } = require("../model/AppError");
 
 function formatDate(isoString) {
   if (!isoString) return 'N/A';
@@ -17,12 +18,12 @@ async function prepareReportData(taskList, startDate, endDate){
 
   try {
     const projectIdArr = taskList
-      .map(task => task.project_id)
+      .map(task => task.projectId)
       .filter(id => id != null);
+    
     const uniqueProjectIds = [...new Set(projectIdArr)];
 
-    projectInfo = await getProjectDetails(uniqueProjectIds);
-
+    const projectInfo = await getProjectDetails(uniqueProjectIds);
 
     const transformedTasks = taskList
       .map((task) => ({
@@ -32,7 +33,7 @@ async function prepareReportData(taskList, startDate, endDate){
         deadline: formatDate(task.deadline),
         rawDeadline: task.deadline, // for sorting
         priority: task.priority,
-        project_name: task.project_id != null ? projectInfo[task.project_id] : null,
+        projectName: task.projectId != null ? projectInfo[task.projectId] : null,
         role: task.role
       }))
       .sort((a, b) => {
@@ -43,16 +44,29 @@ async function prepareReportData(taskList, startDate, endDate){
         return a.priority - b.priority;
       });
 
-    const taskKPIs = {
-      totalTasks: transformedTasks.length,
-      completedTasks: transformedTasks.filter((task)=>task.status == "Completed").length,
-      underReviewTasks: transformedTasks.filter((task)=>task.status == "Under Review").length,
-      ongoingTasks: transformedTasks.filter((task)=>task.status == "Ongoing").length,
-      overdueTasks: transformedTasks.filter((task)=>task.status == "Overdue").length,
-      highPriorityTasks: transformedTasks.filter(t => t.priority <= 3).length,
-      mediumPriorityTasks: transformedTasks.filter(t => t.priority >= 4 && t.priority <= 7).length,
-      lowPriorityTasks: transformedTasks.filter(t => t.priority >= 8 && t.priority <= 10).length
-    }
+    // Calculate KPIs in a single pass for better performance
+    const taskKPIs = transformedTasks.reduce((acc, task) => {
+      acc.totalTasks++;
+      if (task.status === "Completed") acc.completedTasks++;
+      if (task.status === "Under Review") acc.underReviewTasks++;
+      if (task.status === "Ongoing") acc.ongoingTasks++;
+      if (task.status === "Overdue") acc.overdueTasks++;
+      
+      if (task.priority <= 3) acc.highPriorityTasks++;
+      else if (task.priority <= 7) acc.mediumPriorityTasks++;
+      else acc.lowPriorityTasks++;
+      
+      return acc;
+    }, {
+      totalTasks: 0,
+      completedTasks: 0,
+      underReviewTasks: 0,
+      ongoingTasks: 0,
+      overdueTasks: 0,
+      highPriorityTasks: 0,
+      mediumPriorityTasks: 0,
+      lowPriorityTasks: 0
+    });
 
     // Format report period
     const reportPeriod = `${formatDate(startDate)} - ${formatDate(endDate)}`;
@@ -78,8 +92,7 @@ async function prepareReportData(taskList, startDate, endDate){
       }
     }
   } catch (error) {
-    console.error("Something wrong with prepareReportData: ",error);
-    throw error;
+    throw new InternalError('prepare report data', error);
   }
 };
 

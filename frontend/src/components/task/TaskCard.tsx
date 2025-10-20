@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Task as taskType } from "@/lib/api"; // Import the Task component
+import type { TaskDTO as taskType } from "@/lib/api";
 import { Task as TaskBody } from "@/components/task/Task";
 import { useMemo } from "react";
 

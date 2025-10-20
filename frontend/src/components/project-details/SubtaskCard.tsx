@@ -2,11 +2,11 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { type Task } from '@/lib/api';
+import { type TaskDTO } from '@/lib/api';
 import { Check } from 'lucide-react';
 
 interface SubtaskCardProps {
-    subtask: Task;
+    subtask: TaskDTO;
     onClick?: () => void;
 }
 
@@ -21,7 +21,7 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, onClick }) => {
             .slice(0, 2);
     };
 
-    const getStatusColor = (status: Task['status']) => {
+    const getStatusColor = (status: TaskDTO['status']) => {
         switch (status) {
             case 'Unassigned':
                 return 'bg-gray-100 text-gray-700';

@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { type Task } from '@/lib/api';
+import { type TaskDTO } from '@/lib/api';
 import TaskCard from './TaskCard';
 import SubtaskCard from './SubtaskCard';
 import { TaskDetailNavigator } from '../task/TaskDetailNavigator';
 import { useDroppable } from '@dnd-kit/core';
 
 interface TaskWithSubtasks {
-    task: Task;
-    subtasks: Task[];
+    task: TaskDTO;
+    subtasks: TaskDTO[];
 }
 
 interface KanbanColumnProps {
     id: string;
     title: string;
-    tasks: Task[];
+    tasks: TaskDTO[];
     tasksWithSubtasks?: TaskWithSubtasks[];
     viewType?: 'flat' | 'hierarchical';
 }
@@ -23,7 +23,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, tasksWith
     const { isOver, setNodeRef } = useDroppable({
         id: id,
     });
-    const [selectedSubtask, setSelectedSubtask] = useState<Task | null>(null);
+    const [selectedSubtask, setSelectedSubtask] = useState<TaskDTO | null>(null);
 
     const getColumnColor = (columnId: string) => {
         switch (columnId) {

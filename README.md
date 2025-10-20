@@ -41,10 +41,6 @@ Switch to your branch before starting to code <br>
 <img width="530" height="611" alt="Screenshot 2025-09-14 at 11 48 05 PM" src="https://github.com/user-attachments/assets/5e5ed7fd-8eb5-496b-9949-482871ef419e" />
 
 
-## Cloud Architecture
-<img width="908" height="644" alt="Screenshot 2025-09-10 at 3 40 22 PM" src="https://github.com/user-attachments/assets/9803b26b-ce40-4f6c-be60-7a1fc30472d1" />
-
-
 ## Frameworks and Databases Utilised
 
 <p align="center"><strong>UI Stack</strong></p>
@@ -94,11 +90,10 @@ Switch to your branch before starting to code <br>
 
 <p align="center"><strong>Storage Solutions</strong></p>  
 <p align="center">
-<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg" alt="Amazon Web Services" width="70"/></a>&nbsp;&nbsp;
 <a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/b/bc/Amazon-S3-Logo.svg" alt="Google Cloud Storage" width="40"/></a>&nbsp;&nbsp;
 <a href="https://supabase.com/"><img src="https://www.vectorlogo.zone/logos/supabase/supabase-icon.svg" alt="Supabase" width="40" /></a>&nbsp;&nbsp;
 <br>
-<i>AWS · S3 · Supabase</i>
+<i>S3 · Supabase</i>
 </p>
 <br> 
 
