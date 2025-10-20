@@ -51,6 +51,13 @@ services:
         paths:
           - /organise-project
 
+  - name: generate-report-service
+    url: http://generate-report:8093
+    routes:
+      - name: generate-report-route
+        paths:
+          - /generate-report
+
 plugins:
   - name: rate-limiting
     config:
