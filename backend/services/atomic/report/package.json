@@ -8,6 +8,8 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --runInBand",
+    "test:unit": "jest --selectProjects=unit --runInBand",
+    "test:integration": "jest --selectProjects=integration --runInBand",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "start": "nodemon index.js"
@@ -32,20 +34,25 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/test"
-    ],
-    "testMatch": [
-      "**/*.test.js"
-    ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/test/setup.js"
+    "projects": [
+      {
+        "displayName": "unit",
+        "testMatch": ["**/test/unit/**/*.test.js"],
+        "setupFilesAfterEnv": ["<rootDir>/test/setup.js"],
+        "roots": ["<rootDir>/test/unit"]
+      },
+      {
+        "displayName": "integration",
+        "testMatch": ["**/test/integration/**/*.test.js"],
+        "roots": ["<rootDir>/test/integration"]
+      }
     ],
     "clearMocks": true,
     "collectCoverage": true,
     "collectCoverageFrom": [
       "api/**/*.js",
-      "model/**/*.js"
+      "factory/**/*.js",
+      "services/**/*.js"
     ],
     "coverageDirectory": "coverage"
   }
