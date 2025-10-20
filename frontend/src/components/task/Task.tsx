@@ -47,7 +47,7 @@ export const Task: React.FC<TaskProps> = ({
       </div>
 
       <div className="absolute top-2 right-2 flex items-center space-x-2">
-        <TaskReminder taskId={taskContent.id} />
+        <TaskReminder taskId={taskContent.id} status={taskContent.status} />
 
         <Button
           variant="ghost"

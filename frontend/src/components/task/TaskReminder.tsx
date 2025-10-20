@@ -6,9 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 type TaskReminderProps = {
   taskId: string;
+  status: string;
 };
 
-export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId }) => {
+export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) => {
   const { user } = useAuth(); 
   const userId = user?.id;
 
@@ -17,6 +18,8 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId }) => {
   const [reminderDays, setReminderDays] = useState<number[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [error, setError] = useState("");
+
+  if (status === "Overdue") return null;
 
   // Fetch reminders when dropdown opens
   useEffect(() => {
