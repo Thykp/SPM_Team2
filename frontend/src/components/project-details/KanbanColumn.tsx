@@ -15,11 +15,15 @@ interface KanbanColumnProps {
     id: string;
     title: string;
     tasks: TaskDTO[];
+    projectId: string;
+    userId: string; // Add userId for subtask creation
     tasksWithSubtasks?: TaskWithSubtasks[];
     viewType?: 'flat' | 'hierarchical';
+    onTaskDeleted?: (taskId: string) => void;
+    onTaskUpdated?: () => void;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, tasksWithSubtasks, viewType = 'flat' }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, projectId, userId, tasksWithSubtasks, viewType = 'flat', onTaskDeleted, onTaskUpdated }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: id,
     });
@@ -73,14 +77,17 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, tasksWith
                     // Hierarchical view: show tasks with their subtasks
                     tasksWithSubtasks.map(({ task, subtasks }) => (
                         <div key={task.id}>
-                            <TaskCard task={task} />
+                            <TaskCard task={task} projectId={projectId} userId={userId} onTaskDeleted={onTaskDeleted} onTaskUpdated={onTaskUpdated} />
                             {subtasks.length > 0 && (
                                 <div className="mt-2 space-y-2">
                                     {subtasks.map((subtask) => (
                                         <SubtaskCard 
                                             key={subtask.id} 
                                             subtask={subtask}
+                                            projectId={projectId}
                                             onClick={() => setSelectedSubtask(subtask)}
+                                            onSubtaskDeleted={onTaskDeleted}
+                                            onSubtaskUpdated={onTaskUpdated}
                                         />
                                     ))}
                                 </div>
@@ -90,7 +97,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, tasksWith
                 ) : (
                     // Flat view: show only parent tasks
                     tasks.map((task) => (
-                        <TaskCard key={task.id} task={task} />
+                        <TaskCard key={task.id} task={task} projectId={projectId} userId={userId} onTaskDeleted={onTaskDeleted} onTaskUpdated={onTaskUpdated} />
                     ))
                 )}
             </div>

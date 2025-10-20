@@ -8,12 +8,15 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -360,5 +363,42 @@ public class TaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    // ==================== DELETE /api/task/{taskId} ====================
+
+    @Test
+    void deleteTask_ShouldReturnSuccess() throws Exception {
+        String taskId = "task123";
+
+        doNothing().when(taskService).deleteTask(taskId);
+
+        mockMvc.perform(delete("/api/task/{taskId}", taskId))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task deleted successfully"));
+    }
+
+    @Test
+    void deleteTask_WithValidTaskId_ShouldReturnSuccess() throws Exception {
+        String taskId = "validTask456";
+
+        doNothing().when(taskService).deleteTask(taskId);
+
+        mockMvc.perform(delete("/api/task/{taskId}", taskId))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task deleted successfully"));
+    }
+
+    @Test
+    void deleteTask_ShouldCallServiceOnce() throws Exception {
+        String taskId = "task789";
+
+        doNothing().when(taskService).deleteTask(taskId);
+
+        mockMvc.perform(delete("/api/task/{taskId}", taskId))
+                .andExpect(status().isOk());
+
+        // Verify that the service method was called exactly once
+        verify(taskService, times(1)).deleteTask(taskId);
     }
 }

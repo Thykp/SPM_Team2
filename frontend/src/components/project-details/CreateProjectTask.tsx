@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,13 +20,18 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
-import { TaskApi as TaskAPI, type TaskPostRequestDto } from "@/lib/api";
+import { TaskApi as TaskAPI, type TaskPostRequestDto, type TaskDTO, Profile, Project } from "@/lib/api";
 
 interface CreateProjectTaskProps {
   userId: string;
   projectId: string;
   onTaskCreated: (task: any) => void;
+  parentTaskId?: string; // Optional parent task ID for creating subtasks
+  triggerButton?: React.ReactNode; // Optional custom trigger button
+  open?: boolean; // Optional controlled open state
+  onOpenChange?: (open: boolean) => void; // Optional callback for open state changes
 }
 
 const STATUSES = [
@@ -42,9 +47,17 @@ type StatusType = (typeof STATUSES)[number];
 const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({ 
   userId, 
   projectId, 
-  onTaskCreated 
+  onTaskCreated,
+  parentTaskId,
+  triggerButton,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange || setInternalOpen;
   const [newTask, setNewTask] = useState<{
     title: string;
     description: string;
@@ -58,9 +71,81 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
     priority: 5,
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default 7 days from now, formatted as YYYY-MM-DD
   });
+  const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
+  const [projectCollaboratorIds, setProjectCollaboratorIds] = useState<string[]>([]);
+  const [projectOwner, setProjectOwner] = useState<string>("");
+  const [parentTask, setParentTask] = useState<TaskDTO | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const resetForm = () =>
+  // Fetch project details and users when dialog opens
+  useEffect(() => {
+    if (open) {
+      // Fetch project to get its collaborators and owner
+      Project.getById(projectId)
+        .then((project) => {
+          setProjectCollaboratorIds(project.collaborators || []);
+          setProjectOwner(project.owner);
+          
+          // Fetch all users
+          return Profile.getAllUsers();
+        })
+        .then((users) => {
+          setProjectMembers(users);
+          
+          // If creating a subtask, fetch the parent task
+          if (parentTaskId) {
+            return TaskAPI.getTasksById(parentTaskId);
+          }
+          return null;
+        })
+        .then((parentTaskData) => {
+          if (parentTaskData) {
+            setParentTask(parentTaskData);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch project details or users:", err);
+        });
+    }
+  }, [open, projectId, parentTaskId]);
+
+  // Filter members based on search query and project membership
+  const filteredMembers = useMemo(() => {
+    // If creating a subtask, only show parent task's collaborators and owner
+    // Otherwise, show project collaborators and owner
+    let eligibleMemberIds: string[];
+    
+    if (parentTaskId && parentTask) {
+      // For subtasks: only parent task's owner and collaborators (excluding current user)
+      const parentParticipants = [
+        parentTask.owner,
+        ...(parentTask.collaborators || [])
+      ].filter((id): id is string => id != null && id !== userId);
+      eligibleMemberIds = parentParticipants;
+    } else {
+      // For regular tasks: project collaborators and owner (excluding current user)
+      eligibleMemberIds = [
+        ...projectCollaboratorIds,
+        projectOwner
+      ].filter((id): id is string => id != null && id !== userId);
+    }
+    
+    const eligibleMembers = projectMembers.filter((member: any) => 
+      eligibleMemberIds.includes(member.id)
+    );
+    
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return eligibleMembers;
+    
+    return eligibleMembers.filter((member: any) =>
+      [member.display_name, member.role, member.department]
+        .some((field) => field?.toLowerCase().includes(query))
+    );
+  }, [projectMembers, searchQuery, projectCollaboratorIds, projectOwner, userId, parentTaskId, parentTask]);
+
+  const resetForm = () => {
     setNewTask({ 
       title: "", 
       description: "", 
@@ -68,6 +153,9 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       priority: 5,
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     });
+    setSelectedCollaborators([]);
+    setSearchQuery("");
+  };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,10 +168,10 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
         description: newTask.description,
         status: newTask.status,
         owner: userId,
-        collaborators: [],
+        collaborators: selectedCollaborators, // Include selected collaborators
         deadline: new Date(newTask.deadline).toISOString(), // User-selected deadline
         project_id: projectId, // Include project ID
-        parent: null,
+        parent: parentTaskId || null, // Use parent task ID if creating subtask
         priority: newTask.priority,
       };
 
@@ -113,21 +201,27 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          New Task
-        </Button>
+        {triggerButton || (
+          <Button variant="outline" size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            New Task
+          </Button>
+        )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
-          <DialogTitle>Create Project Task</DialogTitle>
+          <DialogTitle>{parentTaskId ? 'Create Subtask' : 'Create Project Task'}</DialogTitle>
           <DialogDescription>
-            Create a new task for this project. The task will be automatically linked to the current project.
+            {parentTaskId 
+              ? 'Create a new subtask. It will be linked to the parent task. Collaborators must be participants of the parent task.'
+              : 'Create a new task for this project. The task will be automatically linked to the current project.'
+            }
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleCreateTask} className="space-y-6">
+        <form onSubmit={handleCreateTask} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-1 space-y-6">
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title" className="text-base font-medium">
@@ -239,8 +333,63 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
             />
           </div>
 
+          {/* Collaborators */}
+          <div className="space-y-2">
+            <Label className="text-base font-medium">
+              Collaborators (Optional)
+            </Label>
+            <div className="border rounded-lg p-3 space-y-3">
+              <Input
+                placeholder="Search by name, role, or department..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10"
+              />
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {filteredMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    {searchQuery ? "No members found" : "Loading members..."}
+                  </p>
+                ) : (
+                  filteredMembers
+                    .filter((member: any) => member.id !== userId) // Exclude the task owner
+                    .map((member: any) => (
+                      <label
+                        key={member.id}
+                        className="flex items-start gap-3 p-2 rounded hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedCollaborators.includes(member.id)}
+                          onCheckedChange={() => {
+                            setSelectedCollaborators((prev) =>
+                              prev.includes(member.id)
+                                ? prev.filter((id) => id !== member.id)
+                                : [...prev, member.id]
+                            );
+                          }}
+                        />
+                        <div className="flex-1 text-sm">
+                          <div className="font-medium">{member.display_name}</div>
+                          <div className="text-muted-foreground">
+                            {member.role} • {member.department || "—"}
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                )}
+              </div>
+              {selectedCollaborators.length > 0 && (
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  {selectedCollaborators.length} collaborator{selectedCollaborators.length !== 1 ? 's' : ''} selected
+                </div>
+              )}
+            </div>
+          </div>
+
+          </div> {/* End scrollable content */}
+
           {/* Actions */}
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
             <DialogClose asChild>
               <Button type="button" variant="outline" className="h-11">
                 Cancel
