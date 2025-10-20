@@ -4,7 +4,7 @@ const cors = require("cors");
 const { createServer } = require("http");
 const notifRoutes = require("./api/notificationRoutes");
 const { initWebSocketServer } = require("./services/websocket");
-const { subscribeToNotifications } = require("./services/notificationHandler");
+const { startPoller } = require('./services/redisPoller')
 
 const app = express();
 app.use(express.json());
@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 4201;
 const server = createServer(app);
 initWebSocketServer(server);
 
-subscribeToNotifications();
+startPoller()
 
 server.listen(PORT, "0.0.0.0", () =>
   console.log(`Notifications Micoservice running on port ${PORT}`)

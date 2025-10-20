@@ -1,19 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { type Task } from '@/lib/api';
+import { type TaskDTO } from '@/lib/api';
 import TaskCard from './TaskCard';
+import SubtaskCard from './SubtaskCard';
+import { TaskDetailNavigator } from '../task/TaskDetailNavigator';
 import { useDroppable } from '@dnd-kit/core';
+
+interface TaskWithSubtasks {
+    task: TaskDTO;
+    subtasks: TaskDTO[];
+}
 
 interface KanbanColumnProps {
     id: string;
     title: string;
-    tasks: Task[];
+    tasks: TaskDTO[];
+    tasksWithSubtasks?: TaskWithSubtasks[];
+    viewType?: 'flat' | 'hierarchical';
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, tasksWithSubtasks, viewType = 'flat' }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: id,
     });
+    const [selectedSubtask, setSelectedSubtask] = useState<TaskDTO | null>(null);
 
     const getColumnColor = (columnId: string) => {
         switch (columnId) {
@@ -59,12 +69,41 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks }) => {
                     }`}>
                         {isOver ? 'Drop task here' : `No tasks in ${title.toLowerCase()}`}
                     </div>
+                ) : viewType === 'hierarchical' && tasksWithSubtasks ? (
+                    // Hierarchical view: show tasks with their subtasks
+                    tasksWithSubtasks.map(({ task, subtasks }) => (
+                        <div key={task.id}>
+                            <TaskCard task={task} />
+                            {subtasks.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                    {subtasks.map((subtask) => (
+                                        <SubtaskCard 
+                                            key={subtask.id} 
+                                            subtask={subtask}
+                                            onClick={() => setSelectedSubtask(subtask)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))
                 ) : (
+                    // Flat view: show only parent tasks
                     tasks.map((task) => (
                         <TaskCard key={task.id} task={task} />
                     ))
                 )}
             </div>
+
+            {/* Subtask Detail Modal */}
+            {selectedSubtask && (
+                <TaskDetailNavigator
+                    key={selectedSubtask.id}
+                    initialTask={selectedSubtask}
+                    isOpen={true}
+                    onClose={() => setSelectedSubtask(null)}
+                />
+            )}
         </div>
     );
 };

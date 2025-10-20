@@ -77,7 +77,11 @@ module.exports = {
     async getTaskPerUser(req, res){
         try {
             const userId = !req.params.userId ? req.body : req.params.userId;
-            const tasks = await Task.getTasksByUsers(userId);
+            const startDate = req.query.startDate;
+            const endDate = req.query.endDate;
+
+
+            const tasks = await Task.getTasksByUsers(userId, startDate, endDate);
             res.status(200).json(tasks);
         } catch (error) {
             if (error instanceof DatabaseError) {
@@ -118,6 +122,57 @@ module.exports = {
                 return res.status(error.statusCode).json({ error: error.message })
             };
             return res.status(500).json({ error: error.message })
+        }
+    },
+
+    async getTaskDeadlineReminder (req, res) {
+        try {
+            const { id, userId } = req.params;
+            const task = new Task({ id });
+            const reminder = await task.getDeadlineReminder(userId);
+            return res.status(200).json({
+                task_id: id,
+                deadline_reminder: reminder
+            });
+
+        } catch (error) {
+            console.error("Error in getTaskDeadlineReminder:", error);
+            if (error instanceof TaskNotFoundError) {
+                return res.status(404).json({ error: error.message });
+            }
+            if (error instanceof DatabaseError) {
+                return res.status(500).json({ error: "Database error occurred" });
+            }
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    },
+
+
+    async setTaskDeadlineReminder(req, res) {
+        try {
+            const { id, userId } = req.params;
+            const { deadline_reminder } = req.body;
+
+            if (!Array.isArray(deadline_reminder)) {
+                return res.status(400).json({ error: "deadline_reminder must be an array" });
+            }
+
+            const task = new Task({ id });
+            await task.setDeadlineReminder(userId, deadline_reminder);
+
+            return res.status(200).json({
+                task_id: id,
+                deadline_reminder
+            });
+        } catch (error) {
+            console.error("Error in setTaskDeadlineReminder:", error);
+            if (error instanceof TaskNotFoundError) {
+                return res.status(404).json({ error: error.message });
+            }
+            if (error instanceof DatabaseError) {
+                return res.status(500).json({ error: "Database error occurred" });
+            }
+            return res.status(500).json({ error: "Internal server error" });
         }
     }
 

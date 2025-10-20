@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EditTask from "./EditTask"; // Import the EditTask component
-import { Task as apiTask } from "@/lib/api";
+import type { TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
+import { TaskReminder } from "./TaskReminder";
  
 
 type TaskProps = {
@@ -45,7 +46,9 @@ export const Task: React.FC<TaskProps> = ({
         <span className="text-xs capitalize">{taskContent.status}</span>
       </div>
 
-      <div className="absolute top-2 right-2">
+      <div className="absolute top-2 right-2 flex items-center space-x-2">
+        <TaskReminder taskId={taskContent.id} />
+
         <Button
           variant="ghost"
           size="icon"

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal, Plus, User, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Task as ApiTask } from "@/lib/api"
+import type { TaskDTO as ApiTask } from "@/lib/api"
 
 type TaskBoardProps = {
   tasks: ApiTask[]

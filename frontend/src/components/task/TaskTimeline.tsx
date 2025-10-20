@@ -6,15 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal, User, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Task } from "@/lib/api"
+import type { TaskDTO } from "@/lib/api"
 
 type TaskTimelineProps = {
-  tasks: Task[]
-  onTaskUpdate?: (task: Task) => void
+  tasks: TaskDTO[]
+  onTaskUpdate?: (task: TaskDTO) => void
   onTaskDelete?: (taskId: string) => void
 }
 
-const getStatusBadgeColor = (status: Task["status"]) => {
+const getStatusBadgeColor = (status: TaskDTO["status"]) => {
   switch (status) {
     case "Unassigned":
       return "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -36,8 +36,8 @@ function TimelineTaskCard({
   onUpdate,
   onDelete,
 }: {
-  task: Task
-  onUpdate?: (task: Task) => void
+  task: TaskDTO
+  onUpdate?: (task: TaskDTO) => void
   onDelete?: (taskId: string) => void
 }) {
   const [showMenu, setShowMenu] = useState(false)

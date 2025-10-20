@@ -1,145 +1,305 @@
-import { useEffect, useMemo, useState } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import { Profile, Task as TaskAPI } from "@/lib/api"
-import type { Task as TaskType } from "@/lib/api"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import Loader from "@/components/layout/Loader"
-import { cn } from "@/lib/utils"
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Profile, TaskApi as TaskAPI, Report } from "@/lib/api";
+import type { TaskDTO as TaskType } from "@/lib/api";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import Loader from "@/components/layout/Loader";
+import { cn } from "@/lib/utils";
+import { Users, Building2, FileDown } from "lucide-react";
 
-// Inline user type (no LiteUser import)
-type UserRow = {
-  id: string
-  display_name: string
-  role: string
-  department: string
+type CacheEntry<T> = { ts: number; data: T };
+const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
+const CACHE_TTL_PCT_MS   = 2 * 60 * 1000;   // 2 minutes
+
+function setCache<T>(key: string, data: T) {
+  try {
+    const entry: CacheEntry<T> = { ts: Date.now(), data };
+    localStorage.setItem(key, JSON.stringify(entry));
+  } catch {}
 }
+
+function getCache<T>(key: string): CacheEntry<T> | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as CacheEntry<T>;
+  } catch {
+    return null;
+  }
+}
+
+function isFresh(entry: CacheEntry<any> | null, ttl: number) {
+  if (!entry) return false;
+  return Date.now() - entry.ts < ttl;
+}
+
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+// Inline user type as returned by /profile/user/all (we allow nullable for safety)
+type UserRow = {
+  id: string;
+  display_name: string;
+  role: string | null;
+  email?: string | null;
+  department_id: string | null;
+  team_id: string | null;
+  department?: string | null;
+  team?: string | null;
+};
 
 // --- helpers ---
 function getInitials(name?: string) {
-  if (!name) return "U"
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-  return parts[0].slice(0, 2).toUpperCase()
+  if (!name) return "U";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0].slice(0, 2).toUpperCase();
 }
 
 function ProgressBar({ value }: { value: number }) {
-  const v = Math.max(0, Math.min(100, Math.round(value)))
+  const v = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div className="w-full h-2 rounded bg-muted">
       <div className="h-2 rounded bg-primary transition-[width] duration-300" style={{ width: `${v}%` }} />
     </div>
-  )
+  );
 }
 
 // Map your task statuses to a progress %
 function statusToProgress(status?: TaskType["status"]): number {
   switch (status) {
-    case "Completed": return 100
-    case "Under Review": return 80
-    case "Ongoing": return 50
-    case "Overdue": return 30
-    case "Unassigned": return 10
-    default: return 30
+    case "Completed": return 100;
+    case "Under Review": return 80;
+    case "Ongoing": return 50;
+    case "Overdue": return 30;
+    case "Unassigned": return 10;
+    default: return 30;
   }
 }
 
-// Who is “working under me”?
-// Default policy (adjust as needed):
-// - Director -> everyone except other Directors
-// - Manager  -> Staff in same department
-// - Staff    -> no reports
-function isReport(
-  me: { id?: string; role?: string; department?: string },
-  u: UserRow
+// Role gates for actions
+const isManagerOrAbove = (role?: string | null) =>
+  role === "Manager" || role === "Director" || role === "Senior Management";
+
+const isDirectorOrAbove = (role?: string | null) =>
+  role === "Director" || role === "Senior Management";
+
+// date helpers
+function toYMD(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function last30Days(): { start: string; end: string } {
+  const end = new Date();
+  const start = new Date(end.getTime() - 29 * 24 * 3600 * 1000);
+  return { start: toYMD(start), end: toYMD(end) };
+}
+
+/**
+ * Determine if user `u` should be visible under the current user's scope.
+ * - Director: everyone except other Directors.
+ * - Manager:  Staff in the SAME TEAM (ID-based check).
+ * - Staff:    nobody.
+ */
+function isReportForMe(
+  myRole?: string | null,
+  myTeamId?: string | null,
+  meId?: string,
+  u?: UserRow
 ) {
-  if (!me?.id || u.id === me.id) return false
-  const myRole = me.role
-  if (myRole === "Director") return u.role !== "Director"
-  if (myRole === "Manager") return u.role === "Staff" && (!!me.department && u.department === me.department)
-  return false
+  if (!u || !meId) return false;
+  if (u.id === meId) return false;
+
+  if (myRole === "Director" || myRole === "Senior Management") {
+    return u.role !== "Director" && u.role !== "Senior Management";
+  }
+
+  if (myRole === "Manager") {
+    if (!myTeamId) return false;
+    return u.role === "Staff" && u.team_id === myTeamId;
+  }
+
+  return false;
 }
 
 export default function ManageUser() {
-  const { profile } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [users, setUsers] = useState<UserRow[]>([])
-  const [query, setQuery] = useState("")
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [selected, setSelected] = useState<UserRow | null>(null)
-  const [tasks, setTasks] = useState<TaskType[] | null>(null)
-  const [tasksLoading, setTasksLoading] = useState(false)
-  const [perUserPct, setPerUserPct] = useState<Record<string, number>>({})
+  const { profile } = useAuth();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [query, setQuery] = useState("");
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selected, setSelected] = useState<UserRow | null>(null);
+  const [tasks, setTasks] = useState<TaskType[] | null>(null);
+  const [tasksLoading, setTasksLoading] = useState(false);
+
+  // progress % per user
+  const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
+
+  // report date range (default last 30 days)
+  const defaultRange = last30Days();
+  const [startDate, setStartDate] = useState<string>(defaultRange.start);
+  const [endDate, setEndDate] = useState<string>(defaultRange.end);
+
+  const myUserId = (profile as any)?.id as string | undefined;
+  const myRole = (profile?.role as string | undefined) ?? undefined;
+
+  const [reportBusy, setReportBusy] = useState<"team" | "department" | null>(null);
+  const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
+
+  // Cache keys (namespaced by current viewer for pct, so manager A and manager B don't overwrite each other)
+  const USERS_CACHE_KEY = "manageUser:users:all";
+  const PCT_CACHE_KEY   = myUserId ? `manageUser:pct:${myUserId}` : "manageUser:pct:anon";
 
   useEffect(() => {
-    const run = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const all = (await Profile.getAllUsers()) as UserRow[]
+    // load users (SWR: render from cache then revalidate)
+    const loadUsers = async () => {
+      setLoading(true);
+      setError(null);
 
-        // Apply “reports” logic client-side. If you later add a manager_id relation,
-        // replace this with a direct server filter.
-        const mine = all.filter(u =>
-          isReport(
-            { id: profile?.id, role: profile?.role as string | undefined },
-            u
-          )
-        )
-        setUsers(mine)
+      const cached = getCache<UserRow[]>(USERS_CACHE_KEY);
+      let all: UserRow[] | null = null;
 
-        // Prefetch per-user progress for the grid
-        const entries = await Promise.all(
-          mine.map(async (u) => {
-            try {
-              const ts = await TaskAPI.getTasksByUserId(u.id)
-              const total = ts.length
-              const done = ts.filter(t => statusToProgress(t.status) >= 100).length
-              const pct = total ? Math.round((done / total) * 100) : 0
-              return [u.id, pct] as const
-            } catch {
-              return [u.id, 0] as const
-            }
-          })
-        )
-        setPerUserPct(Object.fromEntries(entries))
-      } catch (e) {
-        console.error(e)
-        setError("Failed to load your team. Please try again.")
-      } finally {
-        setLoading(false)
+      if (cached?.data && isFresh(cached, CACHE_TTL_USERS_MS)) {
+        all = cached.data;
       }
-    }
-    run()
-  }, [profile?.id, profile?.role])
+
+      if (all) {
+        const me = myUserId ? all.find(u => u.id === myUserId) : undefined;
+        const mine = all.filter(u => isReportForMe(myRole, me?.team_id ?? null, myUserId, u));
+        setUsers(mine);
+        setLoading(false);
+      }
+
+      try {
+        const freshAll = await Profile.getAllUsers() as unknown as UserRow[];
+        setCache(USERS_CACHE_KEY, freshAll);
+
+        const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
+        const mineFresh = freshAll.filter(u => isReportForMe(myRole, meFresh?.team_id ?? null, myUserId, u));
+        setUsers(mineFresh);
+
+        void prefetchPct(mineFresh);
+      } catch (e: any) {
+        if (!all) {
+          // we had nothing to show
+          setError("Failed to load your team. Please try again.");
+        } else {
+          // setBanner({ type: "info", msg: "Using cached data due to network limits." });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const loadPct = async () => {
+      // show cached pct immediately if fresh
+      const cachedPct = getCache<Record<string, number>>(PCT_CACHE_KEY);
+      if (cachedPct?.data && isFresh(cachedPct, CACHE_TTL_PCT_MS)) {
+        setPerUserPct(cachedPct.data);
+      }
+    };
+
+    loadPct();
+    loadUsers();
+
+  }, [myUserId, myRole]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return users
+    const q = query.trim().toLowerCase();
+    if (!q) return users;
     return users.filter(u =>
-      [u.display_name, u.role, u.department].filter(Boolean).some(v => v!.toLowerCase().includes(q))
-    )
-  }, [users, query])
+      [
+        u.display_name,
+        u.role ?? "",
+        u.department ?? "",
+        u.team ?? "",
+      ].some(v => v.toLowerCase().includes(q))
+    );
+  }, [users, query]);
 
   async function openUser(u: UserRow) {
-    setSelected(u)
-    setDrawerOpen(true)
-    setTasks(null)
-    setTasksLoading(true)
+    setSelected(u);
+    setDrawerOpen(true);
+    setTasks(null);
+    setTasksLoading(true);
     try {
-      const data = await TaskAPI.getTasksByUserId(u.id)
-      setTasks(data || [])
+      const data = await TaskAPI.getTasksByUserId(u.id);
+      setTasks(data || []);
     } catch (e) {
-      console.error(e)
-      setTasks([])
+      console.error(e);
+      setTasks([]);
     } finally {
-      setTasksLoading(false)
+      setTasksLoading(false);
     }
   }
+
+  const prefetchPct = async (list: UserRow[]) => {
+    if (!list || list.length === 0) return;
+
+    const cachedPct = getCache<Record<string, number>>(PCT_CACHE_KEY);
+    const basePct = (cachedPct?.data && isFresh(cachedPct, CACHE_TTL_PCT_MS)) ? cachedPct.data : {};
+    if (Object.keys(basePct).length > 0) {
+      setPerUserPct(basePct);
+    }
+
+    const nextPct: Record<string, number> = { ...basePct };
+
+    try {
+      for (const u of list) {
+
+        if (basePct[u.id] !== undefined) continue;
+
+        // Space out calls a bit to be nice to the API gateway
+        await sleep(100);
+
+        try {
+          const ts = await TaskAPI.getTasksByUserId(u.id);
+          const total = ts.length;
+          const done = ts.filter(t => statusToProgress(t.status) >= 100).length;
+          const pct = total ? Math.round((done / total) * 100) : 0;
+          nextPct[u.id] = pct;
+          // update UI progressively
+          setPerUserPct(prev => ({ ...prev, [u.id]: pct }));
+        } catch (err) {
+          // If an individual user call fails, set 0 for now (or leave undefined)
+          nextPct[u.id] = nextPct[u.id] ?? 0;
+        }
+      }
+      setCache(PCT_CACHE_KEY, nextPct);
+    } catch (e) {
+      // If we hit a burst error (e.g., 429), keep whatever we have
+      setBanner(prev => prev ?? { type: "info", msg: "Some progress data is cached due to rate limits." });
+    }
+  };
+
+  // Both actions hit the same report endpoint; backend decides scope by role
+  async function callReport(kind: "team" | "department") {
+    if (!myUserId) return;
+    if (reportBusy) return;
+    setBanner(null);
+    setReportBusy(kind);
+    try {
+      const res = await Report.generate(myUserId, { startDate, endDate });
+      setBanner({ type: "success", msg: res?.message || "Report requested successfully." });
+    } catch (e: any) {
+      setBanner({ type: "error", msg: e?.message || "Failed to generate report." });
+    } finally {
+      setReportBusy(null);
+    }
+  }
+
+  const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate);
 
   return (
     <div>
@@ -148,12 +308,110 @@ export default function ManageUser() {
         View your reports, their workloads, and task progress.
       </p>
 
-      <div className="mb-4">
-        <Input
-          placeholder="Search by name, role, or department…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      {/* Top actions */}
+      <div className="mb-4 space-y-3">
+        {banner && (
+          <div
+            className={cn(
+              "rounded-md border p-3 text-sm",
+              banner.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/20"
+                : banner.type === "error"
+                ? "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/20"
+                : "border-border bg-muted/30 text-foreground"
+            )}
+            role="status"
+          >
+            {banner.msg}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Date range */}
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              aria-label="Start date"
+            />
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              aria-label="End date"
+            />
+          </div>
+
+          {/* Subtle, outlined button group */}
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
+            <div className="inline-flex overflow-hidden rounded-lg border border-border shadow-sm bg-card">
+              {isManagerOrAbove(myRole) && (
+                <Button
+                  onClick={() => callReport("team")}
+                  disabled={reportBusy !== null || !myUserId || dateInvalid}
+                  title={!myUserId ? "Missing user id" : dateInvalid ? "Invalid date range" : "Generate team-level report"}
+                  variant="outline"
+                  className={cn(
+                    "gap-2 rounded-none px-3 sm:px-4",
+                    "hover:bg-muted",
+                    "disabled:opacity-60 disabled:cursor-not-allowed"
+                  )}
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Team Report</span>
+                  <span className="sm:hidden">Team</span>
+                </Button>
+              )}
+
+              {isDirectorOrAbove(myRole) && (
+                <Button
+                  onClick={() => callReport("department")}
+                  disabled={reportBusy !== null || !myUserId || dateInvalid}
+                  title={!myUserId ? "Missing user id" : dateInvalid ? "Invalid date range" : "Generate department-level report"}
+                  variant="outline"
+                  className={cn(
+                    "gap-2 rounded-none px-3 sm:px-4",
+                    isManagerOrAbove(myRole) ? "border-l border-border" : "",
+                    "hover:bg-muted",
+                    "disabled:opacity-60 disabled:cursor-not-allowed"
+                  )}
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Department Report</span>
+                  <span className="sm:hidden">Dept</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Quiet caption with chosen dates */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <FileDown className="h-3.5 w-3.5" />
+              <span>
+                Range: <span className="font-medium">{startDate}</span> → <span className="font-medium">{endDate}</span>
+              </span>
+              {isManagerOrAbove(myRole) && !isDirectorOrAbove(myRole) && (
+                <Badge variant="outline" className="h-5 text-xs">Team</Badge>
+              )}
+              {isDirectorOrAbove(myRole) && (
+                <Badge variant="outline" className="h-5 text-xs">Department</Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Search */}
+          <div className="w-full sm:w-72">
+            <Input
+              placeholder="Search by name, role, department/team…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Separator />
       </div>
 
       {loading ? (
@@ -167,7 +425,7 @@ export default function ManageUser() {
       ) : (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((u) => {
-            const pct = perUserPct[u.id] ?? 0
+            const pct = perUserPct[u.id] ?? 0;
             return (
               <Card key={u.id} className="hover:shadow-sm transition-shadow">
                 <CardHeader className="flex flex-row items-center gap-3">
@@ -178,7 +436,7 @@ export default function ManageUser() {
                   <div className="space-y-1">
                     <CardTitle className="text-base leading-tight">{u.display_name}</CardTitle>
                     <div className="text-xs text-muted-foreground">
-                      {u.role || "Staff"} · {u.department || "—"}
+                      {(u.role ?? "Staff")} · {u.team ?? u.team_id ?? "—"}
                     </div>
                   </div>
                 </CardHeader>
@@ -195,7 +453,7 @@ export default function ManageUser() {
                   </Button>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
       )}
@@ -257,13 +515,13 @@ export default function ManageUser() {
         </SheetContent>
       </Sheet>
     </div>
-  )
+  );
 }
 
 function Aggregate({ tasks }: { tasks: TaskType[] }) {
-  const total = tasks.length
-  const done = tasks.filter(t => statusToProgress(t.status) >= 100).length
-  const pct = total ? (done / total) * 100 : 0
+  const total = tasks.length;
+  const done = tasks.filter(t => statusToProgress(t.status) >= 100).length;
+  const pct = total ? (done / total) * 100 : 0;
   return (
     <div className="rounded-md border p-3">
       <div className="flex items-center justify-between text-sm">
@@ -276,5 +534,5 @@ function Aggregate({ tasks }: { tasks: TaskType[] }) {
         <ProgressBar value={pct} />
       </div>
     </div>
-  )
+  );
 }

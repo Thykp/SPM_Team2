@@ -56,17 +56,23 @@ class Task {
         return data;
     }
 
-    static async getTasksByUsers(userId){
+    static async getTasksByUsers(userId, startDate, endDate){
         const userIdArray = !Array.isArray(userId) ? [userId]: userId;
-        
-        // Get all tasks with their full participants array
-        const { data, error } = await supabase
+        let query = supabase
             .from(Task.taskTable)
             .select(`
                 *,
                 participants:${Task.taskParticipantTable}(profile_id, is_owner)
             `);
-        
+
+        if (startDate && endDate) {
+            startDate = new Date(startDate).toISOString();
+            endDate = new Date(endDate).toISOString();
+
+            query = query.gte('created_at', startDate).lte('created_at', endDate);
+        }
+
+        const { data, error } = await query;
         if (error){
             console.error("Error in getTasksByUsers:", error);
             throw new DatabaseError("Failed to retrieve tasks by users", error);
@@ -94,6 +100,7 @@ class Task {
     this.project_id = data.project_id || null;
     this.title = data.title || null;
     this.deadline = data.deadline || null;
+    this.deadline_reminder = data.deadline_reminder || [1,3,7];
     this.description = data.description || null;
     this.status = Task.normalizeStatus(data.status) || null;
     this.priority = data.priority;
@@ -267,6 +274,37 @@ class Task {
         }
         
         return data || [];
+    }
+
+    async getDeadlineReminder(userId) {
+        const { data, error } = await supabase
+            .from(Task.taskParticipantTable)
+            .select('deadline_reminder')
+            .eq('task_id', this.id)
+            .eq('profile_id', userId)
+            .single();
+        if (error) {
+            console.error("Error in getDeadlineReminderFromDb:", error);
+            throw new DatabaseError("Failed to retrieve task deadline reminder", error);
+        }
+
+        this.deadline_reminder = data.deadline_reminder;
+        return data.deadline_reminder;
+    }
+
+    async setDeadlineReminder(userId, reminders) {
+        const { error } = await supabase
+            .from(Task.taskParticipantTable)
+            .update({ deadline_reminder: reminders })
+            .eq('task_id', this.id)
+            .eq('profile_id', userId);
+
+        if (error) {
+            console.error("Error in setDeadlineReminder:", error);
+            throw new DatabaseError("Failed to update task deadline reminder", error);
+        }
+
+        this.deadline_reminder = reminders;
     }
 
 }

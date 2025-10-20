@@ -167,7 +167,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                     id: updatedProject.id,
                     title: updatedProject.title,
                     description: updatedProject.description,
-                    startDate: updatedProject.created_at,
+                    startDate: updatedProject.created_at ?? null,
                     members: updatedProject.collaborators || [],
                     owner: updatedProject.owner,
                 };

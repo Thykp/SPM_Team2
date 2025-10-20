@@ -10,15 +10,15 @@ export function Settings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       <h1 className="text-3xl font-bold">Notification Settings</h1>
       <p className="text-gray-400 text-sm">
         Customise your notification settings here
       </p>
-      <hr className="mb-4" />
+      <hr className="mb-2" />
 
       {profile ? (
-        <div className="space-y-4">
+        <div className="space-y-4x">
           <NotificationPreferences userId={profile.id} />
           <NotificationFrequency userId={profile.id} />
         </div>

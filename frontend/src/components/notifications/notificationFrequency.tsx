@@ -98,7 +98,7 @@ export function NotificationFrequency({ userId }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <h2 className="text-xl font-bold">Notification Delivery Frequency</h2>
 
       <div>
@@ -158,10 +158,11 @@ export function NotificationFrequency({ userId }: Props) {
 
       <button
         onClick={handleSave}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 my-2"
       >
         Save Preferences
       </button>
+      <p className="text-sm italic text-gray-400">This will not affect any task deadlines set.</p>
     </div>
   );
 }

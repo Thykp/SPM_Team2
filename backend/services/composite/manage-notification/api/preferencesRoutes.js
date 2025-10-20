@@ -2,17 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { getFrequencyPreferences, updateDeliveryPreferences, getDeliveryPreferences, updateFrequencyPreferences } = require('../services/preferencesService');
 
-
 // Health check route
 router.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
-    service: 'manage-notification',
+    service: 'manage-notification/preferences',
     timestamp: new Date().toISOString(),
   });
 
 });
-
 
 // GET /preferences/delivery/:userId
 router.get('/delivery/:userId', async (req, res) => {
@@ -35,7 +33,7 @@ router.post('/delivery/:userId', async (req, res) => {
   }
 });
 
-
+// GET /preferences/frequency/:userId
 router.get('/frequency/:userId', async (req, res) => {
   try {
     const prefs = await getFrequencyPreferences(req.params.userId);

@@ -1,18 +1,22 @@
 package com.spm.manage_task.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.service.annotation.PatchExchange;
 
 import com.spm.manage_task.dto.TaskDto;
 import com.spm.manage_task.dto.TaskPostRequestDto;
+import com.spm.manage_task.dto.TaskReminderDto;
 import com.spm.manage_task.services.TaskService;
 
 @RestController
@@ -66,5 +70,44 @@ public class TaskController {
         List<TaskDto> tasks = taskService.getSubTaskByTaskId(taskId);
         return ResponseEntity.ok(tasks);
     }
+
+    @GetMapping("/reminder/{taskId}/{userId}")
+    public ResponseEntity<TaskReminderDto> getTaskDeadlineReminder(@PathVariable String taskId, @PathVariable String userId) {
+        TaskReminderDto reminder = taskService.getTaskDeadlineReminder(taskId, userId);
+        return ResponseEntity.ok(reminder);
+    }
+
+
+   @PostMapping("/reminder/{taskId}/{userId}")
+public ResponseEntity<Map<String, Object>> setTaskDeadlineReminder(
+        @PathVariable String taskId,
+        @PathVariable String userId,
+        @RequestBody Map<String, List<Integer>> requestBody) {
+
+    List<Integer> reminders = requestBody.get("deadline_reminder");
+    if (reminders == null) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "deadline_reminder must be provided"));
+    }
+
+    try {
+        taskService.setTaskDeadlineReminder(taskId, userId, reminders);
+
+        // Return immediately what was sent
+        return ResponseEntity.ok(Map.of(
+                "task_id", taskId,
+                "deadline_reminder", reminders
+        ));
+    } catch (Exception e) {
+        // log the full exception to see why 500 occurs
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of(
+                "error", "Failed to update deadline reminder",
+                "details", e.getMessage()
+        ));
+    }
+}
+
+
     
 }
