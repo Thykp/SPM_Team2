@@ -126,6 +126,9 @@ public class TaskDTOWrapperComponent {
 
     public TaskMicroserviceUpsertRequest toTaskMicroserviceUpsert(TaskPostRequestDto incomingTaskBody) {
         List<Participant> participantList = incomingTaskBody.processCollaborators();
+
+        System.out.println("Participants being sent to the atomic service: " + participantList);
+
         return new TaskMicroserviceUpsertRequest(
             incomingTaskBody.getTaskParent(),
             incomingTaskBody.getTaskProjectId(),

@@ -17,9 +17,28 @@ async function getAllUsersDropdown() {
 
 // Full list (revamped_profiles).
 async function getAllUsers() {
-  const { data, error } = await supabase.from(PROFILE_TABLE).select("*");
+  const { data, error } = await supabase
+    .from(PROFILE_TABLE)
+    .select(`
+      id,
+      display_name,
+      role,
+      team_id,
+      department_id,
+      department:${DEPT_TABLE}(name), 
+      team:${TEAM_TABLE}(name)
+    `);
+
   if (error) throw new Error(error.message);
-  return data || [];
+
+  // Flatten the nested objects for easier consumption
+  const normalizedData = data.map((user) => ({
+    ...user,
+    department_name: user.department?.name || null,
+    team_name: user.team?.name || null,
+  }));
+
+  return normalizedData || [];
 }
 
 // Filter: by team_id OR department_id (UUIDs), with role (default "Staff").

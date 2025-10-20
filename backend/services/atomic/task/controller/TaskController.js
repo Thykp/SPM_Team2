@@ -93,6 +93,7 @@ module.exports = {
 
     async updateTask(req, res){
         try {
+            console.log("Incoming payload:", req.body);
             const taskId = req.params.id;
             const newtaskObj = TaskService.checkTask({ id: taskId, ...req.body });
             await newtaskObj.validate();

@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EditTask from "./EditTask"; // Import the EditTask component
-import type { TaskDTO as apiTask } from "@/lib/api";
+import { TaskApi, type TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
+import { useAuth } from "@/contexts/AuthContext";
  
 
 type TaskProps = {
@@ -15,6 +16,7 @@ export const Task: React.FC<TaskProps> = ({
   taskContent,
   onTaskDeleted,
 }) => {
+  const { profile } = useAuth(); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editing, setEditing] = useState(false); // State to toggle the EditTask modal
   const [showDetails, setShowDetails] = useState(false);
@@ -40,7 +42,7 @@ export const Task: React.FC<TaskProps> = ({
     const deleteTask = async () => {
       try {
         setDeleting(true); // Set deleting state to true
-        await apiTask.deleteTask(taskContent.id); // Call the deleteTask API
+        await TaskApi.deleteTask(taskContent.id); // Call the deleteTask API
         console.log(`Task ${taskContent.id} deleted successfully`);
         if (onTaskDeleted) {
           onTaskDeleted(taskContent.id); // Notify the parent component
@@ -108,6 +110,7 @@ export const Task: React.FC<TaskProps> = ({
       {editing && (
         <EditTask
         taskId={taskContent.id}
+        currentUserId={profile?.id || ""}
         onClose={() => setEditing(false)}
         />
       )}

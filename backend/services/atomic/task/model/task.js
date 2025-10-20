@@ -141,6 +141,11 @@ class Task {
             errors.push("At least one participant must be an owner");
         }
 
+        const uniqueProfiles = new Set(this.participants.map(p => p.profile_id));
+        if (uniqueProfiles.size !== this.participants.length) {
+            errors.push("Duplicate profile IDs found in participants");
+        }
+
         if (errors.length > 0) {
             throw new ValidationError(errors);
         }
@@ -232,6 +237,13 @@ class Task {
     }
 
     async addTaskParticipants(){
+        if (!this.participants || this.participants.length === 0) {
+            console.log("No participants to add");
+            return;
+        }
+
+        console.log("Participants to be added:", this.participants);
+
         const participantDetails = this.participants.map(participant => ({
             task_id: this.id,
             profile_id: participant.profile_id,
