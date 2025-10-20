@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"generate-report/middleware"
 	"generate-report/routers"
 	kafkaSvc "generate-report/service/kafka"
-
-	"github.com/gin-gonic/gin"
 )
 
 func getenv(key, def string) string {
@@ -22,8 +22,9 @@ func getenv(key, def string) string {
 }
 
 func main() {
+	// ---- Config ----
 	port := getenv("PORT", "8093")
-	env := getenv("APP_ENV", "development")
+	env := getenv("APP_ENV", "development") // development|production
 	kafkaBrokers := getenv("KAFKA_BROKERS", "kafka:9092")
 	kafkaTopic := getenv("KAFKA_TOPIC", "report-requests")
 	reportBaseURL := getenv("REPORT_BASE_URL", "http://report:3042")

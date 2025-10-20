@@ -1,12 +1,41 @@
 # syntax=docker/dockerfile:1.7
-FROM golang:1.22-alpine AS build
+
+############################
+# BUILD STAGE
+############################
+FROM golang:1.24 AS build
 WORKDIR /src
+
+# Tools for go mod download
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git ca-certificates tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+# Resilient module proxy chain
+RUN go env -w GOPROXY=https://proxy.golang.org,https://goproxy.cn,direct && \
+    go env -w GOSUMDB=sum.golang.org
+
+# Copy mod files first (cacheable layer)
 COPY go.mod ./
-RUN go mod download
+COPY go.sum ./
 
+# Download deps (show commands with -x)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download -x
+
+# Copy the rest of the source
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/generate-report ./main.go
 
+# Tidy (keeps go.sum correct)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod tidy -v
+
+# Build a static binary
+RUN CGO_ENABLED=0 GOFLAGS="-trimpath" go build -o /out/generate-report ./main.go
+
+############################
+# RUNTIME STAGE
+############################
 FROM gcr.io/distroless/base-debian12
 WORKDIR /
 ENV PORT=8093

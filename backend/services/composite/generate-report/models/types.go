@@ -20,7 +20,7 @@ type GenerateEvent struct {
 type ReportServiceResponse struct {
 	Success bool `json:"success"`
 	Data    struct {
-		ReportURL  string `json:"reportUrl"`
+		ReportURL   string `json:"reportUrl"`
 		ReportTitle string `json:"reportTitle"`
 		TaskCount   int    `json:"taskCount"`
 	} `json:"data"`

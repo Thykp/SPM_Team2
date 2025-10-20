@@ -121,12 +121,19 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    environment:
-      KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: report-requests
-    volumes:
-      - ./backend/services/composite/generate-report/yaml/kafka-init.sh:/kafka-init.sh:ro
-    entrypoint: ["bash","-lc","/kafka-init.sh"]
+    entrypoint:
+      - /bin/sh
+      - -lc
+      - |
+        echo "Waiting for kafka:9092..." ;
+        for i in $(seq 1 60); do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list >/dev/null 2>&1 && break ;
+          sleep 2 ;
+        done ;
+        echo "Creating topic report-requests if missing..." ;
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
+          --topic report-requests --partitions 1 --replication-factor 1 || true ;
+        echo "Done."
     restart: "no"
 
   gotenberg:

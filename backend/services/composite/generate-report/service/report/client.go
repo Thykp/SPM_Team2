@@ -16,8 +16,8 @@ type Client interface {
 }
 
 type client struct {
-	http  *http.Client
-	base  string
+	http *http.Client
+	base string
 }
 
 func NewClient(httpClient *http.Client, baseURL string) Client {
