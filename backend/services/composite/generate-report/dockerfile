@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1.7
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY go.mod ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/generate-report ./main.go
+
+FROM gcr.io/distroless/base-debian12
+WORKDIR /
+ENV PORT=8093
+ENV APP_ENV=production
+ENV KAFKA_BROKERS=kafka:9092
+ENV KAFKA_TOPIC=report-requests
+ENV REPORT_BASE_URL=http://report:3042
+COPY --from=build /out/generate-report /generate-report
+USER nonroot:nonroot
+EXPOSE 8093
+ENTRYPOINT ["/generate-report"]
