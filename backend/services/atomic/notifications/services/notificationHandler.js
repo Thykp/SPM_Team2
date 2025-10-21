@@ -30,10 +30,10 @@ async function getTaskDetails(taskId){
   }
 }
 
-async function processReminderOrAddedNotification(payload) {
+async function processReminderNotification(payload) {
   // await postToSupabase(notifData);
 
-  const { email, delivery_method } = await getUserPreferences(payload.user_id); // { email: email, delivery_method:[delivery-method]}
+  const { email, delivery_method } = await getUserPreferences(payload.user_id); // { email: "email", delivery_method:[delivery-method]}
   const taskContent = await getTaskDetails(payload.resource_id)
 
   const push = delivery_method.includes("in-app");
@@ -48,6 +48,7 @@ async function processReminderOrAddedNotification(payload) {
 
   const emailPayload = { ...payload,
     email: email,
+    isReminder: true,
     task: {
       title: taskContent.title,
       description: taskContent.description,
@@ -62,6 +63,29 @@ async function processReminderOrAddedNotification(payload) {
   if (emailPref) {
     sendDeadlineOrAddedEmail(emailPayload)
   }
+};
+
+async function processAddedNotification(payload){
+  // await postToSupabase(notifData);
+
+  const { email, delivery_method } = await getUserPreferences(payload.user_id); // { email: "email", delivery_method:[delivery-method]}
+
+  const push = delivery_method.includes("in-app");
+  const emailPref = delivery_method.includes("email");
+
+  const wsPayload = { ...payload, push };
+  broadcastToUser(payload.user_id, wsPayload); //TODO: decide the content in the notification
+
+
+  const emailPayload = {
+    email: email,
+    isReminder: false,
+    ...payload
+  }
+
+  if (emailPref) {
+    sendDeadlineOrAddedEmail(emailPayload)
+  }
 }
 
 /* ---------------- HANDLERS ---------------- */
@@ -70,19 +94,7 @@ async function handleDeadlineReminder(payload) {
   if (!payload.user_id) return;
   console.info(`[handler] Deadline reminder → user ${payload.user_id}`);
 
-  // const notifData = {
-  //   to_user_id: [payload.user_id],
-  //   from_user_id: payload.from_user_id || null,
-  //   notif_type: "deadline_reminder",
-  //   resource_type: "task",
-  //   resource_id: payload.resource_id,
-  //   project_id: payload.project_id || null,
-  //   task_priority: payload.priority || null,
-  //   notif_text: `Reminder: "${payload.resource_name}" is due in ${payload.reminder_days} day(s).`,
-  //   link_url: `/tasks/${payload.resource_id}`,
-  // };
-
-  await processReminderOrAddedNotification(payload);
+  await processReminderNotification(payload);
 }
 
 async function handleTaskUpdate(payload) {
@@ -106,28 +118,27 @@ async function handleTaskUpdate(payload) {
   }
 }
 
-async function handleAddedToProject(payload) {
-  if (!Array.isArray(payload.user_ids)) return;
-  console.info(`[handler] Added-to-project → users: ${payload.user_ids.join(", ")}`);
+async function handleAddedToResource(payload) {
+  if (!Array.isArray(payload.collaborator_ids)) return;
+  console.info(`[handler] Added-to-resource -> users: ${payload.collaborator_ids.join(", ")}`);
 
-  for (const userId of payload.user_ids) {
-    const notifData = {
-      to_user_id: userId,
-      from_user_id: payload.added_by || null,
-      notif_type: "added_to_project",
-      resource_type: "project",
-      resource_id: payload.resource_id,
-      project_id: payload.project_id,
-      notif_text: `You were added to project "${payload.resource_name}".`,
-      link_url: `/projects/${payload.project_id}`,
-    };
+  isProject = false
+  if (payload.resource_type == "project") isProject = true
 
-    await processNotification(userId, notifData, payload);
+  for (const collaborator_id of payload.collaborator_ids) {
+    modifiedPayload = { ...payload,
+      isProject: isProject,
+      user_id: collaborator_id,
+      username: payload.added_by,
+      notify_at: Date.now(),
+    }
+    console.info(`[handler] Added-to-resource -> modified payload ${JSON.stringify(modifiedPayload)}`)
+    await processAddedNotification(modifiedPayload);
   }
 }
 
 module.exports = {
   handleDeadlineReminder,
   handleTaskUpdate,
-  handleAddedToProject,
+  handleAddedToResource,
 };

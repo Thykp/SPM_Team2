@@ -4,7 +4,7 @@ const Redis = require("ioredis");
 const {
   handleDeadlineReminder,
   handleTaskUpdate,
-  handleAddedToProject,
+  handleAddedToResource,
 } = require("./notificationHandler");
 
 const redis = new Redis(process.env.REDIS_URL || "redis://redis:6379");
@@ -41,8 +41,8 @@ async function pollNotifications(setName) {
           await handleTaskUpdate(payload);
           break;
 
-        case "added_to_project":
-          await handleAddedToProject(payload);
+        case "added":
+          await handleAddedToResource(payload);
           break;
 
         default:
@@ -67,7 +67,7 @@ function startPoller() {
       await Promise.all([
         pollNotifications("deadline_reminders"),
         pollNotifications("task_updates"),
-        pollNotifications("project_updates"),
+        pollNotifications("added"),
       ]);
     } catch (err) {
       console.error("[poller] Poll cycle error:", err);

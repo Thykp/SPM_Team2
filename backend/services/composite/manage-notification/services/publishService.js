@@ -69,9 +69,29 @@ async function publishDeadlineReminder({ taskId, userId, deadline, reminderDays 
   }
 }
 
+/**
+ * Publishes resource-collaboration notifications.
+ * since delivered immediately, no need to remove from notifications
+ */
+async function publishAddedToResource( resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy) {
+  const payload = {
+    type: "added",
+    resource_type: resourceType,
+    resource_id: resourceId,
+    resource_name: resourceName,
+    resource_description: resourceDescription,
+    collaborator_ids: collaboratorIds,
+    added_by: addedBy,
+    notify_at: Date.now(),
+  };
+
+  await pushToRedis("added", payload, payload.notify_at);
+}
+
 module.exports = {
   removeDeadlineReminders,
   publishDeadlineReminder,
+  publishAddedToResource
 };
 
 // /**
@@ -93,23 +113,4 @@ module.exports = {
 //   };
 
 //   await pushToRedis("task_updates", payload, payload.notify_at);
-// }
-
-// /**
-//  * Publishes project-collaboration notifications.
-//  * Removes existing notifications for the same project/user to avoid duplicates.
-//  */
-// async function publishAddedToProject({ projectId, userIds, addedBy, resourceName, collaborators }) {
-//   const payload = {
-//     type: "added_to_project",
-//     resource_type: "project",
-//     resource_id: projectId,
-//     resource_name: resourceName,
-//     user_ids: userIds,
-//     project_collaborators: collaborators,
-//     added_by: addedBy,
-//     notify_at: Date.now(),
-//   };
-
-//   await pushToRedis("project_updates", payload, payload.notify_at);
 // }

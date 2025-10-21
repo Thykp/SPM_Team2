@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { publishDeadlineReminder, publishTaskUpdate, publishAddedToProject } = require('../services/publishService');
+const { publishDeadlineReminder, publishTaskUpdate, publishAddedToResource } = require('../services/publishService');
 
 // Health check
 router.get('/health', (req, res) => {
@@ -49,16 +49,14 @@ router.post('/task-update', async (req, res) => {
   }
 });
 
-// POST /publish/added-to-project
-// Added-to-project notifications can include multiple collaborators in one payload
-router.post('/added-to-project', async (req, res) => {
+// POST /publish/added-to-resource
+// Added-to-resource notifications can include multiple collaborators in one payload
+router.post('/added-to-resource', async (req, res) => {
   try {
-    const { taskId, userIds, projectId, addedBy } = req.body;
-    if (!taskId || !userIds || !projectId || !addedBy) {
-      return res.status(400).json({ error: 'taskId, userIds, projectId, and addedBy are required' });
-    }
+    const {resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy} = req.body;
+    if(!resourceType || !resourceId || !collaboratorIds || !resourceName || !resourceDescription || !addedBy) return res.status(404).json({ message: 'missing required fields' });
 
-    await publishAddedToProject(taskId, userIds, projectId, addedBy);
+    await publishAddedToResource(resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy);
 
     res.status(200).json({ message: 'Added-to-project notifications sent' });
   } catch (err) {
