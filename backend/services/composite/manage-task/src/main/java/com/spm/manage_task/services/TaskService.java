@@ -150,4 +150,17 @@ public class TaskService {
             throw new RuntimeException("Error updating deadline reminder via atomic service", e);
         }
     }
+    public void deleteTask(String taskId) {
+        ResponseEntity<Void> responseEntity = restTemplate.exchange(
+            taskUrl + "/" + taskId, 
+            HttpMethod.DELETE, 
+            null, 
+            Void.class
+        );
+
+        if (responseEntity.getStatusCode().value() != 200 && responseEntity.getStatusCode().value() != 204) {
+            throw new RuntimeException("Failed to delete task. Status code: " + responseEntity.getStatusCode());
+        }
+    }
+
 }

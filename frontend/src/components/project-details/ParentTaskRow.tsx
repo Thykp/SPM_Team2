@@ -9,14 +9,20 @@ interface ParentTaskRowProps {
     parentTask: TaskDTO;
     subtasks: TaskDTO[];
     statuses: Array<{ id: string; title: string }>;
+    projectId: string;
     onSubtaskClick?: (subtask: TaskDTO) => void;
+    onSubtaskDeleted?: (subtaskId: string) => void;
+    onSubtaskUpdated?: () => void;
 }
 
 const ParentTaskRow: React.FC<ParentTaskRowProps> = ({ 
     parentTask, 
     subtasks, 
     statuses,
-    onSubtaskClick 
+    projectId,
+    onSubtaskClick,
+    onSubtaskDeleted,
+    onSubtaskUpdated
 }) => {
     const [isExpanded, setIsExpanded] = useState(true);
 
@@ -121,7 +127,10 @@ const ParentTaskRow: React.FC<ParentTaskRowProps> = ({
                                 <SubtaskCard
                                     key={subtask.id}
                                     subtask={subtask}
+                                    projectId={projectId}
                                     onClick={() => onSubtaskClick?.(subtask)}
+                                    onSubtaskDeleted={onSubtaskDeleted}
+                                    onSubtaskUpdated={onSubtaskUpdated}
                                 />
                             ))}
                         </div>

@@ -1,0 +1,9 @@
+.git
+.gitignore
+test
+coverage
+*.out
+*.log
+*.tmp
+node_modules
+.DS_Store

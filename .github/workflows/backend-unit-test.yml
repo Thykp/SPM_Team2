@@ -68,6 +68,26 @@ jobs:
           SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
         run: npm test -- --coverage
 
+  report_tests:
+    name: Node — atomic/report tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/report
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/report/package-lock.json
+      - run: npm ci
+      - name: Run tests with Supabase authentication
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
+        run: npm test -- --coverage
+
   manage_account_tests:
     name: Go — composite/manage-account tests
     runs-on: ubuntu-latest

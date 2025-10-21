@@ -29,6 +29,7 @@ interface LocalTask {
   ownerName?: string;
   ownerDepartment?: string;
   parent?: string | null;
+  project_id?: string | null;
   priority?: number;
   isEditingOwner?: boolean;
 }
@@ -84,7 +85,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose, onTaskUpdated }) =
         owner: task.owner,
         parent: task.parent,
         priority: task.priority || 5, // Default priority if not set
-        project_id: null, // Add required field
+        project_id: task.project_id || null, // Preserve the original project_id
       });
 
       console.log("Task successfully updated:", updatedTask);
@@ -112,7 +113,10 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, onClose, onTaskUpdated }) =
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.stopPropagation()}
+    >
       <Card className="w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
