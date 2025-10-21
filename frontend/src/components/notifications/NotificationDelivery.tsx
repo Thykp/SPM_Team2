@@ -13,7 +13,7 @@ export function NotificationDelivery({ userId }: Props) {
   const options = ["in-app", "email"];
 
   useEffect(() => {
-    if (deliveryPreferences) setPreferences(deliveryPreferences);
+    if (deliveryPreferences) setPreferences(deliveryPreferences.delivery_method);
   }, [deliveryPreferences]);
 
   const showToast = (title: string, desc: string, bg: string, color: string) =>
@@ -63,6 +63,12 @@ export function NotificationDelivery({ userId }: Props) {
           {pref[0].toUpperCase() + pref.slice(1)}
         </label>
       ))}
+
+      {deliveryPreferences?.email && (
+        <p className="text-gray-500 italic text-sm mt-1">
+          Emails will be sent to: {deliveryPreferences.email}
+        </p>
+      )}
     </div>
   );
 }

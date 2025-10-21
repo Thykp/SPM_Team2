@@ -1,3 +1,5 @@
+// THIS IS THE ENTRYPOINT FOR SENDING NOTIFICATIONS
+
 const Redis = require("ioredis");
 const {
   handleDeadlineReminder,
@@ -65,7 +67,7 @@ function startPoller() {
       await Promise.all([
         pollNotifications("deadline_reminders"),
         pollNotifications("task_updates"),
-        pollNotifications("project_updates"), // NEW: handles added-to-project events
+        pollNotifications("project_updates"),
       ]);
     } catch (err) {
       console.error("[poller] Poll cycle error:", err);

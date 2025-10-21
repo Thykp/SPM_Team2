@@ -7,9 +7,6 @@ router.get("/health", taskController.taskServiceHealthCheck);
 router.get("/users/:userId", taskController.getTaskPerUser);
 router.post("/users", taskController.getTaskPerUser);
 router.get("/:id/subtasks", taskController.getSubTasks);
-
-router.get("/", taskController.getAllTasks);
-router.post("/", taskController.addTask);
 router.get("/:id/deadline-reminder/:userId", taskController.getTaskDeadlineReminder);
 router.post("/:id/deadline-reminder/:userId", taskController.setTaskDeadlineReminder);
 router.get("/:id", taskController.getTaskDetail);

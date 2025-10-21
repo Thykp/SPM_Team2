@@ -341,10 +341,10 @@ export const Notification = {
     await api.patch(url, { ids });
   },
 
-  getDeliveryPreferences: async (userId: string): Promise<string[]> => {
+  getDeliveryPreferences: async (userId: string): Promise<{ email: string; delivery_method: string[] }> => {
     const url = `${KONG_BASE_URL}/manage-notifications/preferences/delivery/${userId}`;
     const response = await api.get(url);
-    console.log(response)
+    console.log("Delivery response:");
     return response.data.preferences;
   },
 

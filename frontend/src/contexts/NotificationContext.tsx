@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Notification } from "@/lib/api";
+import { useAuth } from "../contexts/AuthContext";
 
 type FrequencyPrefs = {
   delivery_frequency: string;
@@ -8,49 +9,61 @@ type FrequencyPrefs = {
 };
 
 type NotificationContextType = {
-  deliveryPreferences: string[] | null;
+  deliveryPreferences: { email: string; delivery_method: string[] };
   frequencyPreferences: FrequencyPrefs | null;
   notificationLoading: boolean;
-  refreshPreferences: (userId: string) => Promise<void>;
+  refreshPreferences: () => Promise<void>; // no need to pass userId manually
 };
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export const NotificationProvider = ({
-  children,
-  userId,
-}: {
-  children: React.ReactNode;
-  userId?: string;
-}) => {
-  const [deliveryPreferences, setDeliveryPreferences] = useState<string[] | null>(null);
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth(); // get user from AuthContext
+  const userId = user?.id; // extract userId
+
+  const [deliveryPreferences, setDeliveryPreferences] = useState<{ email: string; delivery_method: string[] }>({
+    email: "",
+    delivery_method: [],
+  });
+
   const [frequencyPreferences, setFrequencyPreferences] = useState<FrequencyPrefs | null>(null);
   const [notificationLoading, setNotificationLoading] = useState(false);
 
-  const fetchPreferences = async (uid: string) => {
+  const fetchPreferences = async () => {
+    if (!userId) return;
+
     try {
       setNotificationLoading(true);
 
       const [delivery, frequency] = await Promise.all([
-        Notification.getDeliveryPreferences(uid),
-        Notification.getFrequencyPreferences(uid),
+        Notification.getDeliveryPreferences(userId),
+        Notification.getFrequencyPreferences(userId),
       ]);
 
-      setDeliveryPreferences(delivery);
+      setDeliveryPreferences({
+        email: delivery?.email ?? "",
+        delivery_method: delivery?.delivery_method ?? [],
+      });
+
       setFrequencyPreferences(frequency);
+
+      console.info("Delivery preferences fetched:", delivery);
+      console.info("Frequency preferences:", frequency);
     } catch (err) {
       console.error("Error fetching notification preferences:", err);
+      setDeliveryPreferences({ email: "", delivery_method: [] });
+      setFrequencyPreferences(null);
     } finally {
       setNotificationLoading(false);
     }
   };
 
   useEffect(() => {
-    if (userId) fetchPreferences(userId);
-  }, [userId]);
+    void fetchPreferences();
+  }, [userId]); // refetch whenever user changes
 
-  const refreshPreferences = async (uid: string) => {
-    await fetchPreferences(uid);
+  const refreshPreferences = async () => {
+    await fetchPreferences();
   };
 
   return (

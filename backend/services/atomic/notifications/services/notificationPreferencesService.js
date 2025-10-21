@@ -8,12 +8,12 @@ const { supabase } = require("../db/supabase");
 async function getNotificationDeliveryPreferences(userId) {
   const { data, error } = await supabase
     .from("notification_preferences")
-    .select('delivery_method')
+    .select('email, delivery_method')
     .eq('user_id', userId)
     .single();
 
   if (error) throw error;
-  return data.delivery_method; // returns array ["in-app", "email"]
+  return data; // returns array ["in-app", "email"]
 }
 
 // Update delivery method preferences

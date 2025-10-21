@@ -1,38 +1,66 @@
 const { broadcastToUser } = require("./websocket");
 const { postToSupabase } = require("./postSupabase");
+const { sendDeadlineOrAddedEmail } = require("./email")
 const axios = require("axios");
 
-const KONG_URL = "http://kong:8000";
+const NOTIFICATIONS_URL = "http://notifications:4201";
+const TASK_URL = "http://task:3031";
 
-
-async function getUserPreferences(userId) {
+// get current user preferences
+async function getUserPreferences(userId){
   try {
-    const res = await axios.get(
-      `${KONG_URL}/notifications/preferences/delivery-method/${userId}`
-    );
-    console.log(`[getUserPreferences] Current user ${userId} preferences:`, res.data.preferences)
-    return res.data.preferences || [];
+    const res = await axios.get(`${NOTIFICATIONS_URL}/preferences/delivery-method/${userId}`);
+    const prefs = res.data || { email: "", delivery_method: [] };
+    console.log(`[getUserPreferences] Current user ${userId} preferences:`, prefs.delivery_method);
+    return prefs;
   } catch (err) {
     console.error(`[getUserPreferences] Failed for user ${userId}:`, err.message);
+    return { email: "", delivery_method: [] };
+  }
+}
+
+async function getTaskDetails(taskId){
+  try{
+    const res = await axios.get(`${TASK_URL}/task/${taskId}`);
+    console.log(`[getTaskDetails] Current task ${taskId}:`, res.data)
+    return res.data || [];
+  } catch (err) {
+    console.error(`[getTaskDetails] Failed for user ${taskId}:`, err.message);
     return [];
   }
 }
 
-
-async function processNotification(userId, notifData, payload) {
+async function processReminderOrAddedNotification(payload) {
   // await postToSupabase(notifData);
 
-  const prefs = await getUserPreferences(userId);
+  const { email, delivery_method } = await getUserPreferences(payload.user_id); // { email: email, delivery_method:[delivery-method]}
+  const taskContent = await getTaskDetails(payload.resource_id)
 
-  const push = prefs.includes("in-app");
-  const emailPref = prefs.includes("email");
+  const push = delivery_method.includes("in-app");
+  const emailPref = delivery_method.includes("email");
 
   const wsPayload = { ...payload, push };
-  broadcastToUser(userId, wsPayload);
+  broadcastToUser(payload.user_id, wsPayload); //TODO: decide the content in the notification
+  console.info(taskContent)
+
+  const highPriority = taskContent.priority > 7;
+  const mediumPriority = taskContent.priority > 4 && taskContent.priority <= 7;
+
+  const emailPayload = { ...payload,
+    email: email,
+    task: {
+      title: taskContent.title,
+      description: taskContent.description,
+      deadline: taskContent.deadline,
+      project_id: taskContent.project_id,
+      priority: taskContent.priority,
+      highPriority: highPriority,
+      mediumPriority: mediumPriority,
+    },
+  }
 
   if (emailPref) {
-    console.info(`[handler] User ${userId} prefers email — email logic pending`);
-
+    sendDeadlineOrAddedEmail(emailPayload)
   }
 }
 
@@ -42,19 +70,19 @@ async function handleDeadlineReminder(payload) {
   if (!payload.user_id) return;
   console.info(`[handler] Deadline reminder → user ${payload.user_id}`);
 
-  const notifData = {
-    to_user_id: [payload.user_id],
-    from_user_id: payload.from_user_id || null,
-    notif_type: "deadline_reminder",
-    resource_type: "task",
-    resource_id: payload.resource_id,
-    project_id: payload.project_id || null,
-    task_priority: payload.priority || null,
-    notif_text: `Reminder: "${payload.resource_name}" is due in ${payload.reminder_days} day(s).`,
-    link_url: `/tasks/${payload.resource_id}`,
-  };
+  // const notifData = {
+  //   to_user_id: [payload.user_id],
+  //   from_user_id: payload.from_user_id || null,
+  //   notif_type: "deadline_reminder",
+  //   resource_type: "task",
+  //   resource_id: payload.resource_id,
+  //   project_id: payload.project_id || null,
+  //   task_priority: payload.priority || null,
+  //   notif_text: `Reminder: "${payload.resource_name}" is due in ${payload.reminder_days} day(s).`,
+  //   link_url: `/tasks/${payload.resource_id}`,
+  // };
 
-  await processNotification(payload.user_id, notifData, payload);
+  await processReminderOrAddedNotification(payload);
 }
 
 async function handleTaskUpdate(payload) {

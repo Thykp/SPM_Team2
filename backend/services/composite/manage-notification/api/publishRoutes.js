@@ -15,21 +15,13 @@ router.get('/health', (req, res) => {
 // Route in notificationRoutes.js
 router.post('/deadline-reminder', async (req, res) => {
   try {
-    const { taskId, userId, deadline, priority, resourceName, reminderDays } = req.body;
+    const { taskId, userId, deadline, reminderDays, username } = req.body;
 
     if (!taskId || !userId || !deadline) {
       return res.status(400).json({ error: 'taskId, userId, and deadline are required' });
     }
 
-    // Call the service function
-    await publishDeadlineReminder({
-      taskId,
-      userId,
-      deadline,
-      priority,
-      resourceName,
-      reminderDays,
-    });
+    await publishDeadlineReminder({ taskId, userId, deadline,reminderDays, username });
 
     res.status(200).json({ message: 'Deadline reminders scheduled' });
   } catch (err) {
@@ -48,7 +40,7 @@ router.post('/task-update', async (req, res) => {
       return res.status(400).json({ error: 'taskId, userIds, status, and changedBy are required' });
     }
 
-    // await publishTaskUpdate(taskId, userIds, status, changedBy);
+    await publishTaskUpdate(taskId, userIds, status, changedBy);
 
     res.status(200).json({ message: 'Task update notifications sent' });
   } catch (err) {
@@ -66,7 +58,7 @@ router.post('/added-to-project', async (req, res) => {
       return res.status(400).json({ error: 'taskId, userIds, projectId, and addedBy are required' });
     }
 
-    // await publishAddedToProject(taskId, userIds, projectId, addedBy);
+    await publishAddedToProject(taskId, userIds, projectId, addedBy);
 
     res.status(200).json({ message: 'Added-to-project notifications sent' });
   } catch (err) {

@@ -15,8 +15,8 @@ router.get('/health', (req, res) => {
 // GET /preferences/delivery/:userId
 router.get('/delivery/:userId', async (req, res) => {
   try {
-    const prefs = await getDeliveryPreferences(req.params.userId);
-    res.json(prefs);
+    const data = await getDeliveryPreferences(req.params.userId);
+    res.json({preferences: data});
   } catch (err) {
     const message = err.response?.data?.error || err.message || 'Unknown error';
     res.status(500).json({ error: message });
