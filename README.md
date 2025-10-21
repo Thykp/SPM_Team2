@@ -31,7 +31,7 @@ Switch to your branch before starting to code <br>
 ```
 
 ## Solution Architecture (Draft)
-<img width="936" height="457" alt="Screenshot 2025-09-10 at 3 42 34 PM" src="https://github.com/user-attachments/assets/5ff8388b-68ce-4032-b3b6-635d293ea1b5" />
+<img width="948" height="425" alt="Screenshot 2025-10-22 at 1 48 34 AM" src="https://github.com/user-attachments/assets/8ebb783d-8859-44e8-bbeb-47614539cacf" />
 
 
 ## DevOps CI/CD Pipelines
