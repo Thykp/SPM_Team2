@@ -25,7 +25,7 @@ async function getAllUsers() {
       role,
       team_id,
       department_id,
-      department:${DEPT_TABLE}(name), 
+      department:${DEPT_TABLE}(name),
       team:${TEAM_TABLE}(name)
     `);
 
