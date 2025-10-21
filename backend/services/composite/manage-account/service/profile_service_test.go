@@ -315,3 +315,252 @@ func TestUserDetailsBasedOnId_NotFound(t *testing.T) {
 		t.Error("Expected user in channel")
 	}
 }
+
+func TestGetAssignees_Success(t *testing.T) {
+    // Setup mock data
+    assignees := []User{
+        createTestUser("1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
+        createTestUser("2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
+    }
+
+    // Create mock server
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path == "/user/assignees" {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            json.NewEncoder(w).Encode(assignees)
+        } else {
+            w.WriteHeader(http.StatusNotFound)
+        }
+    }))
+    defer server.Close()
+
+    // Parse server URL
+    u, _ := url.Parse(server.URL)
+    host, portStr, _ := net.SplitHostPort(u.Host)
+    port, _ := strconv.Atoi(portStr)
+
+    // Save original values
+    origAddr := userServiceAddress
+    origPort := userServicePort
+    defer func() {
+        userServiceAddress = origAddr
+        userServicePort = origPort
+    }()
+
+    // Set to mock server
+    userServiceAddress = "http://" + host
+    userServicePort = port
+
+    // Call the function
+    result, err := GetAssignees("role1", "team1", "dept1")
+
+    // Assertions
+    if err != nil {
+        t.Fatalf("Expected no error, got %v", err)
+    }
+    if len(result) != 2 {
+        t.Fatalf("Expected 2 assignees, got %d", len(result))
+    }
+}
+
+func TestGetAssignees_ServerError(t *testing.T) {
+    // Create mock server that returns error
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path == "/user/assignees" {
+            w.WriteHeader(http.StatusInternalServerError)
+        }
+    }))
+    defer server.Close()
+
+    // Parse server URL
+    u, _ := url.Parse(server.URL)
+    host, portStr, _ := net.SplitHostPort(u.Host)
+    port, _ := strconv.Atoi(portStr)
+
+    // Save original values
+    origAddr := userServiceAddress
+    origPort := userServicePort
+    defer func() {
+        userServiceAddress = origAddr
+        userServicePort = origPort
+    }()
+
+    // Set to mock server
+    userServiceAddress = "http://" + host
+    userServicePort = port
+
+    // Call the function
+    _, err := GetAssignees("role1", "team1", "dept1")
+
+    // Assertions
+    if err == nil {
+        t.Fatal("Expected error, got nil")
+    }
+}
+
+func TestGetTeams_Success(t *testing.T) {
+    // Setup mock data
+    teams := []Team{
+        {ID: "team1", Name: "Team A", DepartmentID: "dept1"},
+        {ID: "team2", Name: "Team B", DepartmentID: "dept2"},
+    }
+
+    // Create mock server
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path == "/user/teams" {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            json.NewEncoder(w).Encode(teams)
+        } else {
+            w.WriteHeader(http.StatusNotFound)
+        }
+    }))
+    defer server.Close()
+
+    // Parse server URL
+    u, _ := url.Parse(server.URL)
+    host, portStr, _ := net.SplitHostPort(u.Host)
+    port, _ := strconv.Atoi(portStr)
+
+    // Save original values
+    origAddr := userServiceAddress
+    origPort := userServicePort
+    defer func() {
+        userServiceAddress = origAddr
+        userServicePort = origPort
+    }()
+
+    // Set to mock server
+    userServiceAddress = "http://" + host
+    userServicePort = port
+
+    // Call the function
+    result, err := GetTeams()
+
+    // Assertions
+    if err != nil {
+        t.Fatalf("Expected no error, got %v", err)
+    }
+    if len(result) != 2 {
+        t.Fatalf("Expected 2 teams, got %d", len(result))
+    }
+}
+
+func TestGetTeams_ServerError(t *testing.T) {
+    // Create mock server that returns error
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path == "/user/teams" {
+            w.WriteHeader(http.StatusInternalServerError)
+        }
+    }))
+    defer server.Close()
+
+    // Parse server URL
+    u, _ := url.Parse(server.URL)
+    host, portStr, _ := net.SplitHostPort(u.Host)
+    port, _ := strconv.Atoi(portStr)
+
+    // Save original values
+    origAddr := userServiceAddress
+    origPort := userServicePort
+    defer func() {
+        userServiceAddress = origAddr
+        userServicePort = origPort
+    }()
+
+    // Set to mock server
+    userServiceAddress = "http://" + host
+    userServicePort = port
+
+    // Call the function
+    _, err := GetTeams()
+
+    // Assertions
+    if err == nil {
+        t.Fatal("Expected error, got nil")
+    }
+}
+
+func TestGetDepartments_Success(t *testing.T) {
+    // Setup mock data
+    departments := []Department{
+        {ID: "dept1", Name: "Dept A"},
+        {ID: "dept2", Name: "Dept B"},
+    }
+
+    // Create mock server
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path == "/user/departments" {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            json.NewEncoder(w).Encode(departments)
+        } else {
+            w.WriteHeader(http.StatusNotFound)
+        }
+    }))
+    defer server.Close()
+
+    // Parse server URL
+    u, _ := url.Parse(server.URL)
+    host, portStr, _ := net.SplitHostPort(u.Host)
+    port, _ := strconv.Atoi(portStr)
+
+    // Save original values
+    origAddr := userServiceAddress
+    origPort := userServicePort
+    defer func() {
+        userServiceAddress = origAddr
+        userServicePort = origPort
+    }()
+
+    // Set to mock server
+    userServiceAddress = "http://" + host
+    userServicePort = port
+
+    // Call the function
+    result, err := GetDepartments()
+
+    // Assertions
+    if err != nil {
+        t.Fatalf("Expected no error, got %v", err)
+    }
+    if len(result) != 2 {
+        t.Fatalf("Expected 2 departments, got %d", len(result))
+    }
+}
+
+func TestGetDepartments_ServerError(t *testing.T) {
+    // Create mock server that returns error
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path == "/user/departments" {
+            w.WriteHeader(http.StatusInternalServerError)
+        }
+    }))
+    defer server.Close()
+
+    // Parse server URL
+    u, _ := url.Parse(server.URL)
+    host, portStr, _ := net.SplitHostPort(u.Host)
+    port, _ := strconv.Atoi(portStr)
+
+    // Save original values
+    origAddr := userServiceAddress
+    origPort := userServicePort
+    defer func() {
+        userServiceAddress = origAddr
+        userServicePort = origPort
+    }()
+
+    // Set to mock server
+    userServiceAddress = "http://" + host
+    userServicePort = port
+
+    // Call the function
+    _, err := GetDepartments()
+
+    // Assertions
+    if err == nil {
+        t.Fatal("Expected error, got nil")
+    }
+}

@@ -363,7 +363,7 @@ describe('Task API - Integration Tests', () => {
                 .expect(400);
 
             expect(response.body.error).toBeDefined();
-            expect(response.body.details).toBeDefined();
+            expect(response.body.error).toContain('required');
         });
 
         test('should return 400 for task without participants', async () => {

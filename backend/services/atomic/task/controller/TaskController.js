@@ -19,14 +19,11 @@ module.exports = {
             await currTask.createTask();
             res.status(200).json({ message: "Successfully created task and task participants" });
         } catch (error) {
-        if (error instanceof ValidationError) {
-            return res.status(error.statusCode).json({ 
-                error: error.message // Only include the main error message
-            }).set('Content-Type', 'application/json')
-            .json({ 
-                error: error.message // Only include the main error message
-            });
-        }
+            if (error instanceof ValidationError) {
+                return res.status(error.statusCode).json({ 
+                    error: error.message
+                });
+            }
             if (error instanceof DatabaseError) {
                 return res.status(error.statusCode).json({ error: error.message });
             }

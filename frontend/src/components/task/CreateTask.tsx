@@ -16,7 +16,6 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import type { User } from "@supabase/supabase-js";
 
 type UserRow = {
   id: string;
