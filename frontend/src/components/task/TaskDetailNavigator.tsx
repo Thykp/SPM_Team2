@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { TaskDTO as taskType } from "@/lib/api";
 import { TaskDetail } from "./TaskDetail";
 
@@ -10,11 +10,24 @@ type TaskDetailNavigatorProps = {
 
 export function TaskDetailNavigator({ initialTask, isOpen, onClose }: TaskDetailNavigatorProps) {
     const [navigationStack, setNavigationStack] = useState<taskType[]>([initialTask]);
+    const lastTaskIdRef = useRef<string>(initialTask.id);
     
-    // Reset navigation stack when initial task changes or when dialog opens
+    // Reset navigation stack when task ID changes (new task selected) or when dialog opens
+    // Update task data when same task but data changed (enrichment)
     useEffect(() => {
         if (isOpen) {
-            setNavigationStack([initialTask]);
+            if (initialTask.id !== lastTaskIdRef.current) {
+                // Different task - reset navigation stack
+                setNavigationStack([initialTask]);
+                lastTaskIdRef.current = initialTask.id;
+            } else {
+                // Same task but potentially updated data - update the current task in stack
+                setNavigationStack(prev => {
+                    const newStack = [...prev];
+                    newStack[0] = initialTask; // Update the root task with latest data
+                    return newStack;
+                });
+            }
         }
     }, [initialTask, isOpen]);
 

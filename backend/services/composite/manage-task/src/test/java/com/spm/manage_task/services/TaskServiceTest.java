@@ -419,4 +419,121 @@ public class TaskServiceTest {
         assertNotNull(result);
         assertEquals(0, result.size());
     }
+
+    // ===== deleteTask() Tests =====
+
+    @Test
+    void testDeleteTask_Success_With200StatusCode() {
+        // Arrange
+        String taskId = "task123";
+        when(restTemplate.exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        )).thenReturn(new ResponseEntity<>(HttpStatus.OK));
+
+        // Act
+        assertDoesNotThrow(() -> taskService.deleteTask(taskId));
+
+        // Assert
+        verify(restTemplate, times(1)).exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        );
+    }
+
+    @Test
+    void testDeleteTask_Success_With204StatusCode() {
+        // Arrange
+        String taskId = "task123";
+        when(restTemplate.exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        )).thenReturn(new ResponseEntity<>(HttpStatus.NO_CONTENT));
+
+        // Act
+        assertDoesNotThrow(() -> taskService.deleteTask(taskId));
+
+        // Assert
+        verify(restTemplate, times(1)).exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        );
+    }
+
+    @Test
+    void testDeleteTask_FailureWithBadRequestStatusCode() {
+        // Arrange
+        String taskId = "task123";
+        when(restTemplate.exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        )).thenReturn(new ResponseEntity<>(HttpStatus.BAD_REQUEST));
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> taskService.deleteTask(taskId));
+        assertTrue(exception.getMessage().contains("Failed to delete task"));
+        assertTrue(exception.getMessage().contains("400"));
+        verify(restTemplate, times(1)).exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        );
+    }
+
+    @Test
+    void testDeleteTask_FailureWithNotFoundStatusCode() {
+        // Arrange
+        String taskId = "nonexistent123";
+        when(restTemplate.exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        )).thenReturn(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> taskService.deleteTask(taskId));
+        assertTrue(exception.getMessage().contains("Failed to delete task"));
+        assertTrue(exception.getMessage().contains("404"));
+        verify(restTemplate, times(1)).exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        );
+    }
+
+    @Test
+    void testDeleteTask_FailureWithInternalServerErrorStatusCode() {
+        // Arrange
+        String taskId = "task123";
+        when(restTemplate.exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        )).thenReturn(new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> taskService.deleteTask(taskId));
+        assertTrue(exception.getMessage().contains("Failed to delete task"));
+        assertTrue(exception.getMessage().contains("500"));
+        verify(restTemplate, times(1)).exchange(
+            eq("http://task:3031/task/" + taskId),
+            eq(HttpMethod.DELETE),
+            any(),
+            eq(Void.class)
+        );
+    }
 }

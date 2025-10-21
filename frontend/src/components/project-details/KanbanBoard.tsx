@@ -532,24 +532,16 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                 id={column.id}
                                 title={column.title} 
                                 tasks={column.tasks}
+                                projectId={projectId}
+                                userId={user?.id || ''}
+                                onTaskDeleted={handleRealtimeTaskDelete}
+                                onTaskUpdated={fetchAllTasks}
                             />
                         ))}
                     </div>
                 ) : (
                     /* Hierarchical View: Jira-style with parent task headers */
                     <div>
-                        {/* Column Headers */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4 pl-8">
-                            {statuses.map((status) => (
-                                <div key={status.id} className="p-3 bg-white/80 rounded-lg shadow-sm">
-                                    <h3 className="font-semibold text-gray-800 text-center">{status.title}</h3>
-                                    <Badge variant="secondary" className="text-xs mx-auto block w-fit mt-1">
-                                        {columns.find(c => c.id === status.id)?.tasksWithSubtasks?.reduce((acc, t) => acc + t.subtasks.length, 0) || 0}
-                                    </Badge>
-                                </div>
-                            ))}
-                        </div>
-
                         {/* Parent Task Rows with Subtasks */}
                         <div className="space-y-2">
                             {tasksWithSubtasks.length === 0 ? (
@@ -563,7 +555,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                         parentTask={task}
                                         subtasks={subtasks}
                                         statuses={statuses}
+                                        projectId={projectId}
                                         onSubtaskClick={setSelectedSubtask}
+                                        onSubtaskDeleted={handleRealtimeTaskDelete}
+                                        onSubtaskUpdated={fetchAllTasks}
                                     />
                                 ))
                             )}
@@ -575,7 +570,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <DragOverlay>
                     {activeTask ? (
                         <div className="rotate-3 opacity-90">
-                            <TaskCard task={activeTask} isDragging />
+                            <TaskCard task={activeTask} projectId={projectId} userId={user?.id || ''} isDragging />
                         </div>
                     ) : null}
                 </DragOverlay>

@@ -70,14 +70,14 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
     e.preventDefault();
 
     if (!currentUserId) {
-      console.error("User not authenticated");
+      console.error("User not authenticated - currentUserId is:", currentUserId);
       return;
     }
 
     const projectData: NewProjectRequest = {
       title: newProject.title,
       description: newProject.description,
-      owner: currentUserId,
+      ownerId: currentUserId, // Changed from "owner" to "ownerId"
       collaborators: selectedCollaborators,
       // tasklist: [],
     };

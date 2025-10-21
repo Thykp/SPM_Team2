@@ -18,7 +18,7 @@ async function createReport(report, filePath){
         throw new InternalError('save report metadata to database', error);
     }
 
-    return data.filepath;
+    return data[0].filepath;
 }
 
 async function createReportStorageFromPath(filePath) {

@@ -39,6 +39,7 @@ async function fetchTasksForUser(userId, startDate, endDate) {
         deadline: t.deadline,
         priority: t.priority,
         projectId: t.project_id,
+        parent_task_id: t.parent_task_id,
         updatedAt: t.updated_at
       };
       taskList.push(normalized);

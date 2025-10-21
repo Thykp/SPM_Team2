@@ -105,4 +105,11 @@ public class TaskController {
         }
     }
     
+    // DELETE task by task id
+    @DeleteMapping("/{taskId}")
+    public ResponseEntity<String> deleteTask(@PathVariable String taskId) {
+        taskService.deleteTask(taskId);
+        return ResponseEntity.ok("Task deleted successfully");
+    }
+    
 }

@@ -187,7 +187,7 @@ useEffect(() => {
         owner: task.owner,
         parent: task.parent,
         priority: task.priority || 5, // Default priority if not set
-        project_id: task.project_id,
+        project_id: task.project_id || null, // Preserve the original project_id
       });
 
       console.log("Task successfully updated:", updatedTask);
@@ -244,7 +244,10 @@ useEffect(() => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.stopPropagation()}
+    >
       <Card className="w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center">

@@ -1,14 +1,35 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, GripVertical } from 'lucide-react';
-import { type TaskDTO } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Calendar, GripVertical, MoreVertical, Trash2, Edit, Plus } from 'lucide-react';
+import { type TaskDTO, TaskApi } from '@/lib/api';
 import { useDraggable } from '@dnd-kit/core';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
+import EditProjectTask from './EditProjectTask';
+import CreateProjectTask from './CreateProjectTask';
 
 interface TaskCardProps {
     task: TaskDTO;
+    projectId: string;
+    userId: string; // Add userId for creating subtasks
     isDragging?: boolean;
+    onTaskDeleted?: (taskId: string) => void;
+    onTaskUpdated?: () => void;
 }
 
 const getStatusColor = (status: string) => {
@@ -28,8 +49,12 @@ const getStatusColor = (status: string) => {
     }
 };
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging = false, onTaskDeleted, onTaskUpdated }) => {
     const [showDetails, setShowDetails] = useState(false);
+    const [showEditDialog, setShowEditDialog] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     
     const {
         attributes,
@@ -53,17 +78,37 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false }) => {
     const shouldShowDragging = isCurrentlyDragging && !isDragging;
 
     const handleCardClick = (e: React.MouseEvent) => {
-        // Don't trigger if clicking on the drag handle
-        if ((e.target as HTMLElement).closest('.drag-handle')) {
+        // Don't trigger if clicking on the drag handle, menu, or if any dialog is open
+        if ((e.target as HTMLElement).closest('.drag-handle') || 
+            (e.target as HTMLElement).closest('.task-menu') ||
+            showEditDialog ||
+            showAddSubtaskDialog) {
             return;
         }
         setShowDetails(true);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        // Don't trigger if any dialog is open
+        if (showEditDialog || showAddSubtaskDialog) {
+            return;
+        }
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setShowDetails(true);
+        }
+    };
+
+    const handleDelete = async () => {
+        try {
+            setIsDeleting(true);
+            await TaskApi.deleteTask(task.id);
+            setShowDeleteDialog(false);
+            onTaskDeleted?.(task.id);
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -82,7 +127,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false }) => {
         >
             <CardContent className="p-4">
                 <div className="space-y-2">
-                    {/* Drag handle and title */}
+                    {/* Drag handle, title, and menu */}
                     <div className="flex items-start gap-2">
                         <div 
                             {...listeners}
@@ -90,9 +135,51 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false }) => {
                         >
                             <GripVertical className="h-4 w-4 text-gray-400" />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                             <h4 className="font-medium line-clamp-2">{task.title}</h4>
                         </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="task-menu h-8 w-8 p-0 flex-shrink-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowEditDialog(true);
+                                    }}
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Task
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowAddSubtaskDialog(true);
+                                    }}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Subtask
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowDeleteDialog(true);
+                                    }}
+                                    className="text-red-600 focus:text-red-600"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Task
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                     
                     <div>
@@ -134,6 +221,63 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false }) => {
                 isOpen={showDetails}
                 onClose={() => setShowDetails(false)}
             />
+
+            {/* Edit Task Dialog */}
+            {showEditDialog && (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <EditProjectTask
+                        taskId={task.id}
+                        projectId={projectId}
+                        onClose={() => setShowEditDialog(false)}
+                        onTaskUpdated={() => {
+                            setShowEditDialog(false);
+                            onTaskUpdated?.();
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Add Subtask Dialog */}
+            <CreateProjectTask
+                userId={userId}
+                projectId={projectId}
+                parentTaskId={task.id}
+                open={showAddSubtaskDialog}
+                onOpenChange={setShowAddSubtaskDialog}
+                onTaskCreated={() => {
+                    setShowAddSubtaskDialog(false);
+                    onTaskUpdated?.();
+                }}
+                triggerButton={<div style={{ display: 'none' }} />}
+            />
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent onClick={(e) => e.stopPropagation()}>
+                    <DialogHeader>
+                        <DialogTitle>Delete Task</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "{task.title}"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteDialog(false)}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 };
