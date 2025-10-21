@@ -2,14 +2,15 @@ const { broadcastToUser } = require("./websocket");
 const { postToSupabase } = require("./postSupabase");
 const axios = require("axios");
 
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || "http://notifications:4201";
+const KONG_URL = "http://kong:8000";
 
 
 async function getUserPreferences(userId) {
   try {
     const res = await axios.get(
-      `${NOTIFICATION_SERVICE_URL}/notifications/preferences/delivery-method/${userId}`
+      `${KONG_URL}/notifications/preferences/delivery-method/${userId}`
     );
+    console.log(`[getUserPreferences] Current user ${userId} preferences:`, res.data.preferences)
     return res.data.preferences || [];
   } catch (err) {
     console.error(`[getUserPreferences] Failed for user ${userId}:`, err.message);
@@ -19,7 +20,7 @@ async function getUserPreferences(userId) {
 
 
 async function processNotification(userId, notifData, payload) {
-  await postToSupabase(notifData);
+  // await postToSupabase(notifData);
 
   const prefs = await getUserPreferences(userId);
 
@@ -30,7 +31,7 @@ async function processNotification(userId, notifData, payload) {
   broadcastToUser(userId, wsPayload);
 
   if (emailPref) {
-    console.info(`[handler] User ${uid} prefers email — email logic pending`);
+    console.info(`[handler] User ${userId} prefers email — email logic pending`);
 
   }
 }
@@ -42,7 +43,7 @@ async function handleDeadlineReminder(payload) {
   console.info(`[handler] Deadline reminder → user ${payload.user_id}`);
 
   const notifData = {
-    to_user_id: payload.user_id,
+    to_user_id: [payload.user_id],
     from_user_id: payload.from_user_id || null,
     notif_type: "deadline_reminder",
     resource_type: "task",
@@ -60,9 +61,9 @@ async function handleTaskUpdate(payload) {
   if (!Array.isArray(payload.user_ids)) return;
   console.info(`[handler] Task update → users: ${payload.user_ids.join(", ")}`);
 
-  for (const uid of payload.user_ids) {
+  for (const userId of payload.user_ids) {
     const notifData = {
-      to_user_id: uid,
+      to_user_id: userId,
       from_user_id: payload.changed_by || null,
       notif_type: "task_update",
       resource_type: "task",
@@ -73,7 +74,7 @@ async function handleTaskUpdate(payload) {
       link_url: `/tasks/${payload.resource_id}`,
     };
 
-    await processNotification(uid, notifData, payload);
+    await processNotification(userId, notifData, payload);
   }
 }
 
@@ -81,9 +82,9 @@ async function handleAddedToProject(payload) {
   if (!Array.isArray(payload.user_ids)) return;
   console.info(`[handler] Added-to-project → users: ${payload.user_ids.join(", ")}`);
 
-  for (const uid of payload.user_ids) {
+  for (const userId of payload.user_ids) {
     const notifData = {
-      to_user_id: uid,
+      to_user_id: userId,
       from_user_id: payload.added_by || null,
       notif_type: "added_to_project",
       resource_type: "project",
@@ -93,7 +94,7 @@ async function handleAddedToProject(payload) {
       link_url: `/projects/${payload.project_id}`,
     };
 
-    await processNotification(uid, notifData, payload);
+    await processNotification(userId, notifData, payload);
   }
 }
 

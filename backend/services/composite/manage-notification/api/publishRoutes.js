@@ -48,7 +48,7 @@ router.post('/task-update', async (req, res) => {
       return res.status(400).json({ error: 'taskId, userIds, status, and changedBy are required' });
     }
 
-    await publishTaskUpdate(taskId, userIds, status, changedBy);
+    // await publishTaskUpdate(taskId, userIds, status, changedBy);
 
     res.status(200).json({ message: 'Task update notifications sent' });
   } catch (err) {
@@ -66,7 +66,7 @@ router.post('/added-to-project', async (req, res) => {
       return res.status(400).json({ error: 'taskId, userIds, projectId, and addedBy are required' });
     }
 
-    await publishAddedToProject(taskId, userIds, projectId, addedBy);
+    // await publishAddedToProject(taskId, userIds, projectId, addedBy);
 
     res.status(200).json({ message: 'Added-to-project notifications sent' });
   } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Clock, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskApi, type TaskDeadlineReminder } from "@/lib/api"; 
@@ -7,9 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 type TaskReminderProps = {
   taskId: string;
   status: string;
+  deadline: string;
 };
 
-export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) => {
+export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status, deadline }) => {
   const { user } = useAuth(); 
   const userId = user?.id;
 
@@ -19,7 +20,13 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
   const [inputValue, setInputValue] = useState("");
   const [error, setError] = useState("");
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   if (status === "Overdue") return null;
+
+  const daysUntilDeadline = deadline
+    ? Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : Infinity;
 
   // Fetch reminders when dropdown opens
   useEffect(() => {
@@ -41,6 +48,18 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
     fetchReminders();
   }, [open]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+        setError(""); // Reset error when closing
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const persistReminders = async (reminders: number[]) => {
     if (!userId) return;
     try {
@@ -57,6 +76,12 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
       setError("Please enter a valid number greater than 0.");
       return;
     }
+
+    if (validDays > daysUntilDeadline) {
+      setError(`Cannot add a reminder beyond the deadline (${daysUntilDeadline} day${daysUntilDeadline > 1 ? "s" : ""} away).`);
+      return;
+    }
+
     if (reminderDays.includes(validDays)) {
       setError("Reminder already added.");
       return;
@@ -67,7 +92,6 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
     setInputValue("");
     setError("");
 
-    // Persist in background, handle errors
     persistReminders(updated).catch(err => console.error(err));
   };
 
@@ -75,15 +99,13 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
     const updated = reminderDays.filter((d) => d !== day);
     setReminderDays(updated);
 
-    // Persist in background, handle errors
     persistReminders(updated).catch(err => console.error(err));
   };
 
-
-  if (!userId) return null; // don't render if user not logged in
+  if (!userId) return null;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <Button
         variant="ghost"
         size="icon"
@@ -112,6 +134,7 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
                     size="sm"
                     variant="outline"
                     onClick={() => addReminder(day)}
+                    disabled={day > daysUntilDeadline}
                   >
                     {day} day{day > 1 ? "s" : ""}
                   </Button>
@@ -122,9 +145,10 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
                 <input
                   type="number"
                   min={1}
+                  max={daysUntilDeadline}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Custom (e.g. 5)"
+                  placeholder={`Custom (max ${daysUntilDeadline})`}
                   className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-blue-400 outline-none"
                 />
                 <Button size="sm" onClick={() => addReminder(Number(inputValue))}>
@@ -159,7 +183,7 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status }) =>
           )}
 
           <div className="flex justify-end mt-3">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            <Button variant="ghost" size="sm" onClick={() => { setOpen(false); setError(""); }}>
               Done
             </Button>
           </div>
