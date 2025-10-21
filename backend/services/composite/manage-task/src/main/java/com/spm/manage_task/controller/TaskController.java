@@ -52,7 +52,7 @@ public class TaskController {
                 // Return a proper JSON response
                 return ResponseEntity.status(400)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body("{\"error\": \"" + e.getMessage() + "\"}");
+                    .body(e.getMessage().replace("Task creation failed: ", ""));
             }
             return ResponseEntity.status(500)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -103,13 +103,6 @@ public class TaskController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(500).body("Failed to delete task: " + e.getMessage());
         }
-    }
-    
-    // DELETE task by task id
-    @DeleteMapping("/{taskId}")
-    public ResponseEntity<String> deleteTask(@PathVariable String taskId) {
-        taskService.deleteTask(taskId);
-        return ResponseEntity.ok("Task deleted successfully");
     }
     
 }

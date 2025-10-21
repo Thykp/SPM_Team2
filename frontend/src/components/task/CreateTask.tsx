@@ -147,9 +147,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
 
         if (err.response && err.response.data) {
           try {
-            // Check if response.data is a string and parse it if necessary
             const errorData = typeof err.response.data === "string"
-              ? JSON.parse(err.response.data.split(": ", 2)[1]) // Extract the JSON part
+              ? JSON.parse(err.response.data) // Parse if it's a string
               : err.response.data;
 
             if (errorData.error) {
