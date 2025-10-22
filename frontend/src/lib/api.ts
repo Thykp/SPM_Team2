@@ -3,7 +3,7 @@ import axios from "axios";
 const KONG_BASE_URL = import.meta.env.VITE_KONG_BASE_URL || "http://localhost:8000";
 const PROFILE_API   = import.meta.env.VITE_PROFILE_API   || `${KONG_BASE_URL}/profile`;
 const TASK_API      = import.meta.env.VITE_TASK_API      || `${KONG_BASE_URL}/task`;
-const GENERATE_REPORT_API    = import.meta.env.VITE_REPORT_API    || `${KONG_BASE_URL}/generate-report`;
+const GENERATE_REPORT_API = import.meta.env.VITE_REPORT_API || `${KONG_BASE_URL}/generate-report`;
 
 const api = axios.create({
   baseURL: KONG_BASE_URL,
@@ -147,7 +147,6 @@ export const Profile = {
     const url = `${KONG_BASE_URL}/profile/user/all`;
     const { data } = await api.get<GetAllUsersRaw[]>(url);
 
-    // Normalize: coerce role to string and flatten department/team objects
     const normalized: GetAllUsers[] = (Array.isArray(data) ? data : []).map((u) => ({
       id: u.id,
       display_name: u.display_name,
@@ -312,6 +311,7 @@ export type GenerateReportBody = {
 };
 
 export const Report = {
+
   generate: async (
     userId: string,
     body: GenerateReportBody
@@ -320,6 +320,25 @@ export const Report = {
     const { data } = await api.post(url, body);
     return data;
   },
+
+  generateTeam: async (
+    teamId: string,
+    body: GenerateReportBody
+  ): Promise<{ jobId?: string; message?: string; url?: string }> => {
+    const url = `${GENERATE_REPORT_API}/team/${teamId}`;
+    const { data } = await api.post(url, body);
+    return data;
+  },
+
+  generateDepartment: async (
+    departmentId: string,
+    body: GenerateReportBody
+  ): Promise<{ jobId?: string; message?: string; url?: string }> => {
+    const url = `${GENERATE_REPORT_API}/department/${departmentId}`;
+    const { data } = await api.post(url, body);
+    return data;
+  },
+  
 };
 
 export default api;
