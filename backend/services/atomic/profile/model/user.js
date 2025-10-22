@@ -71,6 +71,7 @@ async function getUserDetailsWithId(user_id) {
   return result;
 }
 
+
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,

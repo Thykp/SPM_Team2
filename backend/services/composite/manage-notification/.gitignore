@@ -11,9 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
-.vite
-.vite/deps
-package*.*
+.env
+.DS_Store
+coverage
 
 # Editor directories and files
 .vscode/*
@@ -25,6 +25,3 @@ package*.*
 *.njsproj
 *.sln
 *.sw?
-*.env
-
-dockerfile
