@@ -174,6 +174,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                         resourceName: editForm.title,
                         resourceDescription: editForm.description || "",
                         addedBy: profile?.display_name || "unknown",
+                        priority: 10
                     });
 
                     console.log("Notification published for new collaborators:", newlyAdded);

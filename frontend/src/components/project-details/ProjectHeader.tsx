@@ -15,6 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { CollaboratorPicker } from '@/components/CollaboratorPicker';
 import { Project, type ProjectDto, type TaskDTO, type UpdateProjectRequest } from '@/lib/api';
 import CreateProjectTask from './CreateProjectTask';
+import { useAuth } from '@/contexts/AuthContext';
+import { Notification as NotificationAPI } from '@/lib/api';
 
 interface ProjectHeaderProps {
     project: ProjectDto;
@@ -29,6 +31,8 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
     onTaskCreated,
     onProjectUpdate
 }) => {
+    const { profile } = useAuth();
+    const [oldCollaborators, setOldCollaborators] = useState<string[]>(project.collaborators || []);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingEdit, setIsLoadingEdit] = useState(false);
@@ -75,6 +79,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
             setIsLoadingEdit(true);
             // Fetch current project data to get proper collaborator UUIDs
             const currentProject = await Project.getById(project.id);
+
             setEditForm({
                 title: project.title,
                 description: project.description,
@@ -89,6 +94,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                 description: project.description,
                 collaborators: project.collaborators || [],
             });
+            setOldCollaborators(project.collaborators?.slice() || []);
             // setUserSearchTerm('');
             setIsEditDialogOpen(true);
         } finally {
@@ -129,6 +135,30 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                 }
                 
                 setIsEditDialogOpen(false);
+            }
+
+            const newCollaborators = editForm.collaborators || [];
+            const addedCollaborators = newCollaborators.filter((id) => !oldCollaborators.includes(id));
+
+            if (addedCollaborators.length > 0) {
+                const notificationPayload = {
+                    resourceType: "project",
+                    resourceId: String(project.id),
+                    collaboratorIds: addedCollaborators,
+                    resourceName: editForm.title,
+                    resourceDescription: editForm.description || "",
+                    addedBy: profile?.display_name || "Unknown User",
+                    priority: 10
+                };
+
+                console.log("Notifying collaborator (edit project collaborators):", notificationPayload);
+
+                try {
+                    const notifResponse = await NotificationAPI.publishAddedToResource(notificationPayload);
+                    console.log("(edit project collaborators) Notified", notifResponse);
+                } catch (notifErr) {
+                    console.error("(edit project collaborators) Failed", notifErr);
+                }
             }
         } catch {
             // Silent error handling
