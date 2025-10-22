@@ -127,10 +127,143 @@ async function fetchProfileDetails(profileIds) {
   return profiles;
 }
 
+function mergeTaskListsById(taskLists) {
+  const byId = new Map();
+
+  for (const list of taskLists) {
+    for (const t of list) {
+      const participants = Array.isArray(t.participants) ? t.participants : [];
+      if (!byId.has(t.id)) {
+        byId.set(t.id, { ...t, participants: [...participants] });
+      } else {
+        const existing = byId.get(t.id);
+        // merge participants (dedupe by profile_id + is_owner)
+        const merged = new Map();
+        for (const p of existing.participants) merged.set(`${p.profile_id}:${p.is_owner ? 1 : 0}`, p);
+        for (const p of participants) merged.set(`${p.profile_id}:${p.is_owner ? 1 : 0}`, p);
+        existing.participants = Array.from(merged.values());
+        byId.set(t.id, existing);
+      }
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
+async function fetchTeamWithMembers(teamId) {
+  try {
+    // members
+    const staffResp = await axios.get(`${profileAddress}/user/staff`, {
+      params: { team_id: teamId, role: 'Staff' }
+    });
+    const members = (staffResp.data || []).map(r => r.id);
+    if (!members.length) throw new NotFoundError('No members found for team', { teamId });
+
+    // name (+ department_id) from /teams
+    let name = 'Team';
+    let department_id = null;
+    try {
+      const teamsResp = await axios.get(`${profileAddress}/teams`);
+      const hit = (teamsResp.data || []).find(t => t.id === teamId);
+      if (hit) {
+        name = hit.name || name;
+        if (hit.department_id) department_id = hit.department_id;
+      }
+    } catch (_) {  }
+
+    return { id: teamId, name, members, department_id };
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+    throw new ServiceUnavailableError('Profile Service (team)', error);
+  }
+}
+
+// Department metadata + members
+async function fetchDepartmentWithMembers(departmentId) {
+  try {
+    // members
+    const staffResp = await axios.get(`${profileAddress}/user/staff`, {
+      params: { department_id: departmentId, role: 'Staff' }
+    });
+    const members = (staffResp.data || []).map(r => r.id);
+    if (!members.length) throw new NotFoundError('No members found for department', { departmentId });
+
+    // name from /departments
+    let name = 'Department';
+    try {
+      const deptResp = await axios.get(`${profileAddress}/departments`);
+      const hit = (deptResp.data || []).find(d => d.id === departmentId);
+      if (hit?.name) name = hit.name;
+    } catch (_) { }
+
+    return { id: departmentId, name, members };
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+    throw new ServiceUnavailableError('Profile Service (department)', error);
+  }
+}
+
+// Aggregate tasks for a whole team (fan-out by members)
+async function fetchTasksForTeam(teamId, startDate, endDate) {
+  try {
+    const { members } = await fetchTeamWithMembers(teamId);
+    const perUser = await Promise.all(members.map(async (uid) => {
+      try {
+        const r = await axios.get(`${taskAddress}/task/users/${uid}`, {
+          params: { startDate, endDate }
+        });
+        return r.data || [];
+      } catch (e) {
+        console.error(`fetchTasksForTeam: failed for user ${uid}:`, e.message);
+        return [];
+      }
+    }));
+    const merged = mergeTaskListsById(perUser);
+    if (!merged.length) {
+      throw new NotFoundError('No tasks found for team in date range', { teamId, startDate, endDate });
+    }
+    return merged;
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+    throw new ServiceUnavailableError('Task Service (team aggregate)', error);
+  }
+}
+
+// Aggregate tasks for a whole department (fan-out by members)
+async function fetchTasksForDepartment(departmentId, startDate, endDate) {
+  try {
+    const { members } = await fetchDepartmentWithMembers(departmentId);
+    const perUser = await Promise.all(members.map(async (uid) => {
+      try {
+        const r = await axios.get(`${taskAddress}/task/users/${uid}`, {
+          params: { startDate, endDate }
+        });
+        return r.data || [];
+      } catch (e) {
+        console.error(`fetchTasksForDepartment: failed for user ${uid}:`, e.message);
+        return [];
+      }
+    }));
+    const merged = mergeTaskListsById(perUser);
+    if (!merged.length) {
+      throw new NotFoundError('No tasks found for department in date range', { departmentId, startDate, endDate });
+    }
+    return merged;
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+    throw new ServiceUnavailableError('Task Service (department aggregate)', error);
+  }
+}
+
+
 module.exports = {
   fetchTasksForUser, 
   getProjectDetails,
   fetchProjectWithCollaborators,
   fetchTasksForProject,
-  fetchProfileDetails
+  fetchProfileDetails,
+  fetchTeamWithMembers,
+  fetchTasksForTeam,
+  fetchDepartmentWithMembers,
+  fetchTasksForDepartment
 };

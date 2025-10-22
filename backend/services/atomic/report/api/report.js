@@ -2,10 +2,16 @@ const express = require('express');
 const router = express.Router();
 const { prepareReportData } = require('../factory/aggregatePersonalTask');
 const { prepareProjectReportData } = require('../factory/aggregateProjectTasks');
+const { prepareTeamReportData } = require('../factory/aggregateTeam');
+const { prepareDepartmentReportData } = require('../factory/aggregateDepartment');
 const { 
   fetchTasksForUser, 
   fetchProjectWithCollaborators,
-  fetchTasksForProject 
+  fetchTasksForProject,
+  fetchTeamWithMembers,
+  fetchTasksForTeam,
+  fetchDepartmentWithMembers,
+  fetchTasksForDepartment
 } = require('../services/callingService');
 const { renderHtml } = require('../factory/html');
 const { gotenRenderPdf } = require('../factory/pdf');
@@ -218,5 +224,136 @@ router.post('/project/:projectId', async (req, res) => {
     return sendError(res, 500, 'UNEXPECTED_ERROR', 'An unexpected error occurred while generating the project report', null, err.stack);
   }
 });
+
+// Team Report Endpoint
+router.post('/team/:teamId', async (req, res) => {
+  const teamId = req.params.teamId;
+  const { startDate, endDate } = req.body;
+
+  try {
+    if (!teamId) {
+      return sendError(res, 400, 'MISSING_TEAM_ID', 'Team ID is required');
+    }
+    if (!startDate || !endDate) {
+      return sendError(res, 400, 'MISSING_DATES', 'Both startDate and endDate are required', {
+        providedStartDate: startDate,
+        providedEndDate: endDate
+      });
+    }
+    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+      return sendError(res, 400, 'INVALID_DATE_FORMAT', 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)', {
+        startDate, endDate
+      });
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start > end) {
+      return sendError(res, 400, 'INVALID_DATE_RANGE', 'Start date must be before or equal to end date', {
+        startDate, endDate
+      });
+    }
+
+    // Fetch team + tasks
+    const teamData = await fetchTeamWithMembers(teamId);
+    const teamTasks = await fetchTasksForTeam(teamId, startDate, endDate);
+
+    // Prepare report data
+    const reportData = await prepareTeamReportData(teamData, teamTasks, startDate, endDate);
+
+    // Render & PDF (reuse project template via aliases)
+    const html = await renderHtml({ ...reportData, template_file: 'teamReport.njk' });
+    const pdf = await gotenRenderPdf(html);
+
+    // Upload & save
+    const ts = new Date().toISOString();
+    const fileName = `${teamId}-TeamReport-${ts}.pdf`;
+    const { publicUrl } = await createReportStorage(pdf, fileName);
+
+    const reportTitle = `Team Report: ${teamData.name}`;
+    const profileIdForReport = reportData.ownerId || (reportData.members[0] && reportData.members[0].id);
+    await createReport({ profile_id: profileIdForReport, title: reportTitle }, publicUrl);
+
+    res.json({
+      success: true,
+      data: {
+        reportUrl: publicUrl,
+        reportTitle,
+        memberCount: reportData.members.length,
+        taskCount: reportData.totalTasks
+      }
+    });
+  } catch (err) {
+    if (err instanceof AppError) {
+      return sendError(res, err.statusCode, err.code, err.message, err.details, err.stack);
+    }
+    return sendError(res, 500, 'UNEXPECTED_ERROR', 'An unexpected error occurred while generating the team report', null, err.stack);
+  }
+});
+
+// Department Report Endpoint
+router.post('/department/:departmentId', async (req, res) => {
+  const departmentId = req.params.departmentId;
+  const { startDate, endDate } = req.body;
+
+  try {
+    if (!departmentId) {
+      return sendError(res, 400, 'MISSING_DEPARTMENT_ID', 'Department ID is required');
+    }
+    if (!startDate || !endDate) {
+      return sendError(res, 400, 'MISSING_DATES', 'Both startDate and endDate are required', {
+        providedStartDate: startDate,
+        providedEndDate: endDate
+      });
+    }
+    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+      return sendError(res, 400, 'INVALID_DATE_FORMAT', 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)', {
+        startDate, endDate
+      });
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start > end) {
+      return sendError(res, 400, 'INVALID_DATE_RANGE', 'Start date must be before or equal to end date', {
+        startDate, endDate
+      });
+    }
+
+    // Fetch department + tasks
+    const deptData = await fetchDepartmentWithMembers(departmentId);
+    const deptTasks = await fetchTasksForDepartment(departmentId, startDate, endDate);
+
+    // Prepare report data
+    const reportData = await prepareDepartmentReportData(deptData, deptTasks, startDate, endDate);
+
+    // Render & PDF (reuse project template via aliases)
+    const html = await renderHtml({ ...reportData, template_file: 'departmentReport.njk' });
+    const pdf = await gotenRenderPdf(html);
+
+    // Upload & save
+    const ts = new Date().toISOString();
+    const fileName = `${departmentId}-DepartmentReport-${ts}.pdf`;
+    const { publicUrl } = await createReportStorage(pdf, fileName);
+
+    const reportTitle = `Department Report: ${deptData.name}`;
+    const profileIdForReport = reportData.ownerId || (reportData.members[0] && reportData.members[0].id);
+    await createReport({ profile_id: profileIdForReport, title: reportTitle }, publicUrl);
+
+    res.json({
+      success: true,
+      data: {
+        reportUrl: publicUrl,
+        reportTitle,
+        memberCount: reportData.members.length,
+        taskCount: reportData.totalTasks
+      }
+    });
+  } catch (err) {
+    if (err instanceof AppError) {
+      return sendError(res, err.statusCode, err.code, err.message, err.details, err.stack);
+    }
+    return sendError(res, 500, 'UNEXPECTED_ERROR', 'An unexpected error occurred while generating the department report', null, err.stack);
+  }
+});
+
 
 module.exports = router;
