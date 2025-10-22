@@ -178,28 +178,28 @@ services:
       - notifications
 
 
-  # generate-report:
-  #   build:
-  #     context: ./backend/services/composite/generate-report
-  #     dockerfile: dockerfile
-  #   container_name: generate-report
-  #   restart: unless-stopped
-  #   networks: [spm-net]
-  #   ports:
-  #     - "8093:8093"
-  #   environment:
-  #     PORT: "8093"
-  #     APP_ENV: "development"
-  #     KAFKA_BROKERS: "kafka:9092"
-  #     KAFKA_TOPIC: "report-requests"
-  #     REPORT_BASE_URL: "http://report:3042"
-  #   depends_on:
-  #     kafka:
-  #       condition: service_healthy
-  #     kafka-init:
-  #       condition: service_completed_successfully
-  #     report:
-  #       condition: service_started
+  generate-report:
+    build:
+      context: ./backend/services/composite/generate-report
+      dockerfile: dockerfile
+    container_name: generate-report
+    restart: unless-stopped
+    networks: [spm-net]
+    ports:
+      - "8093:8093"
+    environment:
+      PORT: "8093"
+      APP_ENV: "development"
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_TOPIC: "report-requests"
+      REPORT_BASE_URL: "http://report:3042"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      report:
+        condition: service_started
 
   manage-task:
     build:
@@ -280,24 +280,24 @@ services:
       PORT: "3040"
       FE_ENDPOINT: "http://localhost:5173"  
 
-  # report:
-  #   build:
-  #     context: ./backend/services/atomic/report
-  #     dockerfile: dockerfile
-  #   container_name: report
-  #   restart: unless-stopped
-  #   networks:
-  #     - spm-net
-  #   env_file:
-  #     - ./backend/services/atomic/report/.env
-  #   ports:
-  #     - "3042:3042"
-  #   environment:
-  #     PORT: "3042"
-  #     FE_ENDPOINT: "http://localhost:5173"
-  #     GOTENBERG_PATH: "http://gotenberg:3000"
-  #     TASK_PATH: "http://task:3031"
-  #     PROJECT_PATH: "http://project:3040"
+  report:
+    build:
+      context: ./backend/services/atomic/report
+      dockerfile: dockerfile
+    container_name: report
+    restart: unless-stopped
+    networks:
+      - spm-net
+    env_file:
+      - ./backend/services/atomic/report/.env
+    ports:
+      - "3042:3042"
+    environment:
+      PORT: "3042"
+      FE_ENDPOINT: "http://localhost:5173"
+      GOTENBERG_PATH: "http://gotenberg:3000"
+      TASK_PATH: "http://task:3031"
+      PROJECT_PATH: "http://project:3040"
 
   notifications:
     build:

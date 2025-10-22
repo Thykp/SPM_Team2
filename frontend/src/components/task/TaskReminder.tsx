@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Clock, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskApi, type TaskDeadlineReminder } from "@/lib/api"; 
+import { Notification as NotificationApi } from "@/lib/api"; // Updated import
 import { useAuth } from "@/contexts/AuthContext";
 
 type TaskReminderProps = {
@@ -11,8 +12,9 @@ type TaskReminderProps = {
 };
 
 export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status, deadline }) => {
-  const { user } = useAuth(); 
+  const { user, profile} = useAuth(); 
   const userId = user?.id;
+  const username = profile?.display_name || user?.email || "Unknown User";
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status, dead
     };
 
     fetchReminders();
-  }, [open]);
+  }, [open, userId, taskId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -63,9 +65,20 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status, dead
   const persistReminders = async (reminders: number[]) => {
     if (!userId) return;
     try {
+      // Save locally
       await TaskApi.setDeadlineReminder(taskId, userId, reminders);
+
+      // Publish the entire reminders array to notifications
+      await NotificationApi.publishDeadlineReminder({
+        taskId,
+        userId,
+        deadline,
+        reminderDays: reminders,
+        username,
+      });
+
     } catch (err) {
-      console.error("Failed to save reminders:", err);
+      console.error("Failed to save reminders or publish notification:", err);
       setError("Failed to save reminders");
     }
   };

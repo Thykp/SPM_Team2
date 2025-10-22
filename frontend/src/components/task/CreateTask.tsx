@@ -23,6 +23,8 @@ import {
 import { Plus } from "lucide-react";
 import { TaskApi } from "@/lib/api";
 import type { TaskDTO } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext"; 
+import { Notification as NotificationApi } from "@/lib/api";
 
 interface CreateTaskProps {
   userId: string;
@@ -40,6 +42,7 @@ const STATUSES = [
 type StatusType = (typeof STATUSES)[number];
 
 const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
+  const { profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [newTask, setNewTask] = useState<{
     title: string;
@@ -54,6 +57,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
 
   const resetForm = () =>
     setNewTask({ title: "", description: "", status: "Unassigned" });
+
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +78,19 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated }) => {
       onTaskCreated(createdTask);
       resetForm();
       setOpen(false);
+      console.log(taskData)
+
+      await NotificationApi.publishAddedToResource({
+        resourceType: "task",
+        resourceId: "task",
+        collaboratorIds: taskData.collaborators,
+        resourceName: taskData.title,
+        resourceDescription: taskData.description,
+        addedBy: profile?.display_name || "Unknown User",
+      });
+      console.log("HEREERERE")
     } catch (err) {
-      console.error("Failed to create task:", err);
+      console.error("Failed to create task or send notification:", err);
     } finally {
       setLoading(false);
     }

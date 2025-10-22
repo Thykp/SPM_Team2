@@ -54,7 +54,7 @@ router.post('/task-update', async (req, res) => {
 router.post('/added-to-resource', async (req, res) => {
   try {
     const {resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy} = req.body;
-    if(!resourceType || !resourceId || !collaboratorIds || !resourceName || !resourceDescription || !addedBy) return res.status(404).json({ message: 'missing required fields' });
+    if(!resourceType || !resourceId || !collaboratorIds || !resourceName || !resourceDescription || !addedBy) return res.status(400).json({ message: 'missing required fields' });
 
     await publishAddedToResource(resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy);
 

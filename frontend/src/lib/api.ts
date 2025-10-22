@@ -383,6 +383,34 @@ export const Notification = {
     return response.data.data;
   },
 
+  publishDeadlineReminder: async ({taskId, userId, deadline,reminderDays, username}: { taskId: string; userId: string; deadline: string; reminderDays: number[]; username: string;}): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/publish/deadline-reminder`;
+
+    const payload = { taskId, userId, reminderDays, deadline, username};
+
+    await api.post(url, payload);
+  },
+
+  publishAddedToResource: async ({ resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy,
+  }: { resourceType: string; resourceId: string; collaboratorIds: string[]; resourceName: string; resourceDescription?: string; addedBy: string;}): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/publish/added-to-resource`;
+
+    const payload = { resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy };
+
+    try {
+    await api.post(url, payload);
+  } catch (err: unknown) {
+    console.error("Failed to publish 'added to resource' notification:", err);
+    // Optionally, rethrow if you want calling code to handle it
+    throw new Error(
+      err instanceof Error
+        ? err.message
+        : "Unknown error occurred while publishing added-to-resource notification"
+    );
+  }
+  },
+
+
 
   deleteNotification: async (userId: string, notifId: string): Promise<void> => {
     const url = `${KONG_BASE_URL}/notifications/${userId}/${notifId}`;
@@ -397,7 +425,7 @@ export const Notification = {
   toggleReadNotification: async (notifId: string): Promise<void> => {
     const url = `${KONG_BASE_URL}/notifications/toggle/${notifId}`
     await api.patch(url)
-  }
+  },
 }
 
 export default api;

@@ -1,3 +1,5 @@
+// add code such that it stores orignialcollaborators, then sees newly added collaborators. if have, send a notification to them with the correct payload.
+
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

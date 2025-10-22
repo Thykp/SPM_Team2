@@ -21,6 +21,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
 import { Project, Profile, type UpdateProjectRequest } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Notification as NotificationAPI } from '@/lib/api';
 
 // Define LiteUser type based on the API response structure
 type LiteUser = {
@@ -64,6 +66,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [currentProjectData, setCurrentProjectData] = useState<any>(null);
 
+    // State for notification
+    const {profile} = useAuth();
+    const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
+
     // Update local project when the prop changes
     useEffect(() => {
         setLocalProject(project);
@@ -105,6 +111,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                 description: project.description,
                 collaborators: currentProject.collaborators || [],
             });
+            setOriginalCollaborators(currentProject.collaborators || []);
+            console.log("Original collaborators:", currentProject.collaborators);
             setUserSearchTerm(''); // Reset search term
             setIsEditDialogOpen(true);
         } catch (error) {
@@ -146,7 +154,34 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
             );
             console.log("Collaborators update result:", collaboratorsResult);
             }
-            
+
+
+            // checking and notifying collaborators
+            const updatedCollaborators = editForm.collaborators || [];
+            const newlyAdded = updatedCollaborators.filter((id) => !originalCollaborators.includes(id));
+
+            console.log("Added by:", profile?.id);
+            console.log("New collaborators detected:", newlyAdded);
+
+            if (newlyAdded.length > 0) {
+                try {
+                    console.log("Publishing notification for new collaborators...");
+
+                    await NotificationAPI.publishAddedToResource({
+                        resourceType: "project",
+                        resourceId: project.id,
+                        collaboratorIds: newlyAdded,
+                        resourceName: editForm.title,
+                        resourceDescription: editForm.description || "",
+                        addedBy: profile?.display_name || "unknown",
+                    });
+
+                    console.log("Notification published for new collaborators:", newlyAdded);
+                } catch (notifyError) {
+                    console.error("Failed to publish notification:", notifyError);
+                }
+            }
+
             // Build update payload with current values + changes
             const updateData: UpdateProjectRequest = {
                 title: editForm.title,

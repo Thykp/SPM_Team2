@@ -41,10 +41,26 @@ async function processReminderNotification(payload) {
 
   const wsPayload = { ...payload, push };
   broadcastToUser(payload.user_id, wsPayload); //TODO: decide the content in the notification
-  console.info(taskContent)
 
   const highPriority = taskContent.priority > 7;
   const mediumPriority = taskContent.priority > 4 && taskContent.priority <= 7;
+
+  function formatSingaporeDateTime(isoTimestamp) {
+  const date = new Date(isoTimestamp);
+
+  return date.toLocaleString("en-US", {
+    timeZone: "Asia/Singapore",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    });
+  }
+
+
+  deadline = formatLocalDateTime(taskContent.deadline)
 
   const emailPayload = { ...payload,
     email: email,
@@ -52,7 +68,8 @@ async function processReminderNotification(payload) {
     task: {
       title: taskContent.title,
       description: taskContent.description,
-      deadline: taskContent.deadline,
+      status: taskContent.status,
+      deadline: deadline,
       project_id: taskContent.project_id,
       priority: taskContent.priority,
       highPriority: highPriority,
