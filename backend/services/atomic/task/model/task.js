@@ -94,6 +94,31 @@ class Task {
         return filteredTasks;
     }
 
+    static async getTasksByProject(projectId, startDate, endDate){
+        let query = supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `)
+            .eq('project_id', projectId);
+
+        if (startDate && endDate) {
+            startDate = new Date(startDate).toISOString();
+            endDate = new Date(endDate).toISOString();
+            query = query.gte('created_at', startDate).lte('created_at', endDate);
+        }
+
+        const { data, error } = await query;
+        
+        if (error){
+            console.error("Error in getTasksByProject:", error);
+            throw new DatabaseError("Failed to retrieve tasks by project", error);
+        }
+        
+        return data || [];
+    }
+
     constructor(data){
     this.id = data.id || null;
     this.parent_task_id = data.parent_task_id || null;

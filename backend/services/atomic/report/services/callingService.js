@@ -3,6 +3,7 @@ const { ServiceUnavailableError, NotFoundError } = require('../model/AppError');
 
 const taskAddress = process.env.TASK_PATH || "http://localhost:3031";
 const projectAddress = process.env.PROJECT_PATH || "http://localhost:3040";
+const profileAddress = process.env.PROFILE_PATH || "http://localhost:3030";
 
 
 function roleForUser(task, userId) {
@@ -67,4 +68,69 @@ async function getProjectDetails(projectIds){
   return projectDetails;
 }
 
-module.exports = {fetchTasksForUser, getProjectDetails};
+// Fetch project with collaborators
+async function fetchProjectWithCollaborators(projectId) {
+  try {
+    const response = await axios.get(`${projectAddress}/project/${projectId}`);
+    return response.data;
+  } catch (error) {
+    throw new ServiceUnavailableError('Project Service', error);
+  }
+}
+
+// Fetch all tasks for a project
+async function fetchTasksForProject(projectId, startDate, endDate) {
+  try {
+    const response = await axios.get(
+      `${taskAddress}/task/project/${projectId}?startDate=${startDate}&endDate=${endDate}`
+    );
+    
+    if (!response.data || response.data.length === 0) {
+      throw new NotFoundError('No tasks found for the specified project and date range', {
+        projectId,
+        startDate,
+        endDate
+      });
+    }
+    
+    return response.data;
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new ServiceUnavailableError('Task Service', error);
+  }
+}
+
+// Fetch profile details for collaborators
+async function fetchProfileDetails(profileIds) {
+  const profiles = {};
+  
+  for (const profileId of profileIds) {
+    try {
+      const response = await axios.get(`${profileAddress}/user/${profileId}`);
+      profiles[profileId] = {
+        name: response.data.display_name || response.data.name || 'Unknown User',
+        email: response.data.email || null,
+        dept: response.data.department_name || response.data.dept || null
+      };
+    } catch (error) {
+      console.error(`Failed to fetch profile for ${profileId}:`, error.message);
+      profiles[profileId] = { 
+        name: 'Unknown User', 
+        email: null, 
+        dept: null 
+      };
+    }
+  }
+  
+  return profiles;
+}
+
+module.exports = {
+  fetchTasksForUser, 
+  getProjectDetails,
+  fetchProjectWithCollaborators,
+  fetchTasksForProject,
+  fetchProfileDetails
+};

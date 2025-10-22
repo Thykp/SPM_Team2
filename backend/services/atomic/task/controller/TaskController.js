@@ -91,6 +91,22 @@ module.exports = {
         }
     },
 
+    async getTasksByProject(req, res){
+        try {
+            const projectId = req.params.projectId;
+            const startDate = req.query.startDate;
+            const endDate = req.query.endDate;
+
+            const tasks = await Task.getTasksByProject(projectId, startDate, endDate);
+            res.status(200).json(tasks);
+        } catch (error) {
+            if (error instanceof DatabaseError) {
+                return res.status(error.statusCode).json({ error: error.message });
+            }
+            res.status(500).json({ error: error.message });
+        }
+    },
+
     async updateTask(req, res){
         try {
             const taskId = req.params.id;
