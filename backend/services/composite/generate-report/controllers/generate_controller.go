@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -69,6 +70,52 @@ func (g *GenerateController) Generate(c *gin.Context) {
 	callCtx, cancel2 := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel2()
 	resp, status, err := g.reportClient.Generate(callCtx, userID, req.StartDate, req.EndDate, reqID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "REPORT_SERVICE_ERROR",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	// Pass-through atomic/report response (with correlation ID)
+	c.Header("X-Request-ID", reqID)
+	c.JSON(status, resp)
+}
+
+func (g *GenerateController) GenerateProjectReport(c *gin.Context) {
+	projectID := strings.TrimSpace(c.Param("projectId"))
+	reqID := c.GetString("request_id")
+
+	// 1) Publish Kafka event (best-effort; fail => return 502)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	env := models.KafkaEnvelope{
+		Event:         "PROJECT_REPORT_REQUESTED",
+		CorrelationID: reqID,
+		Payload: models.GenerateProjectEvent{
+			ProjectID: projectID,
+		},
+	}
+	if err := g.producer.Produce(ctx, projectID, env); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "KAFKA_PUBLISH_FAILED",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	// 2) Call atomic/report project endpoint synchronously
+	callCtx, cancel2 := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel2()
+	resp, status, err := g.reportClient.GenerateProjectReport(callCtx, projectID, reqID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,

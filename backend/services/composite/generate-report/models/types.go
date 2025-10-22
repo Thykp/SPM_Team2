@@ -6,15 +6,19 @@ type GenerateRequest struct {
 }
 
 type KafkaEnvelope struct {
-	Event         string        `json:"event"`
-	CorrelationID string        `json:"correlationId"`
-	Payload       GenerateEvent `json:"payload"`
+	Event         string `json:"event"`
+	CorrelationID string `json:"correlationId"`
+	Payload       any    `json:"payload"`
 }
 
 type GenerateEvent struct {
 	UserID    string `json:"userId"`
 	StartDate string `json:"startDate"`
 	EndDate   string `json:"endDate"`
+}
+
+type GenerateProjectEvent struct {
+	ProjectID string `json:"projectId"`
 }
 
 type ReportServiceResponse struct {
