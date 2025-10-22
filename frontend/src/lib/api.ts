@@ -383,7 +383,7 @@ export const Notification = {
     return response.data.data;
   },
 
-  publishDeadlineReminder: async ({taskId, userId, deadline,reminderDays, username}: { taskId: string; userId: string; deadline: string; reminderDays: number[]; username: string;}): Promise<void> => {
+  publishDeadlineReminder: async ({taskId, userId, deadline,reminderDays, username,}: { taskId: string; userId: string; deadline: string; reminderDays: number[]; username: string;}): Promise<void> => {
     const url = `${KONG_BASE_URL}/manage-notifications/publish/deadline-reminder`;
 
     const payload = { taskId, userId, reminderDays, deadline, username};
@@ -391,11 +391,11 @@ export const Notification = {
     await api.post(url, payload);
   },
 
-  publishAddedToResource: async ({ resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy,
-  }: { resourceType: string; resourceId: string; collaboratorIds: string[]; resourceName: string; resourceDescription?: string; addedBy: string;}): Promise<void> => {
+  publishAddedToResource: async ({ resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy,priority
+  }: { resourceType: string; resourceId: string; collaboratorIds: string[]; resourceName: string; resourceDescription?: string; addedBy: string;priority:number}): Promise<void> => {
     const url = `${KONG_BASE_URL}/manage-notifications/publish/added-to-resource`;
 
-    const payload = { resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy };
+    const payload = { resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy, priority };
 
     try {
     await api.post(url, payload);

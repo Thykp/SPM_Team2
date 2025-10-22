@@ -20,6 +20,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { TaskApi, Profile, Project, type TaskPostRequestDto } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { Notification as NotificationAPI } from "@/lib/api";
 
 interface EditProjectTaskProps {
   taskId: string;
@@ -44,6 +46,9 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
   onClose,
   onTaskUpdated,
 }) => {
+  const { profile } = useAuth();
+  const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [fetchingTask, setFetchingTask] = useState(true);
   const [task, setTask] = useState<{
@@ -80,6 +85,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
           parent: taskData.parent || null,
         });
         setSelectedCollaborators(taskData.collaborators || []);
+        setOriginalCollaborators(taskData.collaborators || []);
 
         // Fetch project details to get collaborators and owner
         const project = await Project.getById(projectId);
@@ -153,6 +159,24 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
       };
 
       await TaskApi.updateTask(taskId, taskData);
+      const newlyAdded = selectedCollaborators.filter((id) => !originalCollaborators.includes(id));
+
+      if (newlyAdded.length > 0) {
+        try {
+          await NotificationAPI.publishAddedToResource({
+            resourceType: "project-task",
+            resourceId: String(taskData.project_id),
+            collaboratorIds: newlyAdded,
+            resourceName: taskData.title,
+            resourceDescription: taskData.description || "",
+            priority: taskData.priority,
+            addedBy: profile?.display_name || "Unknown User",
+          });
+          console.log("Notifications published for new collaborators when project edited:", newlyAdded);
+        } catch (notifyErr) {
+          console.error("Failed to publish notification on project edited:", notifyErr);
+        }
+      }
 
       onClose();
       onTaskUpdated?.();

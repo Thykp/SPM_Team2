@@ -23,6 +23,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { TaskApi as TaskAPI, type TaskPostRequestDto, type TaskDTO, Profile, Project } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { Notification as NotificationAPI } from "@/lib/api";
 
 interface CreateProjectTaskProps {
   userId: string;
@@ -53,6 +55,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
 }) => {
+  const { profile } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
@@ -179,6 +182,30 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
 
       // Use the new createTaskWithProjectData API method
       const response = await TaskAPI.createTask(taskData);
+
+      // Notify collaborators upon creation
+      if (selectedCollaborators.length > 0) {
+        const notificationPayload = {
+          resourceType: taskData.parent ? "project-subtask" : "project-task",
+          resourceId: String(taskData.project_id),
+          collaboratorIds: selectedCollaborators,
+          resourceName: taskData.title,
+          resourceDescription: taskData.description || "",
+          priority:taskData.priority,
+          addedBy: profile?.display_name || "Unknown User",
+        };
+
+        console.log("Publishing notifications for project task creation:", notificationPayload);
+
+        try {
+          const notifResponse = await NotificationAPI.publishAddedToResource(notificationPayload);
+          console.log("✅ Notification published:", notifResponse);
+        } catch (notifErr) {
+          console.error("❌ Failed to publish notification:", notifErr);
+        }
+      } else {
+        console.log("ℹ️ No collaborators selected — no notification sent.");
+      }
       
       console.log('Task created successfully:', response);
       onTaskCreated(response);

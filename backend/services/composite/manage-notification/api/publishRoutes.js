@@ -53,10 +53,10 @@ router.post('/task-update', async (req, res) => {
 // Added-to-resource notifications can include multiple collaborators in one payload
 router.post('/added-to-resource', async (req, res) => {
   try {
-    const {resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy} = req.body;
+    const {resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy, priority} = req.body;
     if(!resourceType || !resourceId || !collaboratorIds || !resourceName || !resourceDescription || !addedBy) return res.status(400).json({ message: 'missing required fields' });
 
-    await publishAddedToResource(resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy);
+    await publishAddedToResource(resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy, priority);
 
     res.status(200).json({ message: 'Added-to-project notifications sent' });
   } catch (err) {
