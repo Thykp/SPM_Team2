@@ -41,7 +41,6 @@ function isFresh(entry: CacheEntry<any> | null, ttl: number) {
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// Inline user type as returned by /profile/user/all (we allow nullable for safety)
 type UserRow = {
   id: string;
   display_name: string;
@@ -70,7 +69,7 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-// Map your task statuses to a progress %
+// Map task statuses to a progress %
 function statusToProgress(status?: TaskType["status"]): number {
   switch (status) {
     case "Completed": return 100;
@@ -152,10 +151,13 @@ export default function ManageUser() {
   const myUserId = (profile as any)?.id as string | undefined;
   const myRole = (profile?.role as string | undefined) ?? undefined;
 
+  const [myTeamId, setMyTeamId] = useState<string | null>(null);
+  const [myDepartmentId, setMyDepartmentId] = useState<string | null>(null);
+
   const [reportBusy, setReportBusy] = useState<"team" | "department" | null>(null);
   const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
 
-  // Cache keys (namespaced by current viewer for pct, so manager A and manager B don't overwrite each other)
+  // Cache keys
   const USERS_CACHE_KEY = "manageUser:users:all";
   const PCT_CACHE_KEY   = myUserId ? `manageUser:pct:${myUserId}` : "manageUser:pct:anon";
 
@@ -174,6 +176,9 @@ export default function ManageUser() {
 
       if (all) {
         const me = myUserId ? all.find(u => u.id === myUserId) : undefined;
+        setMyTeamId(me?.team_id ?? null);
+        setMyDepartmentId(me?.department_id ?? null);
+
         const mine = all.filter(u => isReportForMe(myRole, me?.team_id ?? null, myUserId, u));
         setUsers(mine);
         setLoading(false);
@@ -184,16 +189,16 @@ export default function ManageUser() {
         setCache(USERS_CACHE_KEY, freshAll);
 
         const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
+        setMyTeamId(meFresh?.team_id ?? null);
+        setMyDepartmentId(meFresh?.department_id ?? null);
+
         const mineFresh = freshAll.filter(u => isReportForMe(myRole, meFresh?.team_id ?? null, myUserId, u));
         setUsers(mineFresh);
 
         void prefetchPct(mineFresh);
       } catch (e: any) {
         if (!all) {
-          // we had nothing to show
           setError("Failed to load your team. Please try again.");
-        } else {
-          // setBanner({ type: "info", msg: "Using cached data due to network limits." });
         }
       } finally {
         setLoading(false);
@@ -201,7 +206,6 @@ export default function ManageUser() {
     };
 
     const loadPct = async () => {
-      // show cached pct immediately if fresh
       const cachedPct = getCache<Record<string, number>>(PCT_CACHE_KEY);
       if (cachedPct?.data && isFresh(cachedPct, CACHE_TTL_PCT_MS)) {
         setPerUserPct(cachedPct.data);
@@ -255,10 +259,8 @@ export default function ManageUser() {
 
     try {
       for (const u of list) {
-
         if (basePct[u.id] !== undefined) continue;
 
-        // Space out calls a bit to be nice to the API gateway
         await sleep(100);
 
         try {
@@ -267,29 +269,34 @@ export default function ManageUser() {
           const done = ts.filter(t => statusToProgress(t.status) >= 100).length;
           const pct = total ? Math.round((done / total) * 100) : 0;
           nextPct[u.id] = pct;
-          // update UI progressively
           setPerUserPct(prev => ({ ...prev, [u.id]: pct }));
-        } catch (err) {
-          // If an individual user call fails, set 0 for now (or leave undefined)
+        } catch {
           nextPct[u.id] = nextPct[u.id] ?? 0;
         }
       }
       setCache(PCT_CACHE_KEY, nextPct);
-    } catch (e) {
-      // If we hit a burst error (e.g., 429), keep whatever we have
+    } catch {
       setBanner(prev => prev ?? { type: "info", msg: "Some progress data is cached due to rate limits." });
     }
   };
 
-  // Both actions hit the same report endpoint; backend decides scope by role
   async function callReport(kind: "team" | "department") {
-    if (!myUserId) return;
     if (reportBusy) return;
     setBanner(null);
     setReportBusy(kind);
+
     try {
-      const res = await Report.generate(myUserId, { startDate, endDate });
-      setBanner({ type: "success", msg: res?.message || "Report requested successfully." });
+      if (kind === "team") {
+        if (!canSeeTeamButton(myRole)) throw new Error("You are not allowed to generate a team report.");
+        if (!myTeamId) throw new Error("Your team is not set.");
+        const res = await Report.generateTeam(myTeamId, { startDate, endDate });
+        setBanner({ type: "success", msg: res?.message || "Team report requested successfully." });
+      } else {
+        if (!canSeeDepartmentButton(myRole)) throw new Error("You are not allowed to generate a department report.");
+        if (!myDepartmentId) throw new Error("Your department is not set.");
+        const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate });
+        setBanner({ type: "success", msg: res?.message || "Department report requested successfully." });
+      }
     } catch (e: any) {
       setBanner({ type: "error", msg: e?.message || "Failed to generate report." });
     } finally {
@@ -347,8 +354,14 @@ export default function ManageUser() {
               {canSeeTeamButton(myRole) && (
                 <Button
                   onClick={() => callReport("team")}
-                  disabled={reportBusy !== null || !myUserId || dateInvalid}
-                  title={!myUserId ? "Missing user id" : dateInvalid ? "Invalid date range" : "Generate team-level report"}
+                  disabled={reportBusy !== null || !myTeamId || dateInvalid}
+                  title={
+                    !myTeamId
+                      ? "No team associated with your profile"
+                      : dateInvalid
+                      ? "Invalid date range"
+                      : "Generate team-level report"
+                  }
                   variant="outline"
                   className={cn(
                     "gap-2 rounded-none px-3 sm:px-4",
@@ -365,8 +378,14 @@ export default function ManageUser() {
               {canSeeDepartmentButton(myRole) && (
                 <Button
                   onClick={() => callReport("department")}
-                  disabled={reportBusy !== null || !myUserId || dateInvalid}
-                  title={!myUserId ? "Missing user id" : dateInvalid ? "Invalid date range" : "Generate department-level report"}
+                  disabled={reportBusy !== null || !myDepartmentId || dateInvalid}
+                  title={
+                    !myDepartmentId
+                      ? "No department associated with your profile"
+                      : dateInvalid
+                      ? "Invalid date range"
+                      : "Generate department-level report"
+                  }
                   variant="outline"
                   className={cn(
                     "gap-2 rounded-none px-3 sm:px-4",
