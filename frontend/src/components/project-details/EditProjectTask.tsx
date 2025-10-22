@@ -164,7 +164,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
       if (newlyAdded.length > 0) {
         try {
           await NotificationAPI.publishAddedToResource({
-            resourceType: "project-task",
+            resourceType: task.parent ? "subtask" : "project-task",
             resourceId: String(taskData.project_id),
             collaboratorIds: newlyAdded,
             resourceName: taskData.title,
