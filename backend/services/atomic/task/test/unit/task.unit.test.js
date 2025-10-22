@@ -2,11 +2,10 @@ const { supabase } = require("../../db/supabase");
 const Task = require("../../model/task");
 const { TaskNotFoundError, ValidationError, DatabaseError } = require("../../model/TaskError");
 
-jest.mock("../../db/supabase");
-
 describe('Task Class Test', () => {
     beforeEach(()=>{
-        jest.clearAllMocks();
+        // Don't clear all mocks as it would reset our global supabase mock
+        // jest.clearAllMocks();
 
         // spy on console.error and initialize a mockImplementation to do nothing
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -824,8 +823,20 @@ describe('Task Class Test', () => {
                 priority: 5
             };
 
-            // Mock task insert
+            // Mock: 1st call - check for duplicate (no existing task found)
+            // Mock: 2nd call - insert new task
+            // Mock: 3rd call - insert participants
             supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: { code: 'PGRST116' } // Row not found
+                            })
+                        })
+                    })
+                })
                 .mockReturnValueOnce({
                     insert: jest.fn().mockReturnValue({
                         select: jest.fn().mockReturnValue({
@@ -836,7 +847,6 @@ describe('Task Class Test', () => {
                         })
                     })
                 })
-                // Mock participants insert
                 .mockReturnValueOnce({
                     insert: jest.fn().mockResolvedValue({
                         data: [],
@@ -862,16 +872,29 @@ describe('Task Class Test', () => {
         test('Should throw DatabaseError on insert failure', async () => {
             const mockError = { message: 'Insert failed' };
 
-            supabase.from = jest.fn().mockReturnValue({
-                insert: jest.fn().mockReturnValue({
+            // Mock: 1st call - check for duplicate (no existing task)
+            // Mock: 2nd call - insert fails
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
                     select: jest.fn().mockReturnValue({
-                        single: jest.fn().mockResolvedValue({
-                            data: null,
-                            error: mockError
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: { code: 'PGRST116' }
+                            })
                         })
                     })
                 })
-            });
+                .mockReturnValueOnce({
+                    insert: jest.fn().mockReturnValue({
+                        select: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: mockError
+                            })
+                        })
+                    })
+                });
 
             const task = new Task({
                 title: 'New Task',
@@ -879,7 +902,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test',
                 status: 'ongoing',
-                participants: []
+                participants: [],
+                priority: 5
             });
 
             await expect(task.createTask())
@@ -890,22 +914,46 @@ describe('Task Class Test', () => {
 
     describe('updateTask()', () => {
         test('Should update task successfully', async () => {
-            // Mock update, delete participants, add participants
+            // Mock: 1st call - check for duplicate title (no duplicate)
+            // Mock: 2nd call - update task
+            // Mock: 3rd call - delete old participants
+            // Mock: 4th call - insert new participants
             supabase.from = jest.fn()
                 .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            neq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: null,
+                                    error: { code: 'PGRST116' }
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
                     update: jest.fn().mockReturnValue({
-                        eq: jest.fn().mockResolvedValue({ data: null, error: null })
+                        eq: jest.fn().mockResolvedValue({
+                            data: null,
+                            error: null
+                        })
                     })
                 })
                 .mockReturnValueOnce({
                     delete: jest.fn().mockReturnValue({
                         eq: jest.fn().mockReturnValue({
-                            select: jest.fn().mockResolvedValue({ data: [], error: null })
+                            select: jest.fn().mockResolvedValue({
+                                data: [],
+                                error: null
+                            })
                         })
                     })
                 })
                 .mockReturnValueOnce({
-                    insert: jest.fn().mockResolvedValue({ data: [], error: null })
+                    insert: jest.fn().mockResolvedValue({
+                        data: [],
+                        error: null
+                    })
                 });
 
             const task = new Task({
@@ -925,14 +973,29 @@ describe('Task Class Test', () => {
         test('Should throw DatabaseError on update failure', async () => {
             const mockError = { message: 'Update failed' };
 
-            supabase.from = jest.fn().mockReturnValue({
-                update: jest.fn().mockReturnValue({
-                    eq: jest.fn().mockResolvedValue({
-                        data: null,
-                        error: mockError
+            // Mock: 1st call - check for duplicate title (no duplicate)
+            // Mock: 2nd call - update fails
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            neq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: null,
+                                    error: { code: 'PGRST116' }
+                                })
+                            })
+                        })
                     })
                 })
-            });
+                .mockReturnValueOnce({
+                    update: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockResolvedValue({
+                            data: null,
+                            error: mockError
+                        })
+                    })
+                });
 
             const task = new Task({
                 id: 'task-123',
@@ -941,7 +1004,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Updated',
                 status: 'ongoing',
-                participants: []
+                participants: [],
+                priority: 5
             });
 
             await expect(task.updateTask())

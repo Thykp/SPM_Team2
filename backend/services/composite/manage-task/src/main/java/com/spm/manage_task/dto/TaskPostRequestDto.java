@@ -1,7 +1,9 @@
 package com.spm.manage_task.dto;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.spm.manage_task.factory.Participant;
@@ -37,6 +39,11 @@ public class TaskPostRequestDto {
     @JsonProperty("parent")
     private String taskParent;
 
+    @JsonProperty("participants")
+    public List<Participant> getParticipants() {
+        return processCollaborators();
+    }
+
 
     public TaskPostRequestDto(String taskTitle, String taskDeadline, String taskProjectId, String taskDescription,
             String taskStatus, ArrayList<String> taskCollaborators, String taskOwner, String taskParent, int taskPriority) {
@@ -59,19 +66,22 @@ public class TaskPostRequestDto {
     }
 
     public List<Participant> processCollaborators(){
-        List<Participant> participants = new ArrayList<>();
-        
+        Map<String, Participant> participantMap = new HashMap<>();
+
+        // Add the owner to the participant map
         if (this.taskOwner != null) {
-            participants.add(new Participant(true, this.taskOwner));
+            participantMap.put(this.taskOwner, new Participant(true, this.taskOwner));
         }
-        
+
+        // Add collaborators to the participant map (if they are not already the owner)
         if (this.taskCollaborators != null) {
             for (String collaborator : this.taskCollaborators) {
-                participants.add(new Participant(false, collaborator));
+                participantMap.putIfAbsent(collaborator, new Participant(false, collaborator));
             }
         }
-        
-        return participants;
+
+        // Convert the map back to a list
+        return new ArrayList<>(participantMap.values());
     }
 
     public String getTaskTitle() {

@@ -17,9 +17,28 @@ async function getAllUsersDropdown() {
 
 // Full list (revamped_profiles).
 async function getAllUsers() {
-  const { data, error } = await supabase.from(PROFILE_TABLE).select("*");
+  const { data, error } = await supabase
+    .from(PROFILE_TABLE)
+    .select(`
+      id,
+      display_name,
+      role,
+      team_id,
+      department_id,
+      department:${DEPT_TABLE}(name),
+      team:${TEAM_TABLE}(name)
+    `);
+
   if (error) throw new Error(error.message);
-  return data || [];
+
+  // Flatten the nested objects for easier consumption
+  const normalizedData = data.map((user) => ({
+    ...user,
+    department_name: user.department?.name || null,
+    team_name: user.team?.name || null,
+  }));
+
+  return normalizedData || [];
 }
 
 // Filter: by team_id OR department_id (UUIDs), with role (default "Staff").
@@ -71,9 +90,68 @@ async function getUserDetailsWithId(user_id) {
   return result;
 }
 
+// Fetch users based on the current user's role, team_id, and department_id
+async function getUsersByRoleScope({ role, team_id, department_id }) {
+  console.log("getUsersByRoleScope called with:", { role, team_id, department_id });
+
+  let query = supabase
+    .from(PROFILE_TABLE)
+    .select("id, display_name, role, team_id, department_id")
+    .order("display_name", { ascending: true });
+
+  if (role === "Manager") {
+    if (team_id) {
+      query = query.eq("team_id", team_id).eq("role", "Staff");
+    } else {
+      return []; 
+    }
+  } else if (role === "Director") {
+    if (department_id) {
+      query = query.eq("department_id", department_id).in("role", ["Manager", "Staff"]);
+    } else {
+      return [];
+    }
+  } else if (role === "Senior Management") {
+    // No additional filters for Senior Management
+  } else {
+    // Default case: return an empty list for unsupported roles
+    return [];
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+// Fetch all teams (id, name, department_id)
+async function getAllTeams() {
+  const { data, error } = await supabase
+    .from(TEAM_TABLE)
+    .select("id, name, department_id")
+    .order("name", { ascending: true }); // Sort teams alphabetically by name
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+// Fetch all departments (id, name)
+async function getAllDepartments() {
+  const { data, error } = await supabase
+    .from(DEPT_TABLE)
+    .select("id, name")
+    .order("name", { ascending: true }); // Sort departments alphabetically by name
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 module.exports = {
   getAllUsersDropdown,
   getAllUsers,
   getStaffByScope,
   getUserDetailsWithId,
+  getUsersByRoleScope,
+  getAllTeams,
+  getAllDepartments,
 };
