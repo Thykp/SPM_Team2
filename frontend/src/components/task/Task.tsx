@@ -5,6 +5,7 @@ import EditTask from "./EditTask"; // Import the EditTask component
 import { TaskApi, type TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
 import { useAuth } from "@/contexts/AuthContext";
+import { RecurTask } from "./RecurTask";
  
 
 type TaskProps = {
@@ -19,6 +20,7 @@ export const Task: React.FC<TaskProps> = ({
   const { profile } = useAuth(); 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editing, setEditing] = useState(false); // State to toggle the EditTask modal
+  const [recurring, setRecurring] = useState(false); // State to toggle the RecurTask modal
   const [showDetails, setShowDetails] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -92,6 +94,17 @@ export const Task: React.FC<TaskProps> = ({
               </li>
               <li>
                 <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    setRecurring(true); // Open the RecurTask modal
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Recur Task
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={async () => {
                     setDropdownOpen(false);
                     await deleteTask(); // Call the deleteTask function
@@ -112,6 +125,13 @@ export const Task: React.FC<TaskProps> = ({
         taskId={taskContent.id}
         currentUserId={profile?.id || ""}
         onClose={() => setEditing(false)}
+        />
+      )}
+
+      {recurring && (
+        <RecurTask
+          taskId={taskContent.id}
+          onClose={() => setRecurring(false)}
         />
       )}
 
