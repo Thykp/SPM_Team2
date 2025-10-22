@@ -82,8 +82,7 @@ describe('TaskController', () => {
 
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({
-                error: validationError.message,
-                details: validationError.errors,
+                error: validationError.message
             });
         });
 

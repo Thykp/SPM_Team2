@@ -172,6 +172,8 @@ module.exports = {
       throw new Error("Owner ID is required");
     }
 
+    collaborators = collaborators || [];
+
     const now = new Date().toISOString();
 
     console.log("Collaborators received:", collaborators);

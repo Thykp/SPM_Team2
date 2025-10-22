@@ -124,9 +124,10 @@ type GetAllUsersRaw = {
   id: string;
   display_name: string;
   role: string | null;
-  department: string | null;
+  department: { name: string } | string | null; // Updated to include object type
   department_id?: string | null;
   team_id?: string | null;
+  team: { name: string } | string | null; // Updated to include object type
 };
 
 /** Normalized shape we expose to the app (note: department is string, not null) */
@@ -137,6 +138,7 @@ export type GetAllUsers = {
   department: string;
   department_id?: string | null;
   team_id?: string | null;
+  team: string | null;
 };
 
 // ----- Services -----
@@ -149,9 +151,10 @@ export const Profile = {
       id: u.id,
       display_name: u.display_name,
       role: u.role ?? "Staff",
-      department: u.department ?? "",
+      department: typeof u.department === "object" ? u.department?.name ?? "" : u.department ?? "",
       department_id: u.department_id ?? null,
       team_id: u.team_id ?? null,
+      team: typeof u.team === "object" ? u.team?.name ?? "" : u.team ?? null,
     }));
 
     return normalized;
@@ -161,6 +164,18 @@ export const Profile = {
     const url = `${KONG_BASE_URL}/manage-account/api/users/getUserDetails`;
     const { data } = await api.post<Profile[]>(url, listOfUserIds);
     return data;
+  },
+
+  getAllTeams: async (): Promise<{ data: { id: string; name: string; department_id: string }[] }> => {
+    const url = `${KONG_BASE_URL}/manage-account/api/users/teams`; // Call the manage-account composite service
+    const response = await api.get<{ data: { id: string; name: string; department_id: string }[] }>(url);
+    return response.data; // Return the full response object
+  },
+
+  getAllDepartments: async (): Promise<{ data: { id: string; name: string }[] }> => {
+    const url = `${KONG_BASE_URL}/manage-account/api/users/departments`; // Call the manage-account composite service
+    const response = await api.get<{ data: { id: string; name: string }[] }>(url);
+    return response.data; // Return the full response object
   },
 };
 
@@ -250,14 +265,12 @@ export const TaskApi = {
     return data;
   },
 
-  // CREATE via atomic service
   createTask: async (newTask: TaskPostRequestDto): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/new`;
     const { data } = await api.post<TaskDTO>(url, newTask);
     return data;
   },
 
-  // UPDATE via atomic service
   updateTask: async (taskId: string, updates: TaskPostRequestDto): Promise<TaskDTO> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/edit/${taskId}`;
     const { data } = await api.put<TaskDTO>(url, updates);

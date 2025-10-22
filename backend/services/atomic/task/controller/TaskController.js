@@ -21,8 +21,7 @@ module.exports = {
         } catch (error) {
             if (error instanceof ValidationError) {
                 return res.status(error.statusCode).json({ 
-                    error: error.message, 
-                    details: error.errors 
+                    error: error.message
                 });
             }
             if (error instanceof DatabaseError) {
@@ -93,6 +92,7 @@ module.exports = {
 
     async updateTask(req, res){
         try {
+            console.log("Incoming payload:", req.body);
             const taskId = req.params.id;
             const newtaskObj = TaskService.checkTask({ id: taskId, ...req.body });
             await newtaskObj.validate();
@@ -100,10 +100,9 @@ module.exports = {
             res.status(200).json({ message: "Successfully updated task and task participants" });
         } catch (error) {
             if (error instanceof ValidationError) {
-                return res.status(error.statusCode).json({ 
-                    error: error.message, 
-                    details: error.errors 
-                });
+                return res.status(error.statusCode)
+                    .set('Content-Type', 'application/json')
+                    .json({ error: error.message });
             }
             if (error instanceof DatabaseError){
                 return res.status(error.statusCode).json({ error: error.message }); 
