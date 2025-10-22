@@ -11,7 +11,22 @@ import (
 	"testing"
 )
 
-// Create a mock HTTP server that mimics your profile service
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+func createTestUser(id, name, dept, team, role, teamName, deptName string) User {
+	return User{
+		UserId:             id,
+		UserName:           &name,
+		UserDepartmentId:   &dept,
+		UserTeamId:         &team,
+		UserRole:           &role,
+		UserTeamName:       &teamName,
+		UserDepartmentName: &deptName,
+	}
+}
+
 func createMockProfileServer(responses map[string]User, allUsers []User) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/user/all" {
@@ -20,7 +35,6 @@ func createMockProfileServer(responses map[string]User, allUsers []User) *httpte
 			json.NewEncoder(w).Encode(allUsers)
 			return
 		}
-		// Extract user ID from path /user/{id}
 		if len(r.URL.Path) > 6 && r.URL.Path[:6] == "/user/" {
 			userId := r.URL.Path[6:]
 			if user, exists := responses[userId]; exists {
@@ -37,530 +51,555 @@ func createMockProfileServer(responses map[string]User, allUsers []User) *httpte
 	}))
 }
 
-// Test helper to create sample users
-func createTestUser(id, name, dept, team, role, teamName, deptName string) User {
-	return User{
-		UserId:             id,
-		UserName:           &name,
-		UserDepartmentId:   &dept,
-		UserTeamId:         &team,
-		UserRole:           &role,
-		UserTeamName:       &teamName,
-		UserDepartmentName: &deptName,
-	}
-}
+func setupMockServer(t *testing.T, responses map[string]User, allUsers []User) func() {
+	t.Helper()
 
-// Since your service has hardcoded URLs, we need to temporarily modify them for testing
-// This is a limitation - in production code, you'd want dependency injection
-func TestGetAllUsers_Success(t *testing.T) {
-	// Setup mock data
-	allUsers := []User{
-		createTestUser("1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
-		createTestUser("2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
-	}
-
-	// Create mock server
-	server := createMockProfileServer(nil, allUsers)
-	defer server.Close()
-
-	// Parse server URL
+	server := createMockProfileServer(responses, allUsers)
 	u, _ := url.Parse(server.URL)
 	host, portStr, _ := net.SplitHostPort(u.Host)
 	port, _ := strconv.Atoi(portStr)
 
-	// Save original values
 	origAddr := userServiceAddress
 	origPort := userServicePort
-	defer func() {
-		userServiceAddress = origAddr
-		userServicePort = origPort
-	}()
 
-	// Set to mock server
 	userServiceAddress = "http://" + host
 	userServicePort = port
 
-	// Call the function
-	users, err := GetAllUsers()
-
-	// Assertions
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if len(users) != 2 {
-		t.Fatalf("Expected 2 users, got %d", len(users))
-	}
-	if users[0].UserId != "1" || users[1].UserId != "2" {
-		t.Errorf("Unexpected users: %+v", users)
+	return func() {
+		server.Close()
+		userServiceAddress = origAddr
+		userServicePort = origPort
 	}
 }
 
-func TestGetAllUsers_ServerError(t *testing.T) {
-	// Create mock server that returns error
+func setupInvalidServer(t *testing.T) func() {
+	t.Helper()
+
+	origAddr := userServiceAddress
+	origPort := userServicePort
+
+	userServiceAddress = "http://invalid-host-that-does-not-exist"
+	userServicePort = 99999
+
+	return func() {
+		userServiceAddress = origAddr
+		userServicePort = origPort
+	}
+}
+
+func setupInvalidJSONServer(t *testing.T, path string) func() {
+	t.Helper()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/user/all" {
-			w.WriteHeader(http.StatusInternalServerError)
+		if r.URL.Path == path {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("invalid json{{{"))
 		}
 	}))
-	defer server.Close()
 
-	// Parse server URL
 	u, _ := url.Parse(server.URL)
 	host, portStr, _ := net.SplitHostPort(u.Host)
 	port, _ := strconv.Atoi(portStr)
 
-	// Save original values
 	origAddr := userServiceAddress
 	origPort := userServicePort
-	defer func() {
-		userServiceAddress = origAddr
-		userServicePort = origPort
-	}()
 
-	// Set to mock server
 	userServiceAddress = "http://" + host
 	userServicePort = port
 
-	// Call the function
-	_, err := GetAllUsers()
-
-	// Assertions
-	if err == nil {
-		t.Fatal("Expected error, got nil")
-	}
-}
-
-func TestGetUserDetails_Success(t *testing.T) {
-	// Setup mock data
-	responses := map[string]User{
-		"user1": createTestUser("user1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
-		"user2": createTestUser("user2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
-	}
-
-	// Create mock server
-	server := createMockProfileServer(responses, nil)
-	defer server.Close()
-
-	// Parse server URL
-	u, _ := url.Parse(server.URL)
-	host, portStr, _ := net.SplitHostPort(u.Host)
-	port, _ := strconv.Atoi(portStr)
-
-	// Save original values
-	origAddr := userServiceAddress
-	origPort := userServicePort
-	defer func() {
+	return func() {
+		server.Close()
 		userServiceAddress = origAddr
 		userServicePort = origPort
-	}()
-
-	// Set to mock server
-	userServiceAddress = "http://" + host
-	userServicePort = port
-
-	// Input
-	inputUsers := []User{
-		{UserId: "user1"},
-		{UserId: "user2"},
-	}
-
-	// Call the function
-	result := GetUserDetails(inputUsers)
-
-	// Assertions
-	if len(result) != 2 {
-		t.Fatalf("Expected 2 users, got %d", len(result))
-	}
-	userMap := make(map[string]User)
-	for _, u := range result {
-		userMap[u.UserId] = u
-	}
-	if _, ok := userMap["user1"]; !ok {
-		t.Error("Missing user1")
-	}
-	if _, ok := userMap["user2"]; !ok {
-		t.Error("Missing user2")
 	}
 }
 
-func TestGetUserDetails_EmptyInput(t *testing.T) {
-	// Input
-	inputUsers := []User{}
+func setupErrorServer(t *testing.T, path string, statusCode int) func() {
+	t.Helper()
 
-	// Call the function
-	result := GetUserDetails(inputUsers)
-
-	// Assertions
-	if result == nil {
-		t.Fatal("Expected non-nil result")
-	}
-	if len(result) != 0 {
-		t.Errorf("Expected empty result, got %d users", len(result))
-	}
-}
-
-func TestUserDetailsBasedOnId_Success(t *testing.T) {
-	// Setup mock data
-	responses := map[string]User{
-		"user1": createTestUser("user1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
-	}
-
-	// Create mock server
-	server := createMockProfileServer(responses, nil)
-	defer server.Close()
-
-	// Parse server URL
-	u, _ := url.Parse(server.URL)
-	host, portStr, _ := net.SplitHostPort(u.Host)
-	port, _ := strconv.Atoi(portStr)
-
-	// Save original values
-	origAddr := userServiceAddress
-	origPort := userServicePort
-	defer func() {
-		userServiceAddress = origAddr
-		userServicePort = origPort
-	}()
-
-	// Set to mock server
-	userServiceAddress = "http://" + host
-	userServicePort = port
-
-	// Setup
-	var wg sync.WaitGroup
-	ch := make(chan User, 1)
-	wg.Add(1)
-
-	// Call the function
-	result, err := UserDetailsBasedOnId("user1", ch, &wg)
-
-	// Wait
-	wg.Wait()
-	close(ch)
-
-	// Assertions
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if result == nil {
-		t.Fatal("Expected non-nil result")
-	}
-	if result.UserId != "user1" {
-		t.Errorf("Unexpected user: %+v", result)
-	}
-
-	// Check channel
-	select {
-	case user := <-ch:
-		if user.UserId != "user1" {
-			t.Errorf("Channel user mismatch: %+v", user)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == path {
+			w.WriteHeader(statusCode)
 		}
-	default:
-		t.Error("Expected user in channel")
-	}
-}
+	}))
 
-func TestUserDetailsBasedOnId_NotFound(t *testing.T) {
-	// Create mock server
-	server := createMockProfileServer(map[string]User{}, nil)
-	defer server.Close()
-
-	// Parse server URL
 	u, _ := url.Parse(server.URL)
 	host, portStr, _ := net.SplitHostPort(u.Host)
 	port, _ := strconv.Atoi(portStr)
 
-	// Save original values
 	origAddr := userServiceAddress
 	origPort := userServicePort
-	defer func() {
-		userServiceAddress = origAddr
-		userServicePort = origPort
-	}()
 
-	// Set to mock server
 	userServiceAddress = "http://" + host
 	userServicePort = port
 
-	// Setup
-	var wg sync.WaitGroup
-	ch := make(chan User, 1)
-	wg.Add(1)
-
-	// Call the function
-	result, err := UserDetailsBasedOnId("nonexistent", ch, &wg)
-
-	// Wait
-	wg.Wait()
-	close(ch)
-
-	// Assertions
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	return func() {
+		server.Close()
+		userServiceAddress = origAddr
+		userServicePort = origPort
 	}
-	if result == nil {
-		t.Fatal("Expected non-nil result")
-	}
-	if result.UserId != "" {
-		t.Errorf("Expected empty user, got %+v", result)
-	}
+}
 
-	// Check channel has the user
-	select {
-	case user := <-ch:
-		if user.UserId != "" {
-			t.Errorf("Expected empty user in channel, got %+v", user)
+func setupCustomServer(t *testing.T, handler http.HandlerFunc) func() {
+	t.Helper()
+
+	server := httptest.NewServer(handler)
+	u, _ := url.Parse(server.URL)
+	host, portStr, _ := net.SplitHostPort(u.Host)
+	port, _ := strconv.Atoi(portStr)
+
+	origAddr := userServiceAddress
+	origPort := userServicePort
+
+	userServiceAddress = "http://" + host
+	userServicePort = port
+
+	return func() {
+		server.Close()
+		userServiceAddress = origAddr
+		userServicePort = origPort
+	}
+}
+
+// ============================================================================
+// Tests for UserDetailsBasedOnId
+// ============================================================================
+
+func TestUserDetailsBasedOnId(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		responses := map[string]User{
+			"user1": createTestUser("user1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
 		}
-	default:
-		t.Error("Expected user in channel")
-	}
+		cleanup := setupMockServer(t, responses, nil)
+		defer cleanup()
+
+		var wg sync.WaitGroup
+		ch := make(chan User, 1)
+		wg.Add(1)
+
+		result, err := UserDetailsBasedOnId("user1", ch, &wg)
+		wg.Wait()
+		close(ch)
+
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if result == nil {
+			t.Fatal("Expected non-nil result")
+		}
+		if result.UserId != "user1" {
+			t.Errorf("Unexpected user: %+v", result)
+		}
+
+		select {
+		case user := <-ch:
+			if user.UserId != "user1" {
+				t.Errorf("Channel user mismatch: %+v", user)
+			}
+		default:
+			t.Error("Expected user in channel")
+		}
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		cleanup := setupMockServer(t, map[string]User{}, nil)
+		defer cleanup()
+
+		var wg sync.WaitGroup
+		ch := make(chan User, 1)
+		wg.Add(1)
+
+		result, err := UserDetailsBasedOnId("nonexistent", ch, &wg)
+		wg.Wait()
+		close(ch)
+
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if result == nil {
+			t.Fatal("Expected non-nil result")
+		}
+		if result.UserId != "" {
+			t.Errorf("Expected empty user, got %+v", result)
+		}
+
+		select {
+		case user := <-ch:
+			if user.UserId != "" {
+				t.Errorf("Expected empty user in channel, got %+v", user)
+			}
+		default:
+			t.Error("Expected user in channel")
+		}
+	})
+
+	t.Run("ConnectionError", func(t *testing.T) {
+		cleanup := setupInvalidServer(t)
+		defer cleanup()
+
+		var wg sync.WaitGroup
+		ch := make(chan User, 1)
+		wg.Add(1)
+
+		result, err := UserDetailsBasedOnId("user1", ch, &wg)
+		wg.Wait()
+		close(ch)
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+		if result != nil {
+			t.Errorf("Expected nil result, got %+v", result)
+		}
+	})
+
+	t.Run("DecodeError", func(t *testing.T) {
+		cleanup := setupCustomServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("invalid json{{{"))
+		}))
+		defer cleanup()
+
+		var wg sync.WaitGroup
+		ch := make(chan User, 1)
+		wg.Add(1)
+
+		result, err := UserDetailsBasedOnId("user1", ch, &wg)
+		wg.Wait()
+		close(ch)
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+		if result != nil {
+			t.Errorf("Expected nil result, got %+v", result)
+		}
+	})
+
+	t.Run("Non200Status", func(t *testing.T) {
+		cleanup := setupErrorServer(t, "/user/user1", http.StatusNotFound)
+		defer cleanup()
+
+		var wg sync.WaitGroup
+		ch := make(chan User, 1)
+		wg.Add(1)
+
+		result, err := UserDetailsBasedOnId("user1", ch, &wg)
+		wg.Wait()
+		close(ch)
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+		if result != nil {
+			t.Errorf("Expected nil result, got %+v", result)
+		}
+	})
 }
 
-func TestGetAssignees_Success(t *testing.T) {
-    // Setup mock data
-    assignees := []User{
-        createTestUser("1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
-        createTestUser("2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
-    }
+// ============================================================================
+// Tests for GetUserDetails
+// ============================================================================
 
-    // Create mock server
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path == "/user/assignees" {
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(http.StatusOK)
-            json.NewEncoder(w).Encode(assignees)
-        } else {
-            w.WriteHeader(http.StatusNotFound)
-        }
-    }))
-    defer server.Close()
+func TestGetUserDetails(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		responses := map[string]User{
+			"user1": createTestUser("user1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
+			"user2": createTestUser("user2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
+		}
+		cleanup := setupMockServer(t, responses, nil)
+		defer cleanup()
 
-    // Parse server URL
-    u, _ := url.Parse(server.URL)
-    host, portStr, _ := net.SplitHostPort(u.Host)
-    port, _ := strconv.Atoi(portStr)
+		inputUsers := []User{
+			{UserId: "user1"},
+			{UserId: "user2"},
+		}
 
-    // Save original values
-    origAddr := userServiceAddress
-    origPort := userServicePort
-    defer func() {
-        userServiceAddress = origAddr
-        userServicePort = origPort
-    }()
+		result := GetUserDetails(inputUsers)
 
-    // Set to mock server
-    userServiceAddress = "http://" + host
-    userServicePort = port
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 users, got %d", len(result))
+		}
+		userMap := make(map[string]User)
+		for _, u := range result {
+			userMap[u.UserId] = u
+		}
+		if _, ok := userMap["user1"]; !ok {
+			t.Error("Missing user1")
+		}
+		if _, ok := userMap["user2"]; !ok {
+			t.Error("Missing user2")
+		}
+	})
 
-    // Call the function
-    result, err := GetAssignees("role1", "team1", "dept1")
+	t.Run("EmptyInput", func(t *testing.T) {
+		result := GetUserDetails([]User{})
 
-    // Assertions
-    if err != nil {
-        t.Fatalf("Expected no error, got %v", err)
-    }
-    if len(result) != 2 {
-        t.Fatalf("Expected 2 assignees, got %d", len(result))
-    }
+		if result == nil {
+			t.Fatal("Expected non-nil result")
+		}
+		if len(result) != 0 {
+			t.Errorf("Expected empty result, got %d users", len(result))
+		}
+	})
 }
 
-func TestGetAssignees_ServerError(t *testing.T) {
-    // Create mock server that returns error
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path == "/user/assignees" {
-            w.WriteHeader(http.StatusInternalServerError)
-        }
-    }))
-    defer server.Close()
+// ============================================================================
+// Tests for GetAllUsers
+// ============================================================================
 
-    // Parse server URL
-    u, _ := url.Parse(server.URL)
-    host, portStr, _ := net.SplitHostPort(u.Host)
-    port, _ := strconv.Atoi(portStr)
+func TestGetAllUsers(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		allUsers := []User{
+			createTestUser("1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
+			createTestUser("2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
+		}
+		cleanup := setupMockServer(t, nil, allUsers)
+		defer cleanup()
 
-    // Save original values
-    origAddr := userServiceAddress
-    origPort := userServicePort
-    defer func() {
-        userServiceAddress = origAddr
-        userServicePort = origPort
-    }()
+		users, err := GetAllUsers()
 
-    // Set to mock server
-    userServiceAddress = "http://" + host
-    userServicePort = port
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if len(users) != 2 {
+			t.Fatalf("Expected 2 users, got %d", len(users))
+		}
+		if users[0].UserId != "1" || users[1].UserId != "2" {
+			t.Errorf("Unexpected users: %+v", users)
+		}
+	})
 
-    // Call the function
-    _, err := GetAssignees("role1", "team1", "dept1")
+	t.Run("ServerError", func(t *testing.T) {
+		cleanup := setupErrorServer(t, "/user/all", http.StatusInternalServerError)
+		defer cleanup()
 
-    // Assertions
-    if err == nil {
-        t.Fatal("Expected error, got nil")
-    }
+		_, err := GetAllUsers()
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
+
+	t.Run("ConnectionError", func(t *testing.T) {
+		cleanup := setupInvalidServer(t)
+		defer cleanup()
+
+		_, err := GetAllUsers()
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
+
+	t.Run("DecodeError", func(t *testing.T) {
+		cleanup := setupInvalidJSONServer(t, "/user/all")
+		defer cleanup()
+
+		_, err := GetAllUsers()
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
 }
 
-func TestGetTeams_Success(t *testing.T) {
-    // Setup mock data
-    teams := []Team{
-        {ID: "team1", Name: "Team A", DepartmentID: "dept1"},
-        {ID: "team2", Name: "Team B", DepartmentID: "dept2"},
-    }
+// ============================================================================
+// Tests for GetAssignees
+// ============================================================================
 
-    // Create mock server
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path == "/user/teams" {
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(http.StatusOK)
-            json.NewEncoder(w).Encode(teams)
-        } else {
-            w.WriteHeader(http.StatusNotFound)
-        }
-    }))
-    defer server.Close()
+func TestGetAssignees(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		assignees := []User{
+			createTestUser("1", "Alice", "dept1", "team1", "role1", "Team A", "Dept A"),
+			createTestUser("2", "Bob", "dept2", "team2", "role2", "Team B", "Dept B"),
+		}
 
-    // Parse server URL
-    u, _ := url.Parse(server.URL)
-    host, portStr, _ := net.SplitHostPort(u.Host)
-    port, _ := strconv.Atoi(portStr)
+		cleanup := setupCustomServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/user/assignees" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(assignees)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer cleanup()
 
-    // Save original values
-    origAddr := userServiceAddress
-    origPort := userServicePort
-    defer func() {
-        userServiceAddress = origAddr
-        userServicePort = origPort
-    }()
+		result, err := GetAssignees("role1", "team1", "dept1")
 
-    // Set to mock server
-    userServiceAddress = "http://" + host
-    userServicePort = port
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 assignees, got %d", len(result))
+		}
+	})
 
-    // Call the function
-    result, err := GetTeams()
+	t.Run("ServerError", func(t *testing.T) {
+		cleanup := setupErrorServer(t, "/user/assignees", http.StatusInternalServerError)
+		defer cleanup()
 
-    // Assertions
-    if err != nil {
-        t.Fatalf("Expected no error, got %v", err)
-    }
-    if len(result) != 2 {
-        t.Fatalf("Expected 2 teams, got %d", len(result))
-    }
+		_, err := GetAssignees("role1", "team1", "dept1")
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
+
+	t.Run("ConnectionError", func(t *testing.T) {
+		cleanup := setupInvalidServer(t)
+		defer cleanup()
+
+		_, err := GetAssignees("role1", "team1", "dept1")
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
+
+	t.Run("DecodeError", func(t *testing.T) {
+		cleanup := setupInvalidJSONServer(t, "/user/assignees")
+		defer cleanup()
+
+		_, err := GetAssignees("role1", "team1", "dept1")
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
 }
 
-func TestGetTeams_ServerError(t *testing.T) {
-    // Create mock server that returns error
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path == "/user/teams" {
-            w.WriteHeader(http.StatusInternalServerError)
-        }
-    }))
-    defer server.Close()
+// ============================================================================
+// Tests for GetTeams
+// ============================================================================
 
-    // Parse server URL
-    u, _ := url.Parse(server.URL)
-    host, portStr, _ := net.SplitHostPort(u.Host)
-    port, _ := strconv.Atoi(portStr)
+func TestGetTeams(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		teams := []Team{
+			{ID: "team1", Name: "Team A", DepartmentID: "dept1"},
+			{ID: "team2", Name: "Team B", DepartmentID: "dept2"},
+		}
 
-    // Save original values
-    origAddr := userServiceAddress
-    origPort := userServicePort
-    defer func() {
-        userServiceAddress = origAddr
-        userServicePort = origPort
-    }()
+		cleanup := setupCustomServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/user/teams" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(teams)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer cleanup()
 
-    // Set to mock server
-    userServiceAddress = "http://" + host
-    userServicePort = port
+		result, err := GetTeams()
 
-    // Call the function
-    _, err := GetTeams()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 teams, got %d", len(result))
+		}
+	})
 
-    // Assertions
-    if err == nil {
-        t.Fatal("Expected error, got nil")
-    }
+	t.Run("ServerError", func(t *testing.T) {
+		cleanup := setupErrorServer(t, "/user/teams", http.StatusInternalServerError)
+		defer cleanup()
+
+		_, err := GetTeams()
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
+
+	t.Run("ConnectionError", func(t *testing.T) {
+		cleanup := setupInvalidServer(t)
+		defer cleanup()
+
+		_, err := GetTeams()
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
+
+	t.Run("DecodeError", func(t *testing.T) {
+		cleanup := setupInvalidJSONServer(t, "/user/teams")
+		defer cleanup()
+
+		_, err := GetTeams()
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
 }
 
-func TestGetDepartments_Success(t *testing.T) {
-    // Setup mock data
-    departments := []Department{
-        {ID: "dept1", Name: "Dept A"},
-        {ID: "dept2", Name: "Dept B"},
-    }
+// ============================================================================
+// Tests for GetDepartments
+// ============================================================================
 
-    // Create mock server
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path == "/user/departments" {
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(http.StatusOK)
-            json.NewEncoder(w).Encode(departments)
-        } else {
-            w.WriteHeader(http.StatusNotFound)
-        }
-    }))
-    defer server.Close()
+func TestGetDepartments(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		departments := []Department{
+			{ID: "dept1", Name: "Dept A"},
+			{ID: "dept2", Name: "Dept B"},
+		}
 
-    // Parse server URL
-    u, _ := url.Parse(server.URL)
-    host, portStr, _ := net.SplitHostPort(u.Host)
-    port, _ := strconv.Atoi(portStr)
+		cleanup := setupCustomServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/user/departments" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(departments)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer cleanup()
 
-    // Save original values
-    origAddr := userServiceAddress
-    origPort := userServicePort
-    defer func() {
-        userServiceAddress = origAddr
-        userServicePort = origPort
-    }()
+		result, err := GetDepartments()
 
-    // Set to mock server
-    userServiceAddress = "http://" + host
-    userServicePort = port
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 departments, got %d", len(result))
+		}
+	})
 
-    // Call the function
-    result, err := GetDepartments()
+	t.Run("ServerError", func(t *testing.T) {
+		cleanup := setupErrorServer(t, "/user/departments", http.StatusInternalServerError)
+		defer cleanup()
 
-    // Assertions
-    if err != nil {
-        t.Fatalf("Expected no error, got %v", err)
-    }
-    if len(result) != 2 {
-        t.Fatalf("Expected 2 departments, got %d", len(result))
-    }
-}
+		_, err := GetDepartments()
 
-func TestGetDepartments_ServerError(t *testing.T) {
-    // Create mock server that returns error
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path == "/user/departments" {
-            w.WriteHeader(http.StatusInternalServerError)
-        }
-    }))
-    defer server.Close()
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
 
-    // Parse server URL
-    u, _ := url.Parse(server.URL)
-    host, portStr, _ := net.SplitHostPort(u.Host)
-    port, _ := strconv.Atoi(portStr)
+	t.Run("ConnectionError", func(t *testing.T) {
+		cleanup := setupInvalidServer(t)
+		defer cleanup()
 
-    // Save original values
-    origAddr := userServiceAddress
-    origPort := userServicePort
-    defer func() {
-        userServiceAddress = origAddr
-        userServicePort = origPort
-    }()
+		_, err := GetDepartments()
 
-    // Set to mock server
-    userServiceAddress = "http://" + host
-    userServicePort = port
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
 
-    // Call the function
-    _, err := GetDepartments()
+	t.Run("DecodeError", func(t *testing.T) {
+		cleanup := setupInvalidJSONServer(t, "/user/departments")
+		defer cleanup()
 
-    // Assertions
-    if err == nil {
-        t.Fatal("Expected error, got nil")
-    }
+		_, err := GetDepartments()
+
+		if err == nil {
+			t.Fatal("Expected error, got nil")
+		}
+	})
 }
