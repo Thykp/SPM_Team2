@@ -82,11 +82,9 @@ function statusToProgress(status?: TaskType["status"]): number {
   }
 }
 
-// Role gates for actions
-const isManagerOrAbove = (role?: string | null) =>
-  role === "Manager" || role === "Director" || role === "Senior Management";
-
-const isDirectorOrAbove = (role?: string | null) =>
+/** MUTUALLY EXCLUSIVE role gates for the action buttons */
+const canSeeTeamButton = (role?: string | null) => role === "Manager";
+const canSeeDepartmentButton = (role?: string | null) =>
   role === "Director" || role === "Senior Management";
 
 // date helpers
@@ -346,7 +344,7 @@ export default function ManageUser() {
           {/* Subtle, outlined button group */}
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
             <div className="inline-flex overflow-hidden rounded-lg border border-border shadow-sm bg-card">
-              {isManagerOrAbove(myRole) && (
+              {canSeeTeamButton(myRole) && (
                 <Button
                   onClick={() => callReport("team")}
                   disabled={reportBusy !== null || !myUserId || dateInvalid}
@@ -364,7 +362,7 @@ export default function ManageUser() {
                 </Button>
               )}
 
-              {isDirectorOrAbove(myRole) && (
+              {canSeeDepartmentButton(myRole) && (
                 <Button
                   onClick={() => callReport("department")}
                   disabled={reportBusy !== null || !myUserId || dateInvalid}
@@ -372,7 +370,6 @@ export default function ManageUser() {
                   variant="outline"
                   className={cn(
                     "gap-2 rounded-none px-3 sm:px-4",
-                    isManagerOrAbove(myRole) ? "border-l border-border" : "",
                     "hover:bg-muted",
                     "disabled:opacity-60 disabled:cursor-not-allowed"
                   )}
@@ -390,10 +387,10 @@ export default function ManageUser() {
               <span>
                 Range: <span className="font-medium">{startDate}</span> → <span className="font-medium">{endDate}</span>
               </span>
-              {isManagerOrAbove(myRole) && !isDirectorOrAbove(myRole) && (
+              {canSeeTeamButton(myRole) && (
                 <Badge variant="outline" className="h-5 text-xs">Team</Badge>
               )}
-              {isDirectorOrAbove(myRole) && (
+              {canSeeDepartmentButton(myRole) && (
                 <Badge variant="outline" className="h-5 text-xs">Department</Badge>
               )}
             </div>
