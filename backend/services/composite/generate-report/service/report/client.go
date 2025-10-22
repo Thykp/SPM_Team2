@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	"generate-report/models"
 )
@@ -14,6 +16,8 @@ import (
 type Client interface {
 	// Personal
 	Generate(ctx context.Context, userID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
+	// Project
+	GenerateProjectReport(ctx context.Context, projectID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Team
 	GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
 	// Department
@@ -66,7 +70,23 @@ func (c *client) doJSON(ctx context.Context, method, url, correlationID string, 
 // ----- personal -----
 
 func (c *client) Generate(ctx context.Context, userID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
+	userID = strings.TrimSpace(userID)
 	url := fmt.Sprintf("%s/report/%s", c.base, userID) // atomic: POST /report/:userId
+	body := map[string]string{"startDate": startDate, "endDate": endDate}
+	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
+}
+
+// ----- project -----
+
+func (c *client) GenerateProjectReport(ctx context.Context, projectID, correlationID string) (models.ReportServiceResponse, int, error) {
+	// Trim whitespace from project ID
+	projectID = strings.TrimSpace(projectID)
+
+	// Send default date range (last 365 days to cover all recent activity)
+	endDate := time.Now().Format("2006-01-02")
+	startDate := time.Now().AddDate(-1, 0, 0).Format("2006-01-02") // 1 year ago
+
+	url := fmt.Sprintf("%s/report/project/%s", c.base, projectID)
 	body := map[string]string{"startDate": startDate, "endDate": endDate}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
 }
@@ -74,6 +94,7 @@ func (c *client) Generate(ctx context.Context, userID, startDate, endDate, corre
 // ----- team -----
 
 func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
+	teamID = strings.TrimSpace(teamID)
 	url := fmt.Sprintf("%s/report/team/%s", c.base, teamID) // atomic: POST /report/team/:teamId
 	body := map[string]string{"startDate": startDate, "endDate": endDate}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
@@ -82,6 +103,7 @@ func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, c
 // ----- department -----
 
 func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
+	departmentID = strings.TrimSpace(departmentID)
 	url := fmt.Sprintf("%s/report/department/%s", c.base, departmentID) // atomic: POST /report/department/:departmentId
 	body := map[string]string{"startDate": startDate, "endDate": endDate}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
