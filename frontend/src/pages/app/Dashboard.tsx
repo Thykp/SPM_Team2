@@ -7,9 +7,9 @@ import { TaskTimeline } from "@/components/task/TaskTimeline"
 import { TaskCard } from "@/components/task/TaskCard"
 import { useAuth } from "@/contexts/AuthContext"
 import CreateTask from "@/components/task/CreateTask"
-import { type TaskDTO as TaskType, TaskApi as Task, Project } from "@/lib/api"
+import { type TaskDTO as TaskType, TaskApi as Task, Project, Report } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Filter, Search, LayoutGrid, Calendar, Rows } from "lucide-react"
+import { Filter, Search, LayoutGrid, Calendar, Rows, FileDown, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Plus } from "lucide-react";
 import {
@@ -27,6 +27,19 @@ type ViewType = "board" | "timeline" | "cards"
 
 type OwnershipFilter = "all_mine" | "owner_only" | "assigned_only" | "project_peers_others"
 
+function toYMD(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function last30Days(): { start: string; end: string } {
+  const end = new Date();
+  const start = new Date(end.getTime() - 29 * 24 * 3600 * 1000);
+  return { start: toYMD(start), end: toYMD(end) };
+}
+
 export function Dashboard() {
   const { profile, authLoading } = useAuth()
   const [tasks, setTasks] = useState<TaskType[]>([])
@@ -40,6 +53,12 @@ export function Dashboard() {
   const [currentView, setCurrentView] = useState<ViewType>("cards")
   const [ownerFilter, setOwnerFilter] = useState<OwnershipFilter>("all_mine")
   const [loadingPeers, setLoadingPeers] = useState(false)
+
+  const defaultRange = last30Days();
+  const [startDate, setStartDate] = useState<string>(defaultRange.start);
+  const [endDate, setEndDate] = useState<string>(defaultRange.end);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportBanner, setReportBanner] = useState<{ type: "success" | "error" | "info"; msg: string; href?: string } | null>(null);
 
   // Load my tasks and my projects
   useEffect(() => {
@@ -108,12 +127,41 @@ export function Dashboard() {
     console.log("Creating task with status:", status)
   }
 
+  async function handleGenerateReport() {
+    if (!profile?.id) return;
+    if (reportBusy) return;
+    
+    setReportBanner(null);
+    setReportBusy(true);
+    
+    try {
+      const res = await Report.generate(profile.id, { startDate, endDate });
+      const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
+      const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
+      
+      setReportBanner({
+        type: href ? "success" : "info",
+        msg: title || "Personal report generated successfully.",
+        href,
+      });
+    } catch (e: any) {
+      setReportBanner({ 
+        type: "error", 
+        msg: e?.message || "Failed to generate report." 
+      });
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
   const norm = (s?: string | null) => (s ?? "").trim().toLowerCase()
 
   const meId = profile?.id || ""
   const isOwner = (t: TaskType) => norm(t.owner) === norm(meId)
   const isCollaborator = (t: TaskType) => Array.isArray(t.collaborators) && t.collaborators.map(norm).includes(norm(meId))
   const isParticipant = (t: TaskType) => isOwner(t) || isCollaborator(t)
+
+  const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate)
 
   const matchesSearch = (t: TaskType) => {
     const q = norm(searchTerm)
@@ -249,6 +297,70 @@ export function Dashboard() {
           >
             <Calendar className="h-4 w-4" />
             Timeline
+          </Button>
+        </div>
+      </div>
+
+      {/* Personal Report Generation */}
+      <div className="mb-6">
+        {reportBanner && (
+          <div
+            className={cn(
+              "rounded-md border p-3 text-sm mb-4",
+              reportBanner.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/20"
+                : reportBanner.type === "error"
+                ? "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/20"
+                : "border-border bg-muted/30 text-foreground"
+            )}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span>{reportBanner.msg}</span>
+              {reportBanner.href && (
+                <a
+                  href={reportBanner.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 font-medium"
+                >
+                  Open report
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-auto"
+          />
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-auto"
+          />
+          <Button
+            onClick={handleGenerateReport}
+            disabled={reportBusy || dateInvalid || !profile?.id}
+            className="gap-2"
+          >
+            {reportBusy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Generating...</span>
+              </>
+            ) : (
+              <>
+                <FileDown className="h-4 w-4" />
+                <span>Generate Report</span>
+              </>
+            )}
           </Button>
         </div>
       </div>
