@@ -314,6 +314,15 @@ export type GenerateScopedReportBody = GenerateReportBody & {
   userId: string;
 };
 
+export type ReportRecord = {
+  id: string;
+  profile_id: string;
+  title: string;
+  filepath: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export const Report = {
 
   generate: async (
@@ -342,7 +351,19 @@ export const Report = {
     const { data } = await api.post(url, body);
     return data;
   },
-  
+
+  getByUser: async (userId: string): Promise<ReportRecord[]> => {
+    const url = `${GENERATE_REPORT_API}/${userId}`;
+    const { data } = await api.get<ReportRecord[]>(url);
+    return Array.isArray(data) ? data : [];
+  },
+
+  delete: async (reportId: string): Promise<{ message?: string } & any> => {
+    const url = `${GENERATE_REPORT_API}/${reportId}`;
+    const { data } = await api.delete(url);
+    return data ?? { message: "Deleted" };
+  },
+
 };
 
 
