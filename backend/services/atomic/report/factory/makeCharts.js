@@ -46,9 +46,9 @@ function pieConfig(labels, values) {
       datasets: [{ 
         data: values,
         backgroundColor: [
-          '#dc2626', // High - red
-          '#f59e0b', // Medium - amber
-          '#10b981'  // Low - green
+          '#10b981',  // Low (1-3) - green
+          '#eab308',  // Medium (4-7) - yellow
+          '#dc2626'   // High (8-10) - red
         ],
         borderWidth: 2,
         borderColor: '#fff'
