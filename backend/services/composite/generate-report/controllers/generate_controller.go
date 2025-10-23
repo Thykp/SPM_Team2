@@ -97,10 +97,14 @@ func (g *GenerateController) GenerateTeam(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_BODY",
-				"message": err.Error(),
-			},
+			"error":   gin.H{"code": "INVALID_BODY", "message": err.Error()},
+		})
+		return
+	}
+	if strings.TrimSpace(req.UserID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "MISSING_USER_ID", "message": "userId is required in body for team report"},
 		})
 		return
 	}
@@ -116,15 +120,13 @@ func (g *GenerateController) GenerateTeam(c *gin.Context) {
 			TeamID:    teamID,
 			StartDate: req.StartDate,
 			EndDate:   req.EndDate,
+			UserID:    req.UserID,
 		},
 	}
 	if err := g.producer.Produce(ctx, teamID, env); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "KAFKA_PUBLISH_FAILED",
-				"message": err.Error(),
-			},
+			"error":   gin.H{"code": "KAFKA_PUBLISH_FAILED", "message": err.Error()},
 		})
 		return
 	}
@@ -132,14 +134,11 @@ func (g *GenerateController) GenerateTeam(c *gin.Context) {
 	// 2) Call atomic/report synchronously
 	callCtx, cancel2 := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel2()
-	resp, status, err := g.reportClient.GenerateTeam(callCtx, teamID, req.StartDate, req.EndDate, reqID)
+	resp, status, err := g.reportClient.GenerateTeam(callCtx, teamID, req.StartDate, req.EndDate, req.UserID, reqID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "REPORT_SERVICE_ERROR",
-				"message": err.Error(),
-			},
+			"error":   gin.H{"code": "REPORT_SERVICE_ERROR", "message": err.Error()},
 		})
 		return
 	}
@@ -158,10 +157,14 @@ func (g *GenerateController) GenerateDepartment(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_BODY",
-				"message": err.Error(),
-			},
+			"error":   gin.H{"code": "INVALID_BODY", "message": err.Error()},
+		})
+		return
+	}
+	if strings.TrimSpace(req.UserID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "MISSING_USER_ID", "message": "userId is required in body for department report"},
 		})
 		return
 	}
@@ -177,15 +180,13 @@ func (g *GenerateController) GenerateDepartment(c *gin.Context) {
 			DepartmentID: deptID,
 			StartDate:    req.StartDate,
 			EndDate:      req.EndDate,
+			UserID:       req.UserID,
 		},
 	}
 	if err := g.producer.Produce(ctx, deptID, env); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "KAFKA_PUBLISH_FAILED",
-				"message": err.Error(),
-			},
+			"error":   gin.H{"code": "KAFKA_PUBLISH_FAILED", "message": err.Error()},
 		})
 		return
 	}
@@ -193,14 +194,11 @@ func (g *GenerateController) GenerateDepartment(c *gin.Context) {
 	// 2) Call atomic/report synchronously
 	callCtx, cancel2 := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel2()
-	resp, status, err := g.reportClient.GenerateDepartment(callCtx, deptID, req.StartDate, req.EndDate, reqID)
+	resp, status, err := g.reportClient.GenerateDepartment(callCtx, deptID, req.StartDate, req.EndDate, req.UserID, reqID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "REPORT_SERVICE_ERROR",
-				"message": err.Error(),
-			},
+			"error":   gin.H{"code": "REPORT_SERVICE_ERROR", "message": err.Error()},
 		})
 		return
 	}
