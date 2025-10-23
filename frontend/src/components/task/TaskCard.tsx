@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { TaskDTO as taskType } from "@/lib/api";
 import { Task as TaskBody } from "@/components/task/Task";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 type TaskCardProps = {
   tasks: taskType[];
@@ -9,6 +9,11 @@ type TaskCardProps = {
 
 export function TaskCard({ tasks }: TaskCardProps) {
   const [taskList, setTaskList] = useState(tasks); // Local state for tasks
+
+  // Sync local state with prop changes (for filters/search)
+  useEffect(() => {
+    setTaskList(tasks);
+  }, [tasks]);
 
   const prioritizedTasks = useMemo(() => {
     const filteredTasks = taskList.filter((task) => task.parent == null);
