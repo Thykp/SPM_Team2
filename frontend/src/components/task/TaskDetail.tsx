@@ -3,9 +3,10 @@ import { type TaskDTO as taskType, TaskApi as taskAPI, Profile as profileAPI } f
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
-import { User, Calendar, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { User, Calendar, Users, ChevronLeft, ChevronRight, Gauge } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 
 type TaskDetailProps = {
@@ -142,10 +143,22 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
         
           {currentTask ? (
             <div className="space-y-6 px-4">
-              {/* Status Badge Section */}
-              <div>
+              {/* Status and Priority Badge Section */}
+              <div className="flex items-center gap-2">
                 <Badge variant={getStatusBadgeVariant(currentTask.status)} className="text-xs font-medium">
                   {currentTask.status}
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs font-medium",
+                    (currentTask.priority ?? 0) >= 8 ? "border-red-500 text-red-700 bg-red-50" :
+                    (currentTask.priority ?? 0) >= 4 ? "border-yellow-500 text-yellow-700 bg-yellow-50" :
+                    "border-green-500 text-green-700 bg-green-50"
+                  )}
+                >
+                  <Gauge className="h-3 w-3 mr-1" />
+                  Priority {currentTask.priority ?? "N/A"}
                 </Badge>
               </div>
 
