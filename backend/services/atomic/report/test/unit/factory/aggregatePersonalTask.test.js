@@ -106,8 +106,8 @@ describe('AggregatePersonalTask', () => {
                 [2, 1, 1, 1] // Two completed tasks (including subtask), one in each other status
             );
             expect(generatePie).toHaveBeenCalledWith(
-                ['High (1-3)', 'Medium (4-7)', 'Low (8-10)'],
-                [3, 1, 1] // 3 high priority, 1 medium, 1 low
+                ['Low (1-3)', 'Medium (4-7)', 'High (8-10)'],
+                [3, 1, 1] // 3 low priority (1,2,3), 1 medium (5), 1 high (8)
             );
 
             // Verify result structure
@@ -135,9 +135,9 @@ describe('AggregatePersonalTask', () => {
                 underReviewTasks: 1,
                 ongoingTasks: 1,
                 overdueTasks: 1,
-                highPriorityTasks: 3,
-                mediumPriorityTasks: 1,
-                lowPriorityTasks: 1
+                lowPriorityTasks: 3, // priorities 1, 2, 3
+                mediumPriorityTasks: 1, // priority 5
+                highPriorityTasks: 1 // priority 8
             });
 
             // Verify report period
@@ -221,10 +221,10 @@ describe('AggregatePersonalTask', () => {
 
       const result = await prepareReportData(unsortedTasks, '2024-01-01', '2024-01-31');
 
-      // Should be sorted by deadline first, then priority
+      // Should be sorted by deadline first, then priority (descending - higher priority first)
       expect(result.tasks[0].id).toBe('task3'); // Earliest deadline
-      expect(result.tasks[1].id).toBe('task2'); // Same deadline, lower priority
-      expect(result.tasks[2].id).toBe('task1'); // Same deadline, higher priority
+      expect(result.tasks[1].id).toBe('task1'); // Same deadline, higher priority (5 > 2)
+      expect(result.tasks[2].id).toBe('task2'); // Same deadline, lower priority
     });
 
     test('should handle tasks with null deadlines', async () => {
@@ -263,9 +263,9 @@ describe('AggregatePersonalTask', () => {
         underReviewTasks: 1,
         ongoingTasks: 2,
         overdueTasks: 0,
-        highPriorityTasks: 2,
-        mediumPriorityTasks: 2,
-        lowPriorityTasks: 1
+        lowPriorityTasks: 2, // priorities 2, 3
+        mediumPriorityTasks: 2, // priorities 5, 6
+        highPriorityTasks: 1 // priority 8
       });
     });
 
@@ -287,9 +287,9 @@ describe('AggregatePersonalTask', () => {
         underReviewTasks: 1,
         ongoingTasks: 2,
         overdueTasks: 1,
-        highPriorityTasks: 2, // priority 1, 3
-        mediumPriorityTasks: 2, // priority 4, 7
-        lowPriorityTasks: 2 // priority 8, 10
+        lowPriorityTasks: 2, // priorities 1, 3
+        mediumPriorityTasks: 2, // priorities 4, 7
+        highPriorityTasks: 2 // priorities 8, 10
       });
     });
 
@@ -304,9 +304,9 @@ describe('AggregatePersonalTask', () => {
         underReviewTasks: 0,
         ongoingTasks: 0,
         overdueTasks: 0,
-        highPriorityTasks: 0,
+        lowPriorityTasks: 0,
         mediumPriorityTasks: 0,
-        lowPriorityTasks: 0
+        highPriorityTasks: 0
       });
       expect(result.charts.statusBar).toBe(mockCharts.statusBar);
       expect(result.charts.priorityPie).toBe(mockCharts.priorityPie);
