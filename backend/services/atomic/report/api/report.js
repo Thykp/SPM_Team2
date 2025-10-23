@@ -228,7 +228,7 @@ router.post('/project/:projectId', async (req, res) => {
 // Team Report Endpoint
 router.post('/team/:teamId', async (req, res) => {
   const teamId = req.params.teamId;
-  const { startDate, endDate } = req.body;
+  const { startDate, endDate, userId } = req.body;
 
   try {
     if (!teamId) {
@@ -270,8 +270,7 @@ router.post('/team/:teamId', async (req, res) => {
     const { publicUrl } = await createReportStorage(pdf, fileName);
 
     const reportTitle = `Team Report: ${teamData.name}`;
-    const profileIdForReport = reportData.ownerId || (reportData.members[0] && reportData.members[0].id);
-    await createReport({ profile_id: profileIdForReport, title: reportTitle }, publicUrl);
+    await createReport({ profile_id: userId, title: reportTitle }, publicUrl);
 
     res.json({
       success: true,
@@ -293,7 +292,7 @@ router.post('/team/:teamId', async (req, res) => {
 // Department Report Endpoint
 router.post('/department/:departmentId', async (req, res) => {
   const departmentId = req.params.departmentId;
-  const { startDate, endDate } = req.body;
+  const { startDate, endDate, userId } = req.body;
 
   try {
     if (!departmentId) {
@@ -335,8 +334,7 @@ router.post('/department/:departmentId', async (req, res) => {
     const { publicUrl } = await createReportStorage(pdf, fileName);
 
     const reportTitle = `Department Report: ${deptData.name}`;
-    const profileIdForReport = reportData.ownerId || (reportData.members[0] && reportData.members[0].id);
-    await createReport({ profile_id: profileIdForReport, title: reportTitle }, publicUrl);
+    await createReport({ profile_id: userId, title: reportTitle }, publicUrl);
 
     res.json({
       success: true,

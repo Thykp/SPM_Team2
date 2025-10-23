@@ -19,9 +19,9 @@ type Client interface {
 	// Project
 	GenerateProjectReport(ctx context.Context, projectID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Team
-	GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
+	GenerateTeam(ctx context.Context, teamID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Department
-	GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
+	GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 
 	GetByUser(ctx context.Context, userID, correlationID string) ([]models.ReportRecord, int, error)
 	DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error)
@@ -96,19 +96,28 @@ func (c *client) GenerateProjectReport(ctx context.Context, projectID, correlati
 
 // ----- team -----
 
-func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
+
+func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
 	teamID = strings.TrimSpace(teamID)
-	url := fmt.Sprintf("%s/report/team/%s", c.base, teamID) // atomic: POST /report/team/:teamId
-	body := map[string]string{"startDate": startDate, "endDate": endDate}
+	url := fmt.Sprintf("%s/report/team/%s", c.base, teamID)
+	body := map[string]string{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"userId":    userID,
+	}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
 }
 
 // ----- department -----
 
-func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
+func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
 	departmentID = strings.TrimSpace(departmentID)
-	url := fmt.Sprintf("%s/report/department/%s", c.base, departmentID) // atomic: POST /report/department/:departmentId
-	body := map[string]string{"startDate": startDate, "endDate": endDate}
+	url := fmt.Sprintf("%s/report/department/%s", c.base, departmentID)
+	body := map[string]string{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"userId":    userID,
+	}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
 }
 
