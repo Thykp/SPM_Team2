@@ -18,8 +18,19 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X } from "lucide-react";
+import { X, ChevronsUpDown, Check } from "lucide-react";
 import { TaskApi, Profile, Project, type TaskPostRequestDto } from "@/lib/api";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface EditProjectTaskProps {
   taskId: string;
@@ -44,6 +55,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
   onClose,
   onTaskUpdated,
 }) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetchingTask, setFetchingTask] = useState(true);
   const [task, setTask] = useState<{
@@ -60,6 +72,18 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [assignableUsers, setAssignableUsers] = useState<any[]>([]);
+  const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [originalOwner, setOriginalOwner] = useState<any | null>(null);
+
+  // Helper function to format date for datetime-local input
+  const formatToLocalDatetime = (dateString: string) => {
+    const date = new Date(dateString);
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+    return localDate.toISOString().slice(0, 16);
+  };
 
   // Fetch task details and project members when component mounts
   useEffect(() => {
@@ -86,6 +110,22 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
 
         // Fetch all users
         const allUsers = await Profile.getAllUsers();
+        
+        // Store the original owner
+        if (taskData.owner) {
+          const owner = allUsers.find((u: any) => u.id === taskData.owner);
+          if (owner) {
+            setOriginalOwner(owner);
+          }
+        }
+
+        // Store current user profile
+        if (user?.id) {
+          const currentUserProfile = allUsers.find((u: any) => u.id === user.id);
+          if (currentUserProfile) {
+            setCurrentUser(currentUserProfile);
+          }
+        }
         
         // If this is a subtask, fetch the parent task
         let parentTaskData = null;
@@ -116,7 +156,58 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
     };
 
     fetchData();
-  }, [taskId, projectId]);
+  }, [taskId, projectId, user?.id]);
+
+  // Filter assignable users based on current user's role and project membership
+  useEffect(() => {
+    const fetchAssignableUsers = async () => {
+      if (!currentUser || !task || projectMembers.length === 0) return;
+
+      try {
+        const { role: currentUserRole, team_id: currentUserTeamId, department_id: currentUserDepartmentId } = currentUser;
+
+        // First filter: Only project members (collaborators + owner)
+        const projectMemberUsers = projectMembers;
+
+        // Second filter: Apply role-based restrictions
+        let filteredUsers = projectMemberUsers.filter((user: any) => {
+          switch (currentUserRole) {
+            case "Senior Management":
+              return true; // Senior Management can assign to anyone in the project
+            case "Director":
+              return (
+                user.role !== "Senior Management" &&
+                user.department_id === currentUserDepartmentId
+              );
+            case "Manager":
+              return user.role === "Staff" && user.team_id === currentUserTeamId;
+            default:
+              return false; // Staff and other roles cannot assign owners
+          }
+        });
+
+        // Ensure the original owner is always included in the filtered users
+        if (originalOwner && !filteredUsers.some((u: any) => u.id === originalOwner.id)) {
+          filteredUsers = [originalOwner, ...filteredUsers];
+        }
+
+        console.log("Filtered Assignable Users:", filteredUsers);
+
+        // Map to owner options for the combobox
+        const options = filteredUsers.map((user: any) => ({
+          value: user.id,
+          label: user.display_name,
+        }));
+
+        setOwnerOptions(options);
+        setAssignableUsers(filteredUsers);
+      } catch (err) {
+        console.error("Error fetching assignable users:", err);
+      }
+    };
+
+    fetchAssignableUsers();
+  }, [currentUser, task, projectMembers, originalOwner]);
 
   // Filter members based on search query, excluding selected collaborators
   const filteredMembers = React.useMemo(() => {
@@ -140,12 +231,18 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
     setLoading(true);
 
     try {
+      // If the current user changed the owner to someone else, add them to collaborators
+      let finalCollaborators = selectedCollaborators;
+      if (user?.id && task.owner !== user.id && !selectedCollaborators.includes(user.id)) {
+        finalCollaborators = [...selectedCollaborators, user.id];
+      }
+
       const taskData: TaskPostRequestDto = {
         title: task.title,
         description: task.description,
         status: task.status,
         owner: task.owner,
-        collaborators: selectedCollaborators,
+        collaborators: finalCollaborators,
         deadline: new Date(task.deadline).toISOString(),
         project_id: projectId,
         parent: task.parent,
@@ -293,8 +390,9 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
               </Label>
               <Input
                 id="deadline"
-                type="date"
-                value={task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : ''}
+                type="datetime-local"
+                value={task.deadline ? formatToLocalDatetime(task.deadline) : ''}
+                min={new Date().toISOString().slice(0, 16)}
                 onChange={(e) =>
                   setTask((prev) => prev ? { ...prev, deadline: e.target.value } : null)
                 }
@@ -308,24 +406,69 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
               <Label htmlFor="owner" className="text-base font-medium">
                 Task Owner
               </Label>
-              <Select
-                value={task.owner || ''}
-                onValueChange={(value) =>
-                  setTask((prev) => prev ? { ...prev, owner: value } : null)
-                }
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Select task owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projectMembers.map((member: any) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.display_name}
-                      {member.role && ` (${member.role})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded="false"
+                    className="w-full justify-between h-11"
+                    ref={(el) => {
+                      if (el) {
+                        const triggerWidth = el.offsetWidth;
+                        document.documentElement.style.setProperty(
+                          "--popover-width",
+                          `${triggerWidth}px`
+                        );
+                      }
+                    }}
+                  >
+                    {task.owner
+                      ? ownerOptions.find((o) => o.value === task.owner)?.label || "Select an owner"
+                      : "Select an owner"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="p-0 z-[60]"
+                  style={{ width: "var(--popover-width)" }}
+                >
+                  <Command>
+                    <CommandInput placeholder="Search owner..." />
+                    <CommandList>
+                      <CommandEmpty>No owner found.</CommandEmpty>
+                      <CommandGroup>
+                        {assignableUsers.map((user: any) => {
+                          const selected = task.owner === user.id;
+                          return (
+                            <CommandItem
+                              key={user.id}
+                              value={user.display_name}
+                              onSelect={() => {
+                                console.log("Selected Owner:", user);
+                                setTask((prev) => prev ? ({
+                                  ...prev,
+                                  owner: user.id,
+                                }) : null);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selected ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {user.display_name}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Collaborators */}

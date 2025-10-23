@@ -16,9 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Calendar, GripVertical, MoreVertical, Trash2, Edit, Plus } from 'lucide-react';
+import { Calendar, GripVertical, MoreVertical, Trash2, Edit, Plus, Gauge } from 'lucide-react';
 import { type TaskDTO, TaskApi } from '@/lib/api';
 import { useDraggable } from '@dnd-kit/core';
+import { cn } from '@/lib/utils';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
 import EditProjectTask from './EditProjectTask';
 import CreateProjectTask from './CreateProjectTask';
@@ -199,10 +200,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                             </Badge>
                         </div>
                         
-                        {/* Priority number */}
-                        <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-800 flex items-center justify-center text-xs font-medium">
-                            {task.priority || 5}
-                        </div>
+                        {/* Priority badge */}
+                        <Badge 
+                            variant="outline" 
+                            className={cn(
+                                "text-xs font-medium",
+                                (task.priority ?? 0) >= 8 ? "border-red-500 text-red-700 bg-red-50" :
+                                (task.priority ?? 0) >= 4 ? "border-yellow-500 text-yellow-700 bg-yellow-50" :
+                                "border-green-500 text-green-700 bg-green-50"
+                            )}
+                        >
+                            <Gauge className="h-3 w-3 mr-1" />
+                            {task.priority ?? "N/A"}
+                        </Badge>
                     </div>
                     
                     {/* Due date */}

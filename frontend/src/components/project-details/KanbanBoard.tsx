@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { type TaskDTO, TaskApi as TaskService } from '@/lib/api';
+import { type TaskDTO, TaskApi as TaskService, Report } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -11,7 +11,18 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Filter, List, GitBranch } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Filter, List, GitBranch, FileText, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import KanbanColumn from './KanbanColumn';
@@ -41,15 +52,9 @@ interface KanbanColumn {
     tasksWithSubtasks?: TaskWithSubtasks[];
 }
 
-// interface KanbanBoardProps {
-//     tasks: TaskDTO[];
-//     projectId: string; // Add projectId prop for realtime filtering
-//     onTaskUpdate?: (updatedTask: TaskDTO) => void;
-//     refreshTrigger?: number; // Add trigger for external refresh
-// }
-
 interface KanbanBoardProps {
       projectId: string;
+      projectCreatedDate?: string; // ISO date string for default report start date
       onTaskUpdate?: (updatedTask: TaskDTO) => void;
       refreshTrigger?: number;
       tasks?: TaskDTO[]; // if you still want to allow injection
@@ -60,6 +65,7 @@ type ViewType = 'flat' | 'hierarchical';
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
     projectId,
+    projectCreatedDate,
     onTaskUpdate,
     refreshTrigger 
 }) => {
@@ -72,6 +78,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
     const [viewType, setViewType] = useState<ViewType>('flat');
     const [selectedSubtask, setSelectedSubtask] = useState<TaskDTO | null>(null);
+    const [generatingReport, setGeneratingReport] = useState(false);
+    const [showReportDialog, setShowReportDialog] = useState(false);
+    const [reportStartDate, setReportStartDate] = useState('');
+    const [reportEndDate, setReportEndDate] = useState('');
+    const [reportBanner, setReportBanner] = useState<{ type: 'success' | 'error' | 'info'; msg: string; href?: string } | null>(null);
 
     // Stabilize callback functions to prevent infinite re-subscriptions
     const handleRealtimeTaskUpdate = useCallback((updatedTask: TaskDTO) => {
@@ -79,8 +90,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }, [onTaskUpdate]);
 
     const handleRealtimeTaskInsert = useCallback((newTask: TaskDTO) => {
-        console.log('New task inserted via realtime:', newTask);
-        
         // Check if this task belongs to the current project
         if (newTask.project_id === projectId) {
             // Add the basic task immediately for responsive UI
@@ -105,14 +114,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         });
                     }
                 })
-                .catch(error => {
-                    console.warn('Failed to fetch enriched task data:', error);
+                .catch(() => {
+                    // Failed to fetch enriched task data, but basic task is already added
                 });
         }
     }, [projectId]);
 
     const handleRealtimeTaskDelete = useCallback((taskId: string) => {
-        console.log('Task deleted via realtime:', taskId);
         // Remove the task from initial tasks
         setInitialTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
     }, []);
@@ -123,24 +131,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             setLoading(true);
             setError(null);
             
-            console.log('Fetching all tasks for project:', projectId);
             const allTasksData = await TaskService.getAllTask();
-            console.log('All tasks received:', allTasksData);
             
             // Filter tasks for the specific project
             const projectTasks = allTasksData.filter(task => {
                 // Check if task has project_id that matches current project
                 const hasProjectId = task.project_id === projectId;
-                if (hasProjectId) {
-                    console.log('Task belongs to project:', task.title, task.project_id);
-                }
                 return hasProjectId;
             });
             
-            console.log('Filtered tasks for project:', projectTasks);
             setInitialTasks(projectTasks);
         } catch (err) {
-            console.error('Failed to fetch tasks:', err);
             setError('Failed to load tasks');
             setInitialTasks([]);
         } finally {
@@ -302,6 +303,71 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         setActiveTask(task || null);
     }, [realtimeTasks]);
 
+    const handleGenerateReport = useCallback(() => {
+        // Set default dates: project creation date (or 30 days ago if not provided) to today
+        const today = new Date().toISOString().split('T')[0];
+        const defaultStartDate = projectCreatedDate 
+            ? new Date(projectCreatedDate).toISOString().split('T')[0]
+            : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        setReportStartDate(defaultStartDate);
+        setReportEndDate(today);
+        setShowReportDialog(true);
+    }, [projectCreatedDate]);
+
+    const handleConfirmGenerateReport = useCallback(async () => {
+        try {
+            setGeneratingReport(true);
+            setShowReportDialog(false);
+            setReportBanner(null);
+            
+            if (!user?.id) {
+                setReportBanner({
+                    type: 'error',
+                    msg: 'User not authenticated'
+                });
+                setGeneratingReport(false);
+                return;
+            }
+            
+            // Call the report generation API with date range and userId
+            const response = await Report.generateProject(projectId, {
+                startDate: reportStartDate,
+                endDate: reportEndDate,
+                userId: user.id
+            });
+            
+            // Handle the response based on backend structure
+            if (response.success && response.data?.reportUrl) {
+                setReportBanner({
+                    type: 'success',
+                    msg: response.data.reportTitle || 'Project report generated successfully',
+                    href: response.data.reportUrl
+                });
+            } else if (response.url) {
+                setReportBanner({
+                    type: 'success',
+                    msg: 'Project report generated successfully',
+                    href: response.url
+                });
+            } else {
+                setReportBanner({
+                    type: 'info',
+                    msg: response.message || 'Report generation initiated'
+                });
+            }
+            
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.error?.message || error?.message || 'Failed to generate report';
+            setReportBanner({
+                type: 'error',
+                msg: errorMessage
+            });
+        } finally {
+            setGeneratingReport(false);
+        }
+    }, [projectId, reportStartDate, reportEndDate, user]);
+
     const handleDragEnd = useCallback(async (event: DragEndEvent) => {
         const { active, over } = event;
         setActiveTask(null);
@@ -320,7 +386,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
         // Prevent multiple simultaneous updates of the same task
         if (updatingTaskIds.has(taskId)) {
-            console.warn('Task update already in progress:', taskId);
             return;
         }
 
@@ -333,9 +398,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             // Mark task as updating
             setUpdatingTaskIds(prev => new Set(prev).add(taskId));
             
-            // Log the task data before transformation for debugging
-            console.log('Task before transformation:', task);
-
             // Ensure all required fields are present and valid
             // If no owner is present, assign the current user as owner
             const owner = task.owner || user?.id || null;
@@ -362,8 +424,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             if (!taskUpdateData.owner) {
                 throw new Error('Task must have an owner');
             }
-
-            console.log('Updating task with data:', taskUpdateData);
             
             // Update task status via API
             // The realtime subscription will automatically update the UI instantly
@@ -384,7 +444,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     });
                 }
             } catch (ownerFetchError) {
-                console.warn('Failed to fetch updated task with owner info:', ownerFetchError);
+                // Failed to fetch updated task with owner info
             }
             
             // Call the callback for any additional handling
@@ -392,20 +452,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 onTaskUpdate({ ...task, status: newStatus });
             }
         } catch (error) {
-            console.error('Failed to update task status:', error);
-            
             // Log additional debug information
             if (error instanceof Error) {
-                console.error('Error message:', error.message);
+                // Error occurred during task update
             }
             
             // If it's an Axios error, log the response details
             if (error && typeof error === 'object' && 'response' in error) {
-                const axiosError = error as any;
-                console.error('HTTP Status:', axiosError.response?.status);
-                console.error('Response Data:', axiosError.response?.data);
-                console.error('Request URL:', axiosError.config?.url);
-                console.error('Request Data:', axiosError.config?.data);
+                // HTTP error occurred
             }
             
             // The realtime hook will handle any inconsistencies
@@ -470,10 +524,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     <h2 className="text-2xl font-bold">Project Board</h2>
                     <div className="flex items-center gap-2">
                         {/* View Type Toggle */}
-                        <div className="flex gap-1 border rounded-lg p-1">
+                        <div className="flex gap-1 border rounded-lg">
                             <Button
                                 variant="ghost"
-                                size="sm"
                                 onClick={() => setViewType('flat')}
                                 className={viewType === 'flat' ? 'bg-slate-100' : 'bg-transparent'}
                                 title="Flat view - Show parent tasks only"
@@ -482,7 +535,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             </Button>
                             <Button
                                 variant="ghost"
-                                size="sm"
                                 onClick={() => setViewType('hierarchical')}
                                 className={viewType === 'hierarchical' ? 'bg-slate-100' : 'bg-transparent'}
                                 title="Hierarchical view - Show tasks with subtasks"
@@ -513,8 +565,19 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <Button variant="outline" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
+                        <Button 
+                            variant="outline" 
+                            className="gap-2"
+                            onClick={handleGenerateReport}
+                            disabled={generatingReport}
+                            aria-busy={generatingReport}
+                        >
+                            {generatingReport ? (
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                                <FileText className="h-4 w-4" />
+                            )}
+                            {generatingReport ? 'Generating...' : 'Generate Report'}
                         </Button>
 
                         <Badge variant="outline">
@@ -522,6 +585,36 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         </Badge>
                     </div>
                 </div>
+
+                {/* Report Generation Banner */}
+                {reportBanner && (
+                    <div
+                        className={cn(
+                            "rounded-md border p-3 text-sm",
+                            reportBanner.type === "success"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/20"
+                                : reportBanner.type === "error"
+                                ? "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/20"
+                                : "border-border bg-muted/30 text-foreground"
+                        )}
+                        role="status"
+                        aria-live="polite"
+                    >
+                        <div className="flex items-center justify-between gap-3">
+                            <span>{reportBanner.msg}</span>
+                            {reportBanner.href && (
+                                <a
+                                    href={reportBanner.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline underline-offset-2 font-medium hover:text-emerald-700"
+                                >
+                                    Open report
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {viewType === 'flat' ? (
                     /* Flat View: Traditional Kanban columns */
@@ -584,6 +677,49 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         onClose={() => setSelectedSubtask(null)}
                     />
                 )}
+
+                {/* Generate Report Dialog */}
+                <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Generate Project Report</DialogTitle>
+                            <DialogDescription>
+                                Select the date range for the report.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="start-date">Start Date</Label>
+                                <Input
+                                    id="start-date"
+                                    type="date"
+                                    value={reportStartDate}
+                                    onChange={(e) => setReportStartDate(e.target.value)}
+                                    max={reportEndDate}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="end-date">End Date</Label>
+                                <Input
+                                    id="end-date"
+                                    type="date"
+                                    value={reportEndDate}
+                                    onChange={(e) => setReportEndDate(e.target.value)}
+                                    min={reportStartDate}
+                                    max={new Date().toISOString().split('T')[0]}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowReportDialog(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleConfirmGenerateReport} disabled={!reportStartDate || !reportEndDate}>
+                                Generate Report
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </DndContext>
     );
