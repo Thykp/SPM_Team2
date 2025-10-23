@@ -8,8 +8,8 @@ public class RecurrenceDto {
     @JsonProperty("id")
     private String id;
 
-    @JsonProperty("taskId")
-    private String taskId;
+    @JsonProperty("task_id")
+    private String task_id;
 
     @JsonProperty("frequency")
     private String frequency; // Enum: Day, Week, Month
@@ -33,11 +33,11 @@ public class RecurrenceDto {
     }
 
     public String getTaskId() {
-        return taskId;
+        return task_id;
     }
 
     public void setTaskId(String taskId) {
-        this.taskId = taskId;
+        this.task_id = taskId;
     }
 
     public String getFrequency() {

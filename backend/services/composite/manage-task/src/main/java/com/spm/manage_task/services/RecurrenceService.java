@@ -74,6 +74,8 @@ public class RecurrenceService {
 
     // Create a new recurrence
     public void createRecurrence(RecurrenceDto recurrenceDto) {
+        System.out.println("Recurrence DTO: " + recurrenceDto);
+        
         String url = recurrenceUrl;
         restTemplate.postForObject(url, recurrenceDto, Void.class);
     }

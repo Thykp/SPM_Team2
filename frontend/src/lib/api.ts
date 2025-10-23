@@ -143,7 +143,7 @@ export type GetAllUsers = {
 
 export interface RecurrenceDto {
   id: string;
-  taskId: string;
+  task_id: string;
   frequency: "Day" | "Week" | "Month";
   interval: number;
   nextOccurrence?: string; // Optional, depending on backend
@@ -151,7 +151,7 @@ export interface RecurrenceDto {
 }
 
 export interface RecurrencePostRequestDto {
-  taskId?: string;
+  task_id?: string;
   frequency: "Day" | "Week" | "Month";
   interval: number;
   end_date?: string | null; // Null if no end date

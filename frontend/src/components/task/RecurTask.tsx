@@ -58,7 +58,21 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
 
   // Save recurrence data
   const handleSave = async () => {
-    if (isRecurring) {
+    setLoading(true);
+
+    try {
+      if (!isRecurring) {
+        // If recurrence is disabled and there is an existing recurrence, delete it
+        if (recurrenceId) {
+          console.log("Deleting existing recurrence with ID:", recurrenceId);
+          await Recurrence.deleteRecurrence(recurrenceId); // Call the delete API
+          alert("Recurrence deleted successfully!");
+        }
+        onClose(); // Close the modal after deletion
+        return;
+      }
+
+      // Validate inputs for enabling recurrence
       if (!interval || interval <= 0) {
         alert("Please enter a valid interval.");
         return;
@@ -67,11 +81,8 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
         alert("Please select an end date.");
         return;
       }
-    }
 
-    setLoading(true);
-
-    try {
+      // Prepare the payload for creating or updating recurrence
       const payload: RecurrencePostRequestDto = {
         frequency: isRecurring ? frequency : "Day",
         interval: isRecurring ? (interval || 1) : 1,
@@ -80,13 +91,15 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
 
       if (recurrenceId) {
         // Update existing recurrence
+        console.log("Updating existing recurrence with payload:", payload);
         await Recurrence.updateRecurrence(recurrenceId, payload);
       } else {
         // Create new recurrence
-        await Recurrence.createRecurrence({ ...payload, taskId });
+        const finalPayload = { ...payload, task_id: taskId }; // Add task_id to the payload
+        console.log("Creating new recurrence with payload:", finalPayload);
+        await Recurrence.createRecurrence(finalPayload);
       }
 
-      console.log("Recurrence Payload: " + payload)
       alert("Recurrence saved successfully!");
       onClose();
     } catch (error) {

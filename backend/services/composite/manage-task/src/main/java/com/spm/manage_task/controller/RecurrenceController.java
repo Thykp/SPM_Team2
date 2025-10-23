@@ -42,6 +42,7 @@ public class RecurrenceController {
     // POST to create a new recurrence
     @PostMapping("/")
     public ResponseEntity<String> createRecurrence(@RequestBody RecurrenceDto recurrenceDto) {
+        System.out.println("Payload received in composite controller (createRecurrence): " + recurrenceDto);
         recurrenceService.createRecurrence(recurrenceDto);
         return ResponseEntity.status(201).body("Recurrence created successfully");
     }

@@ -21,10 +21,12 @@ module.exports = {
 
   async createRecurrence(req, res) {
     try {
+      console.log("Payload received in atomic service (createRecurrence):", req.body);
       const recurrence = new Recurrence(req.body);
       await recurrence.create();
       res.status(201).json(recurrence);
     } catch (error) {
+      console.error("Error in atomic service (createRecurrence):", error.message);
       res.status(500).json({ error: error.message });
     }
   },
