@@ -22,6 +22,9 @@ type Client interface {
 	GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
 	// Department
 	GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
+	
+	GetByUser(ctx context.Context, userID, correlationID string) (map[string]any, int, error)
+	DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error)
 }
 
 type client struct {
@@ -67,6 +70,38 @@ func (c *client) doJSON(ctx context.Context, method, url, correlationID string, 
 	return parsed, resp.StatusCode, nil
 }
 
+func (c *client) doJSONAny(ctx context.Context, method, url, correlationID string, body any) (map[string]any, int, error) {
+	var rdr io.Reader
+	if body != nil {
+		buf, _ := json.Marshal(body)
+		rdr = bytes.NewReader(buf)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, rdr)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if correlationID != "" {
+		req.Header.Set("X-Request-ID", correlationID)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	var parsed map[string]any
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			return nil, resp.StatusCode, fmt.Errorf("report svc bad JSON: %w, raw=%s", err, string(data))
+		}
+	}
+	return parsed, resp.StatusCode, nil
+}
+
 // ----- personal -----
 
 func (c *client) Generate(ctx context.Context, userID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
@@ -107,4 +142,20 @@ func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate
 	url := fmt.Sprintf("%s/report/department/%s", c.base, departmentID) // atomic: POST /report/department/:departmentId
 	body := map[string]string{"startDate": startDate, "endDate": endDate}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
+}
+
+// ----- GET Report -----
+
+func (c *client) GetByUser(ctx context.Context, userID, correlationID string) (map[string]any, int, error) {
+	userID = strings.TrimSpace(userID)
+	url := fmt.Sprintf("%s/report/%s", c.base, userID) // atomic: GET /report/:userId
+	return c.doJSONAny(ctx, http.MethodGet, url, correlationID, nil)
+}
+
+// ----- DEL Report -----
+
+func (c *client) DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error) {
+	reportID = strings.TrimSpace(reportID)
+	url := fmt.Sprintf("%s/report/%s", c.base, reportID) // atomic: DELETE /report/:reportId
+	return c.doJSONAny(ctx, http.MethodDelete, url, correlationID, nil)
 }

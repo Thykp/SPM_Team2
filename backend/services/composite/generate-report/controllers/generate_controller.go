@@ -254,3 +254,51 @@ func (g *GenerateController) GenerateProjectReport(c *gin.Context) {
 	c.Header("X-Request-ID", reqID)
 	c.JSON(status, resp)
 }
+
+func (g *GenerateController) GetReportsByUser(c *gin.Context) {
+	userID := strings.TrimSpace(c.Param("userId"))
+	reqID := c.GetString("request_id")
+
+	callCtx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	resp, status, err := g.reportClient.GetByUser(callCtx, userID, reqID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "REPORT_SERVICE_ERROR",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	c.Header("X-Request-ID", reqID)
+	c.JSON(status, resp)
+}
+
+// ===== NEW: Delete a report by ID =====
+
+func (g *GenerateController) DeleteReport(c *gin.Context) {
+	reportID := strings.TrimSpace(c.Param("reportId"))
+	reqID := c.GetString("request_id")
+
+	callCtx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	resp, status, err := g.reportClient.DeleteReport(callCtx, reportID, reqID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "REPORT_SERVICE_ERROR",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	c.Header("X-Request-ID", reqID)
+	c.JSON(status, resp)
+}
