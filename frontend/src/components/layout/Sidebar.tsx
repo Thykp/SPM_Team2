@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { Home, Users, Settings, BarChart3, FileText, Calendar, MessageSquare, HelpCircle, FolderOpen } from "lucide-react"
+import { Home, Users, Settings, FileText, HelpCircle, FolderOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -10,10 +10,7 @@ const navigation = [
   { name: "Projects", href: "/app/projects", icon: FolderOpen },
   { name: "Manage Users", href: "/app/manage-users", icon: Users },
   { name: "Staff Tasks", href: "/app/staff-tasks", icon: Users },
-  { name: "Analytics", href: "/app/analytics", icon: BarChart3 },
-  { name: "Documents", href: "/app/documents", icon: FileText },
-  { name: "Calendar", href: "/app/calendar", icon: Calendar },
-  { name: "Messages", href: "/app/messages", icon: MessageSquare },
+  { name: "Reports", href: "/app/reports", icon: FileText },
 ]
 
 const secondaryNavigation = [
