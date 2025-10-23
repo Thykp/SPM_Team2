@@ -179,10 +179,11 @@ async function publishAddedToResource( resourceType, resourceId, collaboratorIds
  * Publishes update notifications.
  * logic to update existing frequency is above (updateUserNotifications)
  */
-async function publishUpdate( updateType, resourceType, resourceContent, userId, notifyAt, updatedBy ) {
+async function publishUpdate( updateType, resourceId, resourceType, resourceContent, userId, notifyAt, updatedBy ) {
     const payload = {
       type: "update",
       update_type: updateType,
+      resource_id: resourceId,
       resource_type: resourceType,
       resource_content: resourceContent,
       user_id: userId,

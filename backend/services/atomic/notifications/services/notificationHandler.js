@@ -169,7 +169,7 @@ async function handleUpdate(payloads) {
   const grouped = {};
 
   for (const payload of payloads) {
-    const { resource_type, resource_content, resource_id = resource_content?.taskId || resource_content?.id, user_id, updated_by, update_type } = payload;
+    const { update_type, resource_type, resource_id, resource_content, collaboratorIds, updatedBy, user_id  } = payload;
 
     if (!resource_id) {
       console.warn("[handler] Skipping payload with no resource_id:", payload);
@@ -179,19 +179,9 @@ async function handleUpdate(payloads) {
     if (!grouped[resource_type]) grouped[resource_type] = {};
 
     if (!grouped[resource_type][resource_id]) {
-      grouped[resource_type][resource_id] = {
-        resource_type,
-        resource_id,
-        update_type,
-        user_id,
-        updated_by,
-        resource_contents: []
-      };
+      grouped[resource_type][resource_id] = { update_type, user_id, resource_type, resource_id, resource_content, collaboratorIds, updatedBy };
     }
-
-    // Push the resource_content into the group's array
-    grouped[resource_type][resource_id].resource_contents.push(resource_content);
-
+    
     processUpdateNotification(payload)
   }
 

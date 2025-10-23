@@ -44,7 +44,7 @@ async function pollNotifications(setName) {
     for (const [userId, userUpdates] of Object.entries(updatesByUser)) {
       const payloads = userUpdates.map(u => u.payload);
       try {
-        await handleUpdate(payloads); // handler now accepts array
+        await handleUpdate(payloads);
         console.info(`[poller] Processed ${payloads.length} update(s) for user ${userId}`);
       } catch (err) {
         console.error(`[poller] Failed to process updates for user ${userId}:`, err);

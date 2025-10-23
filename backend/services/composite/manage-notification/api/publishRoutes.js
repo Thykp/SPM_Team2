@@ -37,11 +37,11 @@ router.post('/deadline-reminder', async (req, res) => {
 router.post('/update', async (req, res) => {
   try {
     // for project-task, currently focusing on change in status
-    const { updateType, resourceType, resourceContent, collaboratorIds, updatedBy } = req.body;
+    const { updateType, resourceId, resourceType, resourceContent, collaboratorIds, updatedBy } = req.body;
 
-    if (!updateType || ! resourceType || ! resourceContent || ! collaboratorIds || ! updatedBy) {
+    if (!updateType || !resourceId || !resourceType || ! resourceContent || ! collaboratorIds || ! updatedBy) {
       return res.status(400).json({ 
-        error: 'updateType, resourceType, resourceContent, userId, notifyAt, updatedBy are required' 
+        error: 'updateType, resourceId, resourceType, resourceContent, userId, notifyAt, updatedBy are required' 
       });
     }
 
@@ -49,7 +49,7 @@ router.post('/update', async (req, res) => {
         const frequency = await getFrequencyPreferences(collaboratorId);
         const notifyAt = computeNextNotifyAt(frequency.data);
 
-        publishUpdate( updateType, resourceType, resourceContent, collaboratorId, notifyAt, updatedBy)
+        publishUpdate( updateType, resourceId, resourceType, resourceContent, collaboratorId, notifyAt, updatedBy)
       })
     );
 
