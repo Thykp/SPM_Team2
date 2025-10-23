@@ -8,7 +8,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Loader from "@/components/layout/Loader";
-import { FileText, Download, Trash2, Calendar, Building2, Users, ExternalLink } from "lucide-react";
+import {
+  FileText,
+  Download,
+  Trash2,
+  Calendar,
+  Building2,
+  Users,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Kind = "personal" | "team" | "department" | "project" | "unknown";
 
@@ -93,7 +113,7 @@ export function Reports() {
   const [query, setQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // NEW: filter state (empty => “All” kinds)
+  // filter state (empty => all kinds)
   const [activeKinds, setActiveKinds] = useState<Kind[]>([]);
 
   const myUserId = (profile as any)?.id as string | undefined;
@@ -128,8 +148,8 @@ export function Reports() {
     window.open(pdfUrl, "_blank", "noopener,noreferrer");
   };
 
-  const handleDelete = async (reportId: string) => {
-    if (!confirm("Delete this report?")) return;
+  // now deletion is handled by this function ONLY (no window.confirm)
+  const handleDeleteConfirmed = async (reportId: string) => {
     setDeletingId(reportId);
     try {
       await Report.delete(reportId);
@@ -141,7 +161,6 @@ export function Reports() {
     }
   };
 
-  // Derived kind for each report (memoized)
   const withDerived = useMemo(
     () =>
       reports.map(r => ({
@@ -151,15 +170,12 @@ export function Reports() {
     [reports]
   );
 
-  // Apply text + kind filters
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
     return withDerived.filter(({ record: r, derived: d }) => {
-      // Kind filter: if none selected => show all
       const kindMatch = activeKinds.length === 0 || activeKinds.includes(d.kind);
 
-      // Text filter
       if (!q) return kindMatch;
 
       const inTitle = r.title.toLowerCase().includes(q);
@@ -172,7 +188,6 @@ export function Reports() {
     });
   }, [withDerived, query, activeKinds]);
 
-  // Filter UI helpers
   const toggleKind = (k: Kind) => {
     setActiveKinds(prev =>
       prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]
@@ -303,16 +318,47 @@ export function Reports() {
                       <Download className="h-3.5 w-3.5" />
                       Download
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2 text-destructive hover:text-destructive bg-transparent"
-                      onClick={() => handleDelete(r.id)}
-                      disabled={deletingId === r.id}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      {deletingId === r.id ? "Deleting…" : "Delete"}
-                    </Button>
+
+                    {/* shadcn alert dialog for delete */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-2 text-destructive hover:text-destructive bg-transparent"
+                          disabled={deletingId === r.id}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this report?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently remove <span className="font-medium">{r.title}</span> from your reports list.
+                            You can’t undo this action.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteConfirmed(r.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={deletingId === r.id}
+                          >
+                            {deletingId === r.id ? (
+                              <span className="inline-flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Deleting…
+                              </span>
+                            ) : (
+                              "Delete"
+                            )}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardContent>
               </Card>
