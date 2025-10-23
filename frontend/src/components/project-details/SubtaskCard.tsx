@@ -20,6 +20,7 @@ import {
 import { type TaskDTO, TaskApi } from '@/lib/api';
 import { Check, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import EditProjectTask from './EditProjectTask';
+import { TaskReminder } from '../task/TaskReminder';
 
 interface SubtaskCardProps {
     subtask: TaskDTO;
@@ -153,6 +154,7 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, 
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        < TaskReminder taskId={subtask.id} status={subtask.status} deadline={subtask.deadline}/>
                     </div>
                 </div>
             </CardContent>

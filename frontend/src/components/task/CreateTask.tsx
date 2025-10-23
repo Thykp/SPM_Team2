@@ -146,12 +146,13 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
       const createdTask = await TaskApi.createTask(taskData);
       onTaskCreated(createdTask);
 
-      // await NotificationApi.publishAddedToResource({
-      //   resourceType: "task",
-      //   resourceId: "task",
-      //   collaboratorIds: taskData.collaborators,
-      //   addedBy: profile?.display_name || "Unknown User",
-      // });
+      await NotificationApi.publishAddedToResource({
+        resourceType: "task",
+        resourceId: "task",
+        collaboratorIds: taskData.collaborators,
+        resourceContent: { ...taskData },
+        addedBy: profile?.display_name || "Unknown User",
+      });
 
       onClose();
     } catch (err: any) {

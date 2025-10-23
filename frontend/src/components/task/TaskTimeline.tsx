@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { MoreHorizontal, User, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TaskDTO } from "@/lib/api"
+import { TaskReminder } from "./TaskReminder"
 
 type TaskTimelineProps = {
   tasks: TaskDTO[]
@@ -105,7 +106,6 @@ function TimelineTaskCard({
             </div>
           )}
         </div>
-
         <Badge variant="secondary" className={cn("text-xs", getStatusBadgeColor(task.status))}>
           {task.status}
         </Badge>

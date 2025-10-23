@@ -170,13 +170,17 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
         priority: task.priority,
       };
       await TaskApi.updateTask(taskId, taskData);
-       // --- Notify collaborators when newly added ---
+
+      onClose();
+      onTaskUpdated?.();
+
+      // --- Notify collaborators when newly added ---
       const newlyAdded = selectedCollaborators.filter((id) => !originalCollaborators.includes(id));
 
       if (newlyAdded.length > 0) {
         try {
           await NotificationAPI.publishAddedToResource({
-            resourceType: task.parent ? "project-subtask" : "project-task",
+            resourceType: "project",
             resourceId: String(taskData.project_id),
             collaboratorIds: newlyAdded,
             resourceContent: {...taskData},
@@ -190,48 +194,46 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
 
 
     // --- Notify collaborators about edits ---
-    const collaboratorsToNotify = selectedCollaborators.filter(id => id !== profile?.id);
-    if (collaboratorsToNotify.length > 0 && originalTask) {
-      const hasNonOwnerChanges = (
-        originalTask.title !== taskData.title ||
-        originalTask.description !== taskData.description ||
-        originalTask.status !== taskData.status ||
-        originalTask.priority !== taskData.priority ||
-        originalTask.deadline !== taskData.deadline)
+      const collaboratorsToNotify = selectedCollaborators.filter(id => id !== profile?.id);
+      if (collaboratorsToNotify.length > 0 && originalTask) {
+        const hasNonOwnerChanges = (
+          originalTask.title !== taskData.title ||
+          originalTask.description !== taskData.description ||
+          originalTask.status !== taskData.status ||
+          originalTask.priority !== taskData.priority ||
+          originalTask.deadline !== taskData.deadline)
 
 
-      if (hasNonOwnerChanges) {
+        if (hasNonOwnerChanges) {
+          await NotificationAPI.publishUpdate({
+            updateType: "Edited",
+            resourceType: "project",
+            resourceId:taskId,
+            resourceContent: { 
+              updated: {...taskData},
+              original: {...originalTask}
+          },
+            collaboratorIds: collaboratorsToNotify,
+            updatedBy: profile?.display_name || "Unknown User",
+          });
+        }
+      }
+
+      // --- Notify new owner of assignment---
+      if (originalTask?.owner !== taskData.owner && taskData.owner) {
         await NotificationAPI.publishUpdate({
-          updateType: "Edited",
+          updateType: "Assigned",
           resourceType: "project",
-          resourceId:taskId,
-          resourceContent: { 
-            updated: {...taskData},
-            original: {...originalTask}
-         },
-          collaboratorIds: collaboratorsToNotify,
-          updatedBy: profile?.display_name || "Unknown User",
+            resourceId:taskId,
+            resourceContent: {
+              updated: {...taskData},
+              original: {...originalTask}
+            },
+            collaboratorIds: [taskData.owner],
+            updatedBy: profile?.display_name || "Unknown User",
         });
       }
-    }
 
-    // --- Notify new owner of assignment---
-    if (originalTask?.owner !== taskData.owner && taskData.owner) {
-      await NotificationAPI.publishUpdate({
-        updateType: "Assigned",
-        resourceType: "project",
-          resourceId:taskId,
-          resourceContent: {
-            updated: {...taskData},
-            original: {...originalTask}
-          },
-          collaboratorIds: [taskData.owner],
-          updatedBy: profile?.display_name || "Unknown User",
-      });
-    }
-
-      onClose();
-      onTaskUpdated?.();
     } catch (err) {
       console.error("Failed to update task:", err);
     } finally {

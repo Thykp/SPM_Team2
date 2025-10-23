@@ -182,6 +182,11 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
 
       // Use the new createTaskWithProjectData API method
       const response = await TaskAPI.createTask(taskData);
+      
+      console.log('Task created successfully:', response);
+      onTaskCreated(response);
+      resetForm();
+      setOpen(false);
 
       // Notify collaborators upon creation
       if (selectedCollaborators.length > 0) {
@@ -204,11 +209,6 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       } else {
         console.log("No collaborators selected — no notification sent upon creating project task.");
       }
-      
-      console.log('Task created successfully:', response);
-      onTaskCreated(response);
-      resetForm();
-      setOpen(false);
     } catch (err) {
       console.error("Failed to create task:", err);
       // You could add error toast here
