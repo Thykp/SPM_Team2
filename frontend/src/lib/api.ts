@@ -310,6 +310,10 @@ export type GenerateReportBody = {
   endDate: string;
 };
 
+export type GenerateScopedReportBody = GenerateReportBody & {
+  userId: string;
+};
+
 export const Report = {
 
   generate: async (
@@ -323,7 +327,7 @@ export const Report = {
 
   generateTeam: async (
     teamId: string,
-    body: GenerateReportBody
+    body: GenerateScopedReportBody
   ): Promise<{ jobId?: string; message?: string; url?: string }> => {
     const url = `${GENERATE_REPORT_API}/team/${teamId}`;
     const { data } = await api.post(url, body);
@@ -332,7 +336,7 @@ export const Report = {
 
   generateDepartment: async (
     departmentId: string,
-    body: GenerateReportBody
+    body: GenerateScopedReportBody
   ): Promise<{ jobId?: string; message?: string; url?: string }> => {
     const url = `${GENERATE_REPORT_API}/department/${departmentId}`;
     const { data } = await api.post(url, body);
@@ -340,5 +344,6 @@ export const Report = {
   },
   
 };
+
 
 export default api;
