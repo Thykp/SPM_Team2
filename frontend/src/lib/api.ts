@@ -391,12 +391,10 @@ export const Notification = {
     await api.post(url, payload);
   },
 
-  publishAddedToResource: async ({ resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy,priority
-  }: { resourceType: string; resourceId: string; collaboratorIds: string[]; resourceName: string; resourceDescription?: string; addedBy: string;priority:number}): Promise<void> => {
+  publishAddedToResource: async ({ resourceType, resourceId, resourceContent, collaboratorIds, addedBy}:{ resourceType: string; resourceId: string; resourceContent: Record<string, any>, collaboratorIds: string[], addedBy: string}): Promise<void> => {
     const url = `${KONG_BASE_URL}/manage-notifications/publish/added-to-resource`;
 
-    const payload = { resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy, priority };
-
+    const payload = { resourceType, resourceId, collaboratorIds, resourceContent, addedBy };
     try {
     await api.post(url, payload);
   } catch (err: unknown) {
@@ -410,7 +408,7 @@ export const Notification = {
   },
 
   publishUpdate: async ({ updateType, resourceType, resourceContent, collaboratorIds, updatedBy
-  }: {updateType: "Assigned" | "Edited"; resourceType: "project-task" | "project-subtask"; resourceContent: Record<string, any>; collaboratorIds: string[]; updatedBy: string;}): Promise<void> => {
+  }: {updateType: "Assigned" | "Edited"; resourceType: "project" | "task"; resourceContent: Record<string, any>; collaboratorIds: string[]; updatedBy: string;}): Promise<void> => {
     const url = `${KONG_BASE_URL}/manage-notifications/publish/update`;
     const payload = {updateType, resourceType, resourceContent, collaboratorIds, updatedBy };
     

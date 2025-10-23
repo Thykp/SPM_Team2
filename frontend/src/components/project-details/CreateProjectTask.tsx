@@ -185,26 +185,24 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
 
       // Notify collaborators upon creation
       if (selectedCollaborators.length > 0) {
-        const notificationPayload = {
-          resourceType: taskData.parent ? "project-subtask" : "project-task",
+        const payload = {
+          resourceType: "project",
           resourceId: String(taskData.project_id),
-          collaboratorIds: selectedCollaborators,
-          resourceName: taskData.title,
-          resourceDescription: taskData.description || "",
-          priority:taskData.priority,
+          resourceContent: { ...taskData },
+          collaboratorIds: taskData.collaborators,
           addedBy: profile?.display_name || "Unknown User",
         };
 
-        console.log("Publishing notifications for project task creation:", notificationPayload);
+        console.log("Publishing notifications for project task creation:", payload);
 
         try {
-          const notifResponse = await NotificationAPI.publishAddedToResource(notificationPayload);
-          console.log("✅ Notification published:", notifResponse);
+          const notifResponse = await NotificationAPI.publishAddedToResource(payload);
+          console.log("Notification published upon creating project task:", notifResponse);
         } catch (notifErr) {
-          console.error("❌ Failed to publish notification:", notifErr);
+          console.error("Failed to publish notification upon creating project task:", notifErr);
         }
       } else {
-        console.log("ℹ️ No collaborators selected — no notification sent.");
+        console.log("No collaborators selected — no notification sent upon creating project task.");
       }
       
       console.log('Task created successfully:', response);

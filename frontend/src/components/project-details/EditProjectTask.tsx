@@ -167,9 +167,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
             resourceType: task.parent ? "project-subtask" : "project-task",
             resourceId: String(taskData.project_id),
             collaboratorIds: newlyAdded,
-            resourceName: taskData.title,
-            resourceDescription: taskData.description || "",
-            priority: taskData.priority,
+            resourceContent: {...taskData},
             addedBy: profile?.display_name || "Unknown User",
           });
           console.log("Notifications published for new collaborators when project edited:", newlyAdded);
@@ -184,7 +182,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
     if (collaboratorsToNotify.length > 0) {
       await NotificationAPI.publishUpdate({
         updateType: "Edited",
-        resourceType: task.parent ? "project-subtask" : "project-task",
+        resourceType: "project",
         resourceContent: { ...taskData, id:taskData.project_id },
         collaboratorIds: collaboratorsToNotify,
         updatedBy: profile?.display_name || "Unknown User",
@@ -195,7 +193,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
     if (task.owner && task.owner !== profile?.id) {
       await NotificationAPI.publishUpdate({
         updateType: "Assigned",
-        resourceType: "project-task",
+        resourceType: "project",
         resourceContent: taskData,
         collaboratorIds: [task.owner],
         updatedBy: profile?.display_name || "Unknown User",

@@ -160,28 +160,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
             const updatedCollaborators = editForm.collaborators || [];
             const newlyAdded = updatedCollaborators.filter((id) => !originalCollaborators.includes(id));
 
-            console.log("Added by:", profile?.id);
             console.log("New collaborators detected:", newlyAdded);
 
-            if (newlyAdded.length > 0) {
-                try {
-                    console.log("Publishing notification for new collaborators...");
-
-                    await NotificationAPI.publishAddedToResource({
-                        resourceType: "project",
-                        resourceId: project.id,
-                        collaboratorIds: newlyAdded,
-                        resourceName: editForm.title,
-                        resourceDescription: editForm.description || "",
-                        addedBy: profile?.display_name || "unknown",
-                        priority: 10
-                    });
-
-                    console.log("Notification published for new collaborators:", newlyAdded);
-                } catch (notifyError) {
-                    console.error("Failed to publish notification:", notifyError);
-                }
-            }
 
             // Build update payload with current values + changes
             const updateData: UpdateProjectRequest = {
@@ -217,6 +197,32 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                 }
                 
                 setIsEditDialogOpen(false);
+
+                if (newlyAdded.length > 0) {
+                try {
+                    console.log("Publishing notification for new collaborators...");
+
+                    await NotificationAPI.publishAddedToResource({
+                        resourceId: project.id,
+                        resourceType: "project",
+                        collaboratorIds: newlyAdded,
+                        resourceContent:{ ...updatedProjectData },
+                        addedBy: profile?.display_name || "unknown",
+                    }); 
+                    console.log(JSON.stringify({
+                        resourceId: project.id,
+                        resourceType: "project",
+                        resourceContent:{ ...updatedProjectData },
+                        collaboratorIds: newlyAdded,
+                        addedBy: profile?.display_name || "unknown",
+                    }))
+
+                    console.log("Notification published for new collaborators:", newlyAdded);
+                } catch (notifyError) {
+                    console.error("Failed to publish notification:", notifyError);
+                }
+
+            }
             } else {
                 console.error('Update failed:', result);
             }

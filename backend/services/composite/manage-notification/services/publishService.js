@@ -160,19 +160,15 @@ async function publishDeadlineReminder({ taskId, userId, deadline, reminderDays 
  * Publishes resource-collaboration notifications.
  * since delivered immediately, no need to remove from notifications
  */
-async function publishAddedToResource( resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy, priority ) {
+async function publishAddedToResource( resourceType, resourceId, collaboratorIds, resourceContent, addedBy ) {
   const payload = {
     type: "added", 
-    //can be task, project, project-task, project-task-subtask
+    //can be task, project
     resource_type: resourceType,
-    // for task, there is no task_id. if project-task, resource_id is project_id. if project, resource_id is project_id. if subtask, resource_id is task_id
     resource_id: resourceId,
-    resource_name: resourceName,
-    resource_description: resourceDescription,
     collaborator_ids: collaboratorIds,
-    added_by: addedBy,
-    // only for if its a task, which has priority (default to 10 if needed)
-    priority: priority | 10,
+    resource_content: resourceContent,
+    addedBy: addedBy,
     notify_at: Date.now(),
   };
 

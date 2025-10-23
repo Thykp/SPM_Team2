@@ -190,10 +190,14 @@ const Projects: React.FC = () => {
         resourceType: "project",
         resourceId: createdProject.id,
         collaboratorIds: createdProject.collaborators,
-        resourceName: createdProject.title,
-        resourceDescription: createdProject.description,
+        resourceContent: { ...createdProject },
         addedBy: addedBy,
       });
+      console.log(JSON.stringify({resourceType: "project",
+        resourceId: createdProject.id,
+        collaboratorIds: createdProject.collaborators,
+        resourceContent: { ...createdProject },
+        addedBy: addedBy,}))
     }
 
   } catch (err) {

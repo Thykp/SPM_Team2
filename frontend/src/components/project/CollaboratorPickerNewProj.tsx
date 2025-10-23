@@ -30,7 +30,7 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
   loadingUsers,
   currentUserId,
 }) => {
-    console.log("🔍 CollaboratorPicker users prop:", users);
+    // console.log("🔍 CollaboratorPicker users prop:", users);
     // Filter users based on search and exclude current user
     const filteredUsers = (Array.isArray(users) ? users : users?.data || []).filter((u: UserRow) => {
         // More robust owner exclusion - handle string comparison and null/undefined cases
@@ -51,7 +51,7 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
         );
     });
 
-    console.log("🔍 Filtered users:", filteredUsers);
+    // console.log("🔍 Filtered users:", filteredUsers);
 
   return (
     <div className="space-y-2">

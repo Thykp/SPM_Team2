@@ -206,30 +206,15 @@ async function handleUpdate(payloads) {
 }
 
 async function handleAddedToResource(payload) {
-  if (!Array.isArray(payload.collaborator_ids)) return;
-  console.info(`[handler] Added-to-resource -> users: ${payload.collaborator_ids.join(", ")}`);
+  // if (!Array.isArray(payload.collaborator_ids)) return;
+  // console.info(`[handler] Added-to-resource -> users: ${payload.collaborator_ids.join(", ")}`);
 
-  // for project: handle if is a project or project-task
-  isProject = false
-  isProjectTask = false
-  if (payload.resource_type == "project") isProject = true
-  if (payload.resource_type == "project-task") isProject = true
-
-  for (const collaborator_id of payload.collaborator_ids) {
-
-    // for project: clickable link to open up to that project
-    modifiedPayload = { ...payload,
-      isProject: isProject,
-      isProjectTask: isProjectTask,
-      link: "http://localhost:5173/app/project/" + payload.resource_id,
-      user_id: collaborator_id,
-      username: payload.added_by,
-      notify_at: Date.now(),
-    }
+  console.log(payload)
+  // for () {
     
-    console.info(`[handler] Added-to-resource for ${modifiedPayload.resource_type}-> modified payload ${JSON.stringify(modifiedPayload)}`)
-    await processAddedNotification(modifiedPayload);
-  }
+  //   console.info(`[handler] Added-to-resource for ${modifiedPayload.resource_type}-> modified payload ${JSON.stringify(modifiedPayload)}`)
+  //   await processAddedNotification(modifiedPayload);
+  // }
 }
 
 module.exports = {
