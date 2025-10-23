@@ -15,7 +15,7 @@ const {
 } = require('../services/callingService');
 const { renderHtml } = require('../factory/html');
 const { gotenRenderPdf } = require('../factory/pdf');
-const { createReportStorage, createReport } = require('../services/reportService');
+const { createReportStorage, createReport, getReportsByProfileId, deleteReport } = require('../services/reportService');
 const { AppError, ValidationError } = require('../model/AppError');
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -352,6 +352,38 @@ router.post('/department/:departmentId', async (req, res) => {
       return sendError(res, err.statusCode, err.code, err.message, err.details, err.stack);
     }
     return sendError(res, 500, 'UNEXPECTED_ERROR', 'An unexpected error occurred while generating the department report', null, err.stack);
+  }
+});
+
+// GET endpoint to retrieve all reports for a profile
+router.get('/profile/:profileId', async (req, res) => {
+  const profileId = req.params.profileId;
+
+  try {
+    if (!profileId) {
+      return res.status(400).json({ error: 'Profile ID is required' });
+    }
+    const reports = await getReportsByProfileId(profileId);
+    res.status(200).json(reports);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE endpoint to remove a report by ID
+router.delete('/:reportId', async (req, res) => {
+  const reportId = req.params.reportId;
+
+  try {
+    if (!reportId) {
+      return res.status(400).json({ error: 'Report ID is required' });
+    }
+    await deleteReport(reportId);
+    res.status(200).json({ message: 'Successfully deleted report' });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
