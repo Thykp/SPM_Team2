@@ -1,6 +1,93 @@
 const { redis, pushToRedis } = require("./redisPublisher");
 
 /**
+ * Compute the next notify_at timestamp based on frequency
+ * frequency = {
+ *   delivery_frequency: 'immediate' | 'daily' | 'weekly',
+ *   delivery_time: '1970-01-01T09:00:00+00:00',
+ *   delivery_day: 'Monday' | 'Tuesday' | ...
+ * }
+ */
+function computeNextNotifyAt(frequency) {
+  const now = new Date();
+
+  switch (frequency.delivery_frequency) {
+    case "Immediate":
+      return new Date().getTime();
+
+    case "Daily": {
+      const time = frequency.delivery_time || "1970-01-01T09:00:00+00:00";
+      const date = new Date(time);
+      if (isNaN(date.getTime())) throw new Error("Invalid delivery_time format for Daily");
+
+      const next = new Date(now);
+      next.setHours(date.getUTCHours(), date.getUTCMinutes(), 0, 0);
+
+      if (next <= now) next.setDate(next.getDate() + 1);
+      return next.getTime();
+    }
+
+    case "Weekly": {
+      const time = frequency.delivery_time || "1970-01-01T09:00:00+00:00";
+      const date = new Date(time);
+      if (isNaN(date.getTime())) throw new Error("Invalid delivery_time format for Weekly");
+
+      const daysOfWeek = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const targetDay = daysOfWeek.indexOf(frequency.delivery_day || "Monday");
+      if (targetDay === -1) throw new Error("Invalid delivery_day for Weekly frequency");
+
+      const next = new Date(now);
+      next.setHours(date.getUTCHours(), date.getUTCMinutes(), 0, 0);
+
+      const dayDiff = (targetDay + 7 - next.getDay()) % 7;
+      if (dayDiff === 0 && next <= now) {
+        next.setDate(next.getDate() + 7);
+      } else {
+        next.setDate(next.getDate() + dayDiff);
+      }
+
+      return next.getTime();
+    }
+
+    default:
+      throw new Error("Invalid delivery_frequency");
+  }
+}
+
+
+/**
+ * Update all notifications for a user according to their new frequency
+ */
+async function updateUserNotifications(userId, frequency) {
+  try {
+    console.info("[updateUserNotifications] Attempting to reschedule notifications for " + userId);
+
+    const items = await redis.zrangebyscore("update", "-inf", "+inf");
+
+    for (const item of items) {
+      try {
+        const payload = JSON.parse(item);
+        if (payload.user_id !== userId) continue;
+        const newNotifyAt = computeNextNotifyAt(frequency);
+        await redis.zrem("update", item);
+        const updatedPayload = { ...payload, notify_at: newNotifyAt };
+        await pushToRedis("update", updatedPayload, newNotifyAt);
+
+        console.info(
+          `[updateUserNotifications] Updated notification for ${userId} to ${new Date(newNotifyAt).toISOString()}`
+        );
+
+      } catch (err) {
+        console.warn("[updateUserNotifications] Failed to parse Redis item", err, item);
+      }
+    }
+  } catch (err) {
+    console.error("[updateUserNotifications] Failed to update notifications:", err);
+  }
+}
+
+
+/**
  * Remove all deadline reminders for a given task and user
  */
 async function removeDeadlineReminders(taskId, userId) {
@@ -73,7 +160,7 @@ async function publishDeadlineReminder({ taskId, userId, deadline, reminderDays 
  * Publishes resource-collaboration notifications.
  * since delivered immediately, no need to remove from notifications
  */
-async function publishAddedToResource( resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy, priority) {
+async function publishAddedToResource( resourceType, resourceId, collaboratorIds, resourceName, resourceDescription, addedBy, priority ) {
   const payload = {
     type: "added", 
     //can be task, project, project-task, project-task-subtask
@@ -92,29 +179,31 @@ async function publishAddedToResource( resourceType, resourceId, collaboratorIds
   await pushToRedis("added", payload, payload.notify_at);
 }
 
+/**
+ * Publishes update notifications.
+ * logic to update existing frequency is above (updateUserNotifications)
+ */
+async function publishUpdate( updateType, resourceType, resourceContent, userId, notifyAt, updatedBy ) {
+    const payload = {
+      type: "update",
+      update_type: updateType,
+      resource_type: resourceType,
+      resource_content: resourceContent,
+      user_id: userId,
+      updated_by: updatedBy,
+      notify_at: notifyAt,
+      original_sent: Date.now(),
+    }
+    await pushToRedis("update", payload, payload.notify_at);
+  }
+
+
 module.exports = {
   removeDeadlineReminders,
   publishDeadlineReminder,
-  publishAddedToResource
+  publishAddedToResource,
+  updateUserNotifications,
+  publishUpdate,
+  computeNextNotifyAt
 };
 
-// /**
-//  * Publishes task update notifications.
-//  * Removes existing updates for the same task/user to avoid duplicates.
-//  */
-// async function publishTaskUpdate({ taskId, userIds, status, changedBy, resourceName, priority, projectId = null }) {
-//   const payload = {
-//     type: "task_update",
-//     resource_type: "task",
-//     resource_id: taskId,
-//     resource_name: resourceName,
-//     project_id: projectId,
-//     task_priority: priority,
-//     user_ids: userIds,
-//     status,
-//     changed_by: changedBy,
-//     notify_at: Date.now(),
-//   };
-
-//   await pushToRedis("task_updates", payload, payload.notify_at);
-// }

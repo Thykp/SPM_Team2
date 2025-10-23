@@ -44,6 +44,30 @@ async function sendDeadlineOrAddedEmail(emailPayload) {
   }
 }
 
+async function sendUpdates(emailPayload){
+try {
+    const response = await axios.post(
+      "https://api.emailjs.com/api/v1.0/email/send",
+      {
+        service_id: process.env.EMAILJS_SERVICE_ID,
+        template_id: process.env.EMAILJS_UPDATE_TEMPLATE,
+        user_id: process.env.EMAILJS_PUBLIC_KEY,
+        template_params: {
+          payload: emailPayload,
+        },
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    console.log("Email sent!", response.data);
+  } catch (err) {
+    console.error("Failed to send email:", err.response?.data || err.message);
+  }
+}
+
 module.exports = {
-  sendDeadlineOrAddedEmail
+  sendDeadlineOrAddedEmail,
+  sendUpdates
 }

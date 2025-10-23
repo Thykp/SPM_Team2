@@ -2,6 +2,7 @@
 // const supabase = require('@supabase/supabase-js');
 const axios = require('axios');
 KONG_URL = "http://kong:8000"
+const { updateUserNotifications } = require('../services/publishService');
 
 async function getDeliveryPreferences(userId) {
     try{
@@ -43,6 +44,13 @@ async function updateFrequencyPreferences(userId, frequency) {
             delivery_time: frequency.delivery_time || "1970-01-01T09:00:00+00:00",
             delivery_day: frequency.delivery_day || "Monday",
         });
+
+        try{
+            await updateUserNotifications(userId, frequency)
+        } catch (err) {
+            throw new Error('Failed to update existing notification frequency: ' + err.message);
+        }
+        
     } catch (err) {
         throw new Error('Failed to update notification frequency preferences: ' + err.message);
     }

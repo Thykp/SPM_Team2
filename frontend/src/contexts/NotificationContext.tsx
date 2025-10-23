@@ -12,14 +12,14 @@ type NotificationContextType = {
   deliveryPreferences: { email: string; delivery_method: string[] };
   frequencyPreferences: FrequencyPrefs | null;
   notificationLoading: boolean;
-  refreshPreferences: () => Promise<void>; // no need to pass userId manually
+  refreshPreferences: () => Promise<void>
 };
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth(); // get user from AuthContext
-  const userId = user?.id; // extract userId
+  const { user } = useAuth();
+  const userId = user?.id;
 
   const [deliveryPreferences, setDeliveryPreferences] = useState<{ email: string; delivery_method: string[] }>({
     email: "",

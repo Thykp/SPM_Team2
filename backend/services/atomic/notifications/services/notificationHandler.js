@@ -1,6 +1,6 @@
 const { broadcastToUser } = require("./websocket");
 const { postToSupabase } = require("./postSupabase");
-const { sendDeadlineOrAddedEmail } = require("./email")
+const { sendDeadlineOrAddedEmail, sendUpdates  } = require("./email")
 const axios = require("axios");
 
 const NOTIFICATIONS_URL = "http://notifications:4201";
@@ -105,6 +105,55 @@ async function processAddedNotification(payload){
   }
 }
 
+async function processUpdateNotification(payload){
+  // await postToSupabase(notifData);
+
+ try {
+  const resourceNiceNames = {
+    project: "Project",
+    "project-task": "Project Task",
+    "project-subtask": "Project Subtask",
+    subtask: "Subtask",
+    task: "Task",
+  };
+
+  const resourceFlags = {
+    isProject: payload.resource_type === "project",
+    isProjectTask: payload.resource_type === "project-task",
+    isProjectSubtask: payload.resource_type === "project-subtask",
+    isSubtask: payload.resource_type === "subtask",
+    isTask: payload.resource_type === "task",
+  };
+
+  const niceUpdateType = `${resourceNiceNames[payload.resource_type] || payload.resource_type} ${payload.update_type}`;
+
+  const { email, delivery_method } = await getUserPreferences(payload.user_id); 
+  const push = delivery_method.includes("in-app");
+  const emailPref = delivery_method.includes("email");
+
+  const wsPayload = Object.assign({}, payload, {
+    update_type: niceUpdateType,
+    push: push,
+    timestamp: Date.now()
+  }, resourceFlags);
+
+  broadcastToUser(payload.user_id, wsPayload);
+
+
+  const emailPayload = {
+    email: email,
+    ...payload,
+    update_type: niceUpdateType,
+  }
+
+  if (emailPref) {
+    sendUpdates(emailPayload)
+  } 
+  } catch (err){
+    console.error("[processUpdateNotification] Failed:", err);
+  }
+}
+
 /* ---------------- HANDLERS ---------------- */
 
 async function handleDeadlineReminder(payload) {
@@ -114,25 +163,46 @@ async function handleDeadlineReminder(payload) {
   await processReminderNotification(payload);
 }
 
-async function handleTaskUpdate(payload) {
-  if (!Array.isArray(payload.user_ids)) return;
-  console.info(`[handler] Task update → users: ${payload.user_ids.join(", ")}`);
+async function handleUpdate(payloads) {
+  console.info(`[handler] Received ${payloads.length} update(s)`);
 
-  for (const userId of payload.user_ids) {
-    const notifData = {
-      to_user_id: userId,
-      from_user_id: payload.changed_by || null,
-      notif_type: "task_update",
-      resource_type: "task",
-      resource_id: payload.resource_id,
-      project_id: payload.project_id || null,
-      task_priority: payload.priority || null,
-      notif_text: `Task "${payload.resource_name}" was updated to status: ${payload.status}`,
-      link_url: `/tasks/${payload.resource_id}`,
-    };
+  const grouped = {};
 
-    await processNotification(userId, notifData, payload);
+  for (const payload of payloads) {
+    const { resource_type, resource_content, resource_id = resource_content?.taskId || resource_content?.id, user_id, updated_by, update_type } = payload;
+
+    if (!resource_id) {
+      console.warn("[handler] Skipping payload with no resource_id:", payload);
+      continue;
+    }
+
+    if (!grouped[resource_type]) grouped[resource_type] = {};
+
+    if (!grouped[resource_type][resource_id]) {
+      grouped[resource_type][resource_id] = {
+        resource_type,
+        resource_id,
+        update_type,
+        user_id,
+        updated_by,
+        resource_contents: []
+      };
+    }
+
+    // Push the resource_content into the group's array
+    grouped[resource_type][resource_id].resource_contents.push(resource_content);
+
+    processUpdateNotification(payload)
   }
+
+  // Convert each resource_type map to an array
+  const result = {};
+  for (const rType of Object.keys(grouped)) {
+    result[rType] = Object.values(grouped[rType]);
+  }
+
+  console.info("[handler] Grouped updates:", JSON.stringify(result, null, 2));
+  return result;
 }
 
 async function handleAddedToResource(payload) {
@@ -164,6 +234,6 @@ async function handleAddedToResource(payload) {
 
 module.exports = {
   handleDeadlineReminder,
-  handleTaskUpdate,
+  handleUpdate,
   handleAddedToResource,
 };

@@ -401,7 +401,6 @@ export const Notification = {
     await api.post(url, payload);
   } catch (err: unknown) {
     console.error("Failed to publish 'added to resource' notification:", err);
-    // Optionally, rethrow if you want calling code to handle it
     throw new Error(
       err instanceof Error
         ? err.message
@@ -410,7 +409,22 @@ export const Notification = {
   }
   },
 
-
+  publishUpdate: async ({ updateType, resourceType, resourceContent, collaboratorIds, updatedBy
+  }: {updateType: "Assigned" | "Edited"; resourceType: "project-task" | "project-subtask"; resourceContent: Record<string, any>; collaboratorIds: string[]; updatedBy: string;}): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/publish/update`;
+    const payload = {updateType, resourceType, resourceContent, collaboratorIds, updatedBy };
+    
+    try {
+      await api.post(url, payload);
+    } catch (err: unknown) {
+      console.error("Failed to publish 'update' notification:", err);
+      throw new Error(
+        err instanceof Error
+          ? err.message
+          : "Unknown error occurred while publishing update notification"
+      );
+    }
+  },
 
   deleteNotification: async (userId: string, notifId: string): Promise<void> => {
     const url = `${KONG_BASE_URL}/notifications/${userId}/${notifId}`;

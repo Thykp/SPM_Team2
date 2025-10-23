@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { publishDeadlineReminder, publishTaskUpdate, publishAddedToResource } = require('../services/publishService');
+const { publishDeadlineReminder, computeNextNotifyAt, publishUpdate, publishAddedToResource } = require('../services/publishService');
+const { getFrequencyPreferences } = require('../services/preferencesService')
 
 // Health check
 router.get('/health', (req, res) => {
@@ -12,7 +13,7 @@ router.get('/health', (req, res) => {
 });
 
 
-// Route in notificationRoutes.js
+// POST /publish/deadline-reminder
 router.post('/deadline-reminder', async (req, res) => {
   try {
     const { taskId, userId, deadline, reminderDays, username } = req.body;
@@ -31,23 +32,34 @@ router.post('/deadline-reminder', async (req, res) => {
 });
 
 
-// POST /publish/task-update
+// POST /publish/update
 // Task updates can include multiple collaborators in one payload
-router.post('/task-update', async (req, res) => {
+router.post('/update', async (req, res) => {
   try {
-    const { taskId, userIds, status, changedBy } = req.body;
-    if (!taskId || !userIds || !status || !changedBy) {
-      return res.status(400).json({ error: 'taskId, userIds, status, and changedBy are required' });
+    // for project-task, currently focusing on change in status
+    const { updateType, resourceType, resourceContent, collaboratorIds, updatedBy } = req.body;
+
+    if (!updateType || ! resourceType || ! resourceContent || ! collaboratorIds || ! updatedBy) {
+      return res.status(400).json({ 
+        error: 'updateType, resourceType, resourceContent, userId, notifyAt, updatedBy are required' 
+      });
     }
 
-    await publishTaskUpdate(taskId, userIds, status, changedBy);
+    await Promise.all(collaboratorIds.map(async (collaboratorId) => {
+        const frequency = await getFrequencyPreferences(collaboratorId);
+        const notifyAt = computeNextNotifyAt(frequency.data);
 
-    res.status(200).json({ message: 'Task update notifications sent' });
+        publishUpdate( updateType, resourceType, resourceContent, collaboratorId, notifyAt, updatedBy)
+      })
+    );
+
+    res.status(200).json({ message: 'Resource update notifications scheduled for ' + resourceType });
   } catch (err) {
-    console.error(err);
+    console.error("[Update] Error scheduling notifications:", err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // POST /publish/added-to-resource
 // Added-to-resource notifications can include multiple collaborators in one payload
