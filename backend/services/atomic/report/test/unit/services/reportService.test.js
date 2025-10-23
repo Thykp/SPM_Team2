@@ -3,7 +3,7 @@ process.env.SUPABASE_URL = 'http://localhost:54321';
 process.env.SUPABASE_API_KEY = 'test-key';
 
 const { supabase } = require('../../../db/supabase');
-const { createReport, createReportStorage, createReportStorageFromPath, createReportStorageFromFile } = require('../../../services/reportService');
+const { createReport, createReportStorage, createReportStorageFromPath, createReportStorageFromFile, getReportsByProfileId, deleteReport } = require('../../../services/reportService');
 const { InternalError, ValidationError } = require('../../../model/AppError');
 const fs = require('fs').promises;
 const path = require('path');
@@ -414,6 +414,323 @@ describe('ReportService', () => {
                 uploadData: { path: 'reports/report2.pdf' },
                 publicUrl: 'https://example.com/reports/report2.pdf'
             });
+        });
+    });
+
+    describe('getReportsByProfileId', () => {
+        test('Should fetch reports for a profile successfully', async () => {
+            const mockReports = [
+                {
+                    id: 'report1',
+                    profile_id: 'user-123',
+                    title: 'Report 1',
+                    filepath: 'https://example.com/report1.pdf',
+                    created_at: '2024-01-20T10:00:00Z'
+                },
+                {
+                    id: 'report2',
+                    profile_id: 'user-123',
+                    title: 'Report 2',
+                    filepath: 'https://example.com/report2.pdf',
+                    created_at: '2024-01-15T10:00:00Z'
+                }
+            ];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        order: jest.fn().mockResolvedValue({
+                            data: mockReports,
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            const result = await getReportsByProfileId('user-123');
+
+            expect(supabase.from).toHaveBeenCalledWith('revamped_report');
+            expect(result).toEqual(mockReports);
+            expect(result).toHaveLength(2);
+        });
+
+        test('Should return empty array when no reports found', async () => {
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        order: jest.fn().mockResolvedValue({
+                            data: [],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            const result = await getReportsByProfileId('user-123');
+
+            expect(result).toEqual([]);
+            expect(result).toHaveLength(0);
+        });
+
+        test('Should order reports by created_at descending', async () => {
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        order: jest.fn().mockResolvedValue({
+                            data: [],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            await getReportsByProfileId('user-123');
+
+            const orderCall = supabase.from().select().eq().order;
+            expect(orderCall).toHaveBeenCalledWith('created_at', { ascending: false });
+        });
+
+        test('Should throw InternalError when database query fails', async () => {
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        order: jest.fn().mockResolvedValue({
+                            data: null,
+                            error: { message: 'Database connection failed' }
+                        })
+                    })
+                })
+            });
+
+            await expect(getReportsByProfileId('user-123'))
+                .rejects
+                .toThrow(InternalError);
+
+            await expect(getReportsByProfileId('user-123'))
+                .rejects
+                .toThrow('Failed to fetch reports for profile');
+        });
+    });
+
+    describe('deleteReport', () => {
+        test('Should delete report and return deleted record', async () => {
+            const mockDeletedReport = {
+                id: 'report1',
+                profile_id: 'user-123',
+                title: 'Test Report',
+                filepath: 'https://example.com/reports/test-report.pdf'
+            };
+
+            supabase.from = jest.fn().mockReturnValue({
+                delete: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        select: jest.fn().mockResolvedValue({
+                            data: [mockDeletedReport],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            supabase.storage = {
+                from: jest.fn().mockReturnValue({
+                    remove: jest.fn().mockResolvedValue({
+                        data: null,
+                        error: null
+                    })
+                })
+            };
+
+            const result = await deleteReport('report1');
+
+            expect(supabase.from).toHaveBeenCalledWith('revamped_report');
+            expect(result).toEqual(mockDeletedReport);
+            expect(supabase.storage.from).toHaveBeenCalledWith('reports');
+        });
+
+        test('Should delete file from storage after database deletion', async () => {
+            const mockDeletedReport = {
+                id: 'report1',
+                profile_id: 'user-123',
+                title: 'Test Report',
+                filepath: 'https://example.com/storage/v1/object/public/reports/test-report.pdf'
+            };
+
+            supabase.from = jest.fn().mockReturnValue({
+                delete: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        select: jest.fn().mockResolvedValue({
+                            data: [mockDeletedReport],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            const mockRemove = jest.fn().mockResolvedValue({
+                data: null,
+                error: null
+            });
+
+            supabase.storage = {
+                from: jest.fn().mockReturnValue({
+                    remove: mockRemove
+                })
+            };
+
+            await deleteReport('report1');
+
+            expect(mockRemove).toHaveBeenCalledWith(['test-report.pdf']);
+        });
+
+        test('Should throw ValidationError when report not found', async () => {
+            supabase.from = jest.fn().mockReturnValue({
+                delete: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        select: jest.fn().mockResolvedValue({
+                            data: [],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            await expect(deleteReport('nonexistent-report'))
+                .rejects
+                .toThrow(ValidationError);
+
+            await expect(deleteReport('nonexistent-report'))
+                .rejects
+                .toThrow('Report not found');
+        });
+
+        test('Should throw InternalError when database delete fails', async () => {
+            supabase.from = jest.fn().mockReturnValue({
+                delete: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        select: jest.fn().mockResolvedValue({
+                            data: null,
+                            error: { message: 'Database error' }
+                        })
+                    })
+                })
+            });
+
+            await expect(deleteReport('report1'))
+                .rejects
+                .toThrow(InternalError);
+
+            await expect(deleteReport('report1'))
+                .rejects
+                .toThrow('Failed to delete report from database');
+        });
+
+        test('Should handle storage deletion errors gracefully', async () => {
+            const mockDeletedReport = {
+                id: 'report1',
+                profile_id: 'user-123',
+                title: 'Test Report',
+                filepath: 'https://example.com/reports/test-report.pdf'
+            };
+
+            supabase.from = jest.fn().mockReturnValue({
+                delete: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        select: jest.fn().mockResolvedValue({
+                            data: [mockDeletedReport],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            supabase.storage = {
+                from: jest.fn().mockReturnValue({
+                    remove: jest.fn().mockResolvedValue({
+                        data: null,
+                        error: { message: 'Storage service unavailable' }
+                    })
+                })
+            };
+
+            // Should not throw, just log the error
+            const result = await deleteReport('report1');
+
+            expect(result).toEqual(mockDeletedReport);
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                'Failed to delete file from storage:',
+                { message: 'Storage service unavailable' }
+            );
+        });
+
+        test('Should extract filename from URL correctly', async () => {
+            const mockDeletedReport = {
+                id: 'report1',
+                profile_id: 'user-123',
+                title: 'Test Report',
+                filepath: 'https://example.com/storage/v1/object/public/reports/user-123-report.pdf'
+            };
+
+            supabase.from = jest.fn().mockReturnValue({
+                delete: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        select: jest.fn().mockResolvedValue({
+                            data: [mockDeletedReport],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            const mockRemove = jest.fn().mockResolvedValue({
+                data: null,
+                error: null
+            });
+
+            supabase.storage = {
+                from: jest.fn().mockReturnValue({
+                    remove: mockRemove
+                })
+            };
+
+            await deleteReport('report1');
+
+            expect(mockRemove).toHaveBeenCalledWith(['user-123-report.pdf']);
+        });
+
+        test('Should extract filename from simple path', async () => {
+            const mockDeletedReport = {
+                id: 'report1',
+                profile_id: 'user-123',
+                title: 'Test Report',
+                filepath: 'reports/simple-report.pdf'
+            };
+
+            supabase.from = jest.fn().mockReturnValue({
+                delete: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        select: jest.fn().mockResolvedValue({
+                            data: [mockDeletedReport],
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            const mockRemove = jest.fn().mockResolvedValue({
+                data: null,
+                error: null
+            });
+
+            supabase.storage = {
+                from: jest.fn().mockReturnValue({
+                    remove: mockRemove
+                })
+            };
+
+            await deleteReport('report1');
+
+            expect(mockRemove).toHaveBeenCalledWith(['simple-report.pdf']);
         });
     });
 });
