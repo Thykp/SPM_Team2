@@ -211,6 +211,41 @@ func (g *GenerateController) GenerateProjectReport(c *gin.Context) {
 	projectID := strings.TrimSpace(c.Param("projectId"))
 	reqID := c.GetString("request_id")
 
+	// Parse request body for date range
+	var req models.GenerateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_BODY",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	if req.StartDate == "" || req.EndDate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "MISSING_DATES",
+				"message": "Both startDate and endDate are required",
+			},
+		})
+		return
+	}
+
+	if strings.TrimSpace(req.UserID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "MISSING_USER_ID",
+				"message": "userId is required in body for project report",
+			},
+		})
+		return
+	}
+
 	// 1) Publish Kafka event (best-effort; fail => return 502)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
@@ -220,6 +255,9 @@ func (g *GenerateController) GenerateProjectReport(c *gin.Context) {
 		CorrelationID: reqID,
 		Payload: models.GenerateProjectEvent{
 			ProjectID: projectID,
+			StartDate: req.StartDate,
+			EndDate:   req.EndDate,
+			UserID:    req.UserID,
 		},
 	}
 	if err := g.producer.Produce(ctx, projectID, env); err != nil {
@@ -233,10 +271,10 @@ func (g *GenerateController) GenerateProjectReport(c *gin.Context) {
 		return
 	}
 
-	// 2) Call atomic/report project endpoint synchronously
+	// 2) Call atomic/report project endpoint synchronously with date range and userId
 	callCtx, cancel2 := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel2()
-	resp, status, err := g.reportClient.GenerateProjectReport(callCtx, projectID, reqID)
+	resp, status, err := g.reportClient.GenerateProjectReport(callCtx, projectID, req.StartDate, req.EndDate, req.UserID, reqID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,

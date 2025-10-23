@@ -17,7 +17,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { type TaskDTO, TaskApi } from '@/lib/api';
-import { Calendar, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Calendar, MoreVertical, Edit, Trash2, Gauge } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import EditProjectTask from './EditProjectTask';
 
 interface SubtaskCardProps {
@@ -139,10 +140,19 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, 
                                 </Badge>
                             </div>
                             
-                            {/* Priority number */}
-                            <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-medium">
-                                {subtask.priority || 5}
-                            </div>
+                            {/* Priority badge */}
+                            <Badge 
+                                variant="outline" 
+                                className={cn(
+                                    "text-xs font-medium",
+                                    (subtask.priority ?? 0) >= 8 ? "border-red-500 text-red-700 bg-red-50" :
+                                    (subtask.priority ?? 0) >= 4 ? "border-yellow-500 text-yellow-700 bg-yellow-50" :
+                                    "border-green-500 text-green-700 bg-green-50"
+                                )}
+                            >
+                                <Gauge className="h-3 w-3 mr-1" />
+                                {subtask.priority ?? "N/A"}
+                            </Badge>
                         </div>
                         
                         {/* Due date */}

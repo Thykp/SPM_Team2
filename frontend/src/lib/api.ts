@@ -8,7 +8,7 @@ const GENERATE_REPORT_API = import.meta.env.VITE_REPORT_API || `${KONG_BASE_URL}
 const api = axios.create({
   baseURL: KONG_BASE_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 15000,
+  timeout: 30000, // Increased to 30 seconds
 });
 
 // ----- Types -----
@@ -63,7 +63,7 @@ export type TaskDTO = {
 export type ProjectDto = {
   id: string;
   createdat?: string | null;
-  created_at?: string | null; // should standardise to either createdat or created_at later
+  created_at?: string | null;
   title: string;
   tasklist: string[] | null;
   description: string;
@@ -328,6 +328,31 @@ export const Report = {
     body: GenerateReportBody
   ): Promise<{ jobId?: string; message?: string; url?: string }> => {
     const url = `${GENERATE_REPORT_API}/${userId}`;
+    const { data } = await api.post(url, body);
+    return data;
+  },
+
+  generateProject: async (
+    projectId: string,
+    body: GenerateScopedReportBody
+  ): Promise<{ 
+    success: boolean; 
+    data?: { 
+      reportUrl: string; 
+      reportTitle: string; 
+      taskCount: number;
+      collaboratorCount?: number;
+    }; 
+    error?: { 
+      code: string; 
+      message: string; 
+      details?: any;
+    };
+    jobId?: string; 
+    message?: string; 
+    url?: string;
+  }> => {
+    const url = `${GENERATE_REPORT_API}/project/${projectId}`;
     const { data } = await api.post(url, body);
     return data;
   },

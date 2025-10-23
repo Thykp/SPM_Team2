@@ -22,7 +22,9 @@ function deriveFromTitle(title: string): Derived {
   const between = title.match(/between (\d{4}-\d{2}-\d{2}) and (\d{4}-\d{2}-\d{2})/i);
   if (/^team report:/i.test(title)) return { kind: "team" };
   if (/^department report:/i.test(title)) return { kind: "department" };
-  if (/^project report:/i.test(title)) return { kind: "project" };
+  if (/^project report:/i.test(title)) {
+    return { kind: "project", start: between?.[1], end: between?.[2] };
+  }
   if (/personal report/i.test(title) && between) {
     return { kind: "personal", start: between[1], end: between[2] };
   }

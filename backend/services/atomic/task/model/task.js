@@ -66,8 +66,10 @@ class Task {
             `);
 
         if (startDate && endDate) {
-            startDate = new Date(startDate).toISOString();
-            endDate = new Date(endDate).toISOString();
+            // Convert startDate to beginning of day
+            startDate = new Date(startDate + 'T00:00:00.000Z').toISOString();
+            // Convert endDate to end of day to include all tasks created on that date
+            endDate = new Date(endDate + 'T23:59:59.999Z').toISOString();
 
             query = query.gte('created_at', startDate).lte('created_at', endDate);
         }
@@ -104,8 +106,10 @@ class Task {
             .eq('project_id', projectId);
 
         if (startDate && endDate) {
-            startDate = new Date(startDate).toISOString();
-            endDate = new Date(endDate).toISOString();
+            // Convert startDate to beginning of day
+            startDate = new Date(startDate + 'T00:00:00.000Z').toISOString();
+            // Convert endDate to end of day to include all tasks created on that date
+            endDate = new Date(endDate + 'T23:59:59.999Z').toISOString();
             query = query.gte('created_at', startDate).lte('created_at', endDate);
         }
 

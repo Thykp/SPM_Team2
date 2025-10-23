@@ -132,12 +132,16 @@ router.post('/:userId', async (req, res) => {
 // Project Report Endpoint
 router.post('/project/:projectId', async (req, res) => {
   const projectId = req.params.projectId;
-  const { startDate, endDate } = req.body;
+  const { startDate, endDate, userId } = req.body;
 
   try {
     // Input validation
     if (!projectId) {
       return sendError(res, 400, 'MISSING_PROJECT_ID', 'Project ID is required');
+    }
+
+    if (!userId) {
+      return sendError(res, 400, 'MISSING_USER_ID', 'User ID is required in request body');
     }
 
     if (!startDate || !endDate) {
@@ -196,10 +200,11 @@ router.post('/project/:projectId', async (req, res) => {
     const fileName = `${projectId}-ProjectReport-${ts}.pdf`;
     const { publicUrl } = await createReportStorage(pdf, fileName);
     
-    // Save to database
-    const reportTitle = `Project Report: ${projectData.title}`;
+    // Save to database with requesting user's ID (not project owner)
+    const formatDate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
+    const reportTitle = `Project Report: ${reportData.projectTitle} between ${formatDate(startDate)} and ${formatDate(endDate)}`;
     await createReport({
-      profile_id: projectData.owner,
+      profile_id: userId,
       title: reportTitle
     }, publicUrl);
     

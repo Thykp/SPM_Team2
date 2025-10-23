@@ -23,6 +23,9 @@ type GenerateEvent struct {
 
 type GenerateProjectEvent struct {
 	ProjectID string `json:"projectId"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	UserID    string `json:"userId"`
 }
 
 type TeamGenerateEvent struct {
@@ -40,12 +43,12 @@ type DepartmentGenerateEvent struct {
 }
 
 type ReportRecord struct {
-	ID         string `json:"id"`
-	ProfileID  string `json:"profile_id"`
-	Title      string `json:"title"`
-	Filepath   string `json:"filepath"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
+	ID        string `json:"id"`
+	ProfileID string `json:"profile_id"`
+	Title     string `json:"title"`
+	Filepath  string `json:"filepath"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // Atomic report service response

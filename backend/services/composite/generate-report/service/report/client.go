@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"generate-report/models"
 )
@@ -17,7 +16,7 @@ type Client interface {
 	// Personal
 	Generate(ctx context.Context, userID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
 	// Project
-	GenerateProjectReport(ctx context.Context, projectID, correlationID string) (models.ReportServiceResponse, int, error)
+	GenerateProjectReport(ctx context.Context, projectID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Team
 	GenerateTeam(ctx context.Context, teamID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Department
@@ -81,21 +80,21 @@ func (c *client) Generate(ctx context.Context, userID, startDate, endDate, corre
 
 // ----- project -----
 
-func (c *client) GenerateProjectReport(ctx context.Context, projectID, correlationID string) (models.ReportServiceResponse, int, error) {
-	// Trim whitespace from project ID
+func (c *client) GenerateProjectReport(ctx context.Context, projectID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
+	// Trim whitespace from project ID and user ID
 	projectID = strings.TrimSpace(projectID)
-
-	// Send default date range (last 365 days to cover all recent activity)
-	endDate := time.Now().Format("2006-01-02")
-	startDate := time.Now().AddDate(-1, 0, 0).Format("2006-01-02") // 1 year ago
+	userID = strings.TrimSpace(userID)
 
 	url := fmt.Sprintf("%s/report/project/%s", c.base, projectID)
-	body := map[string]string{"startDate": startDate, "endDate": endDate}
+	body := map[string]string{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"userId":    userID,
+	}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
 }
 
 // ----- team -----
-
 
 func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
 	teamID = strings.TrimSpace(teamID)
