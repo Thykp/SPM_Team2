@@ -148,7 +148,7 @@ func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate
 
 func (c *client) GetByUser(ctx context.Context, userID, correlationID string) (map[string]any, int, error) {
 	userID = strings.TrimSpace(userID)
-	url := fmt.Sprintf("%s/report/%s", c.base, userID) // atomic: GET /report/:userId
+	url := fmt.Sprintf("%s/report/profile/%s", c.base, userID) // atomic: GET /report/:userId
 	return c.doJSONAny(ctx, http.MethodGet, url, correlationID, nil)
 }
 
