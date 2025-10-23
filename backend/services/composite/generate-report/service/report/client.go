@@ -22,8 +22,8 @@ type Client interface {
 	GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
 	// Department
 	GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
-	
-	GetByUser(ctx context.Context, userID, correlationID string) (map[string]any, int, error)
+
+	GetByUser(ctx context.Context, userID, correlationID string) ([]models.ReportRecord, int, error)
 	DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error)
 }
 
@@ -65,38 +65,6 @@ func (c *client) doJSON(ctx context.Context, method, url, correlationID string, 
 	if len(data) > 0 {
 		if err := json.Unmarshal(data, &parsed); err != nil {
 			return models.ReportServiceResponse{}, resp.StatusCode, fmt.Errorf("report svc bad JSON: %w, raw=%s", err, string(data))
-		}
-	}
-	return parsed, resp.StatusCode, nil
-}
-
-func (c *client) doJSONAny(ctx context.Context, method, url, correlationID string, body any) (map[string]any, int, error) {
-	var rdr io.Reader
-	if body != nil {
-		buf, _ := json.Marshal(body)
-		rdr = bytes.NewReader(buf)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, url, rdr)
-	if err != nil {
-		return nil, 0, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if correlationID != "" {
-		req.Header.Set("X-Request-ID", correlationID)
-	}
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer resp.Body.Close()
-
-	data, _ := io.ReadAll(resp.Body)
-	var parsed map[string]any
-	if len(data) > 0 {
-		if err := json.Unmarshal(data, &parsed); err != nil {
-			return nil, resp.StatusCode, fmt.Errorf("report svc bad JSON: %w, raw=%s", err, string(data))
 		}
 	}
 	return parsed, resp.StatusCode, nil
@@ -144,18 +112,69 @@ func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
 }
 
-// ----- GET Report -----
-
-func (c *client) GetByUser(ctx context.Context, userID, correlationID string) (map[string]any, int, error) {
+func (c *client) GetByUser(ctx context.Context, userID, correlationID string) ([]models.ReportRecord, int, error) {
 	userID = strings.TrimSpace(userID)
-	url := fmt.Sprintf("%s/report/profile/%s", c.base, userID) // atomic: GET /report/:userId
-	return c.doJSONAny(ctx, http.MethodGet, url, correlationID, nil)
-}
+	url := fmt.Sprintf("%s/report/profile/%s", c.base, userID)
 
-// ----- DEL Report -----
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if correlationID != "" {
+		req.Header.Set("X-Request-ID", correlationID)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+
+	var items []models.ReportRecord
+	if err := json.Unmarshal(data, &items); err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("report svc bad JSON: %w, raw=%s", err, string(data))
+	}
+
+	return items, resp.StatusCode, nil
+}
 
 func (c *client) DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error) {
 	reportID = strings.TrimSpace(reportID)
-	url := fmt.Sprintf("%s/report/%s", c.base, reportID) // atomic: DELETE /report/:reportId
-	return c.doJSONAny(ctx, http.MethodDelete, url, correlationID, nil)
+	url := fmt.Sprintf("%s/report/%s", c.base, reportID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if correlationID != "" {
+		req.Header.Set("X-Request-ID", correlationID)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+
+	var parsed map[string]any
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			// Return a helpful payload if atomic doesn't return JSON
+			return map[string]any{
+				"success": false,
+				"error": map[string]any{
+					"message": "non-JSON response from report service",
+					"status":  resp.StatusCode,
+					"raw":     string(data),
+				},
+			}, resp.StatusCode, nil
+		}
+	}
+	return parsed, resp.StatusCode, nil
 }

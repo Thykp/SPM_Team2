@@ -36,6 +36,15 @@ type DepartmentGenerateEvent struct {
 	EndDate      string `json:"endDate"`
 }
 
+type ReportRecord struct {
+	ID         string `json:"id"`
+	ProfileID  string `json:"profile_id"`
+	Title      string `json:"title"`
+	Filepath   string `json:"filepath"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
 // Atomic report service response
 type ReportServiceResponse struct {
 	Success bool `json:"success"`
