@@ -38,7 +38,7 @@ Switch to your branch before starting to code <br>
 ### Key Workflows
 - Merge to main
 
-<img width="530" height="611" alt="Screenshot 2025-09-14 at 11 48 05 PM" src="https://github.com/user-attachments/assets/5e5ed7fd-8eb5-496b-9949-482871ef419e" />
+<img width="737" height="568" alt="Screenshot 2025-10-23 at 12 52 03 PM" src="https://github.com/user-attachments/assets/eff9490c-5854-46a5-be32-256aff8139b1" />
 
 
 ## Frameworks and Databases Utilised
