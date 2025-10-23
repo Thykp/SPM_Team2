@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox"; // Import shadcn's Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
+import { Recurrence } from "@/lib/api";
+import type { RecurrencePostRequestDto, RecurrenceDto } from "@/lib/api";
 
 type RecurTaskProps = {
   taskId: string;
@@ -11,14 +13,50 @@ type RecurTaskProps = {
 };
 
 export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
-  const [frequency, setFrequency] = useState("Day");
+  const [frequency, setFrequency] = useState<"Day" | "Week" | "Month">("Day");
   const [interval, setInterval] = useState<number | "">("");
   const [endDate, setEndDate] = useState<string>(""); // Local datetime
   const [loading, setLoading] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false); // Checkbox state for enabling recurrence
   const [noEndDate, setNoEndDate] = useState(false); // Checkbox state for hiding end date
+  const [recurrenceId, setRecurrenceId] = useState<string | null>(null); // Track recurrence ID
 
-  // Convert local datetime to UTC for storage
+  // Fetch recurrence data on component mount
+  useEffect(() => {
+    const fetchRecurrence = async () => {
+      try {
+        setLoading(true);
+        const recurrences = await Recurrence.getRecurrencesByTaskId(taskId);
+        if (recurrences.length > 0) {
+          const recurrence = recurrences[0]; // Assuming one recurrence per task
+          setRecurrenceId(recurrence.id);
+          setIsRecurring(true);
+          setFrequency(recurrence.frequency);
+          setInterval(recurrence.interval);
+          if (recurrence.end_date === null) {
+            setNoEndDate(true);
+          } else {
+            setEndDate(formatToLocalDatetime(recurrence.end_date ?? ""));
+          }
+        } else {
+          // No recurrence exists for this task
+          setIsRecurring(false);
+          setFrequency("Day");
+          setInterval("");
+          setEndDate("");
+          setNoEndDate(false);
+        }
+      } catch (error) {
+        console.error("Failed to fetch recurrence data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecurrence();
+  }, [taskId]);
+
+  // Save recurrence data
   const handleSave = async () => {
     if (isRecurring) {
       if (!interval || interval <= 0) {
@@ -34,17 +72,21 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
     setLoading(true);
 
     try {
-      const utcEndDate = isRecurring && !noEndDate ? new Date(endDate).toISOString() : null; // Convert to UTC if recurring and end date is provided
+      const payload: RecurrencePostRequestDto = {
+        frequency: isRecurring ? frequency : "Day",
+        interval: isRecurring ? (interval || 1) : 1,
+        end_date: isRecurring && !noEndDate ? new Date(endDate).toISOString() : null,
+      };
 
-      console.log({
-        taskId,
-        frequency: isRecurring ? frequency : null,
-        interval: isRecurring ? interval : null,
-        endDate: utcEndDate, // Send UTC to backend if recurring and end date is provided
-        isRecurring, // Checkbox state
-        noEndDate, // Checkbox state for no end date
-      });
+      if (recurrenceId) {
+        // Update existing recurrence
+        await Recurrence.updateRecurrence(recurrenceId, payload);
+      } else {
+        // Create new recurrence
+        await Recurrence.createRecurrence({ ...payload, taskId });
+      }
 
+      console.log("Recurrence Payload: " + payload)
       alert("Recurrence saved successfully!");
       onClose();
     } catch (error) {
@@ -55,6 +97,13 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
     }
   };
 
+  const formatToLocalDatetime = (dateString: string) => {
+    const date = new Date(dateString);
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
+    return localDate.toISOString().slice(0, 16); // Return in "YYYY-MM-DDTHH:mm" format
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -63,9 +112,7 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
       <Card className="w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
-            <div className="flex flex-col gap-2">
-              <CardTitle className="text-2xl">Manage Task Recurrence</CardTitle>
-            </div>
+            <CardTitle className="text-2xl">Manage Task Recurrence</CardTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -84,21 +131,16 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
             }}
             className="space-y-6"
           >
-            {/* Recurring Checkbox with Descriptor */}
-            <Label
-              className="hover:bg-accent/50 flex items-start gap-3 rounded-lg border p-3 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50 dark:has-[[aria-checked=true]]:border-blue-900 dark:has-[[aria-checked=true]]:bg-blue-950"
-            >
+            {/* Recurring Checkbox */}
+            <Label className="flex items-start gap-3">
               <Checkbox
                 id="isRecurring"
                 checked={isRecurring}
-                onCheckedChange={(checked) => setIsRecurring(!!checked)} // Handle state change
-                className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white dark:data-[state=checked]:border-blue-700 dark:data-[state=checked]:bg-blue-700"
+                onCheckedChange={(checked) => setIsRecurring(!!checked)}
               />
-              <div className="grid gap-1.5 font-normal">
-                <p className="text-sm leading-none font-medium">
-                  Enable Task Recurrence
-                </p>
-                <p className="text-muted-foreground text-sm">
+              <div>
+                <p className="text-sm font-medium">Enable Task Recurrence</p>
+                <p className="text-sm text-muted-foreground">
                   Check this box to enable recurrence for this task.
                 </p>
               </div>
@@ -106,22 +148,16 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
 
             {/* No End Date Checkbox */}
             {isRecurring && (
-              <Label
-                className="hover:bg-accent/50 flex items-start gap-3 rounded-lg border p-3 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50 dark:has-[[aria-checked=true]]:border-blue-900 dark:has-[[aria-checked=true]]:bg-blue-950"
-              >
+              <Label className="flex items-start gap-3">
                 <Checkbox
                   id="noEndDate"
                   checked={noEndDate}
-                  onCheckedChange={(checked) => setNoEndDate(!!checked)} // Handle state change
-                  className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white dark:data-[state=checked]:border-blue-700 dark:data-[state=checked]:bg-blue-700"
+                  onCheckedChange={(checked) => setNoEndDate(!!checked)}
                 />
-                <div className="grid gap-1.5 font-normal">
-                  <p className="text-sm leading-none font-medium">
-                    No End Date
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    Check this box if the task recurrence does not have an end
-                    date.
+                <div>
+                  <p className="text-sm font-medium">No End Date</p>
+                  <p className="text-sm text-muted-foreground">
+                    Check this box if the task recurrence does not have an end date.
                   </p>
                 </div>
               </Label>
@@ -130,10 +166,8 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
             {/* Interval and Frequency */}
             {isRecurring && (
               <div className="flex gap-4">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="interval" className="text-base font-medium">
-                    Interval
-                  </Label>
+                <div className="flex-1">
+                  <Label htmlFor="interval">Interval</Label>
                   <Input
                     id="interval"
                     type="number"
@@ -141,18 +175,15 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
                     placeholder="Enter interval (e.g., 2)"
                     value={interval}
                     onChange={(e) => setInterval(Number(e.target.value) || "")}
-                    required={isRecurring}
                   />
                 </div>
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="frequency" className="text-base font-medium">
-                    Frequency
-                  </Label>
+                <div className="flex-1">
+                  <Label htmlFor="frequency">Frequency</Label>
                   <select
                     id="frequency"
                     value={frequency}
-                    onChange={(e) => setFrequency(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    onChange={(e) => setFrequency(e.target.value as "Day" | "Week" | "Month")}
+                    className="w-full px-3 py-2 border rounded-md"
                   >
                     <option value="Day">Day</option>
                     <option value="Week">Week</option>
@@ -164,35 +195,23 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
 
             {/* End Date */}
             {isRecurring && !noEndDate && (
-              <div className="space-y-2">
-                <Label htmlFor="endDate" className="text-base font-medium">
-                  End Date
-                </Label>
+              <div>
+                <Label htmlFor="endDate">End Date</Label>
                 <Input
                   id="endDate"
                   type="datetime-local"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  required={isRecurring && !noEndDate}
                 />
               </div>
             )}
 
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="flex-1 h-11"
-              >
+              <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                className="flex-1 h-11"
-                disabled={loading || (isRecurring && !noEndDate && !endDate)}
-              >
+              <Button type="submit" disabled={loading}>
                 {loading ? "Saving..." : "Save"}
               </Button>
             </div>

@@ -30,10 +30,6 @@ class Recurrence {
     errors.push("Interval must be a positive integer.");
   }
 
-  if (!this.next_occurrence) {
-    errors.push("Next occurrence is required.");
-  }
-
   if (errors.length > 0) {
     throw new ValidationError(errors);
   }
@@ -79,7 +75,6 @@ class Recurrence {
         task_id: this.task_id,
         frequency: this.frequency,
         interval: this.interval,
-        next_occurrence: this.next_occurrence,
         end_date: this.end_date,
       })
       .select()
@@ -100,12 +95,15 @@ class Recurrence {
   async update() {
     await this.validate(true);
   
+    console.log("Freq: " + this.frequency);
+    console.log("Interval: " + this.interval);
+    console.log("End Date: " + this.end_date);
+
     const { error } = await supabase
       .from(Recurrence.recurrenceTable)
       .update({
         frequency: this.frequency,
         interval: this.interval,
-        next_occurrence: this.next_occurrence,
         end_date: this.end_date,
       })
       .eq("id", this.id);

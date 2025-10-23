@@ -75,15 +75,21 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
 
         // Find the current user's profile
         const currentUserProfile = allUsers.find((user: UserRow) => user.id === userId);
+        console.log("Current User Profile:", currentUserProfile); // Debugging log
+
         if (!currentUserProfile) {
           console.error("Current user profile not found");
           return;
         }
 
-        const { role: currentUserRole, team_id: currentUserTeamId, department_id: currentUserDepartmentId } = currentUserProfile;
+        const { role: currentUserRole, team: currentUserTeamId, department: currentUserDepartmentId } = currentUserProfile;
+        console.log("Current User Role:", currentUserRole);
+        console.log("Current User Team ID:", currentUserTeamId);
+        console.log("Current User Department ID:", currentUserDepartmentId);
 
         // Filter assignable users based on the current user's role
         let filteredUsers = allUsers.filter((user: UserRow) => {
+          console.log("Checking User:", user); // Debugging log
           switch (currentUserRole) {
             case "Senior Management":
               return true; // Senior Management can assign anyone
@@ -98,6 +104,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
               return false; // Other roles cannot assign owners
           }
         });
+
+        console.log("Filtered Users:", filteredUsers); // Debugging log
 
         // Ensure the current user is included in the filtered users
         if (!filteredUsers.some((user: UserRow) => user.id === userId)) {

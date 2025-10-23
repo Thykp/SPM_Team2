@@ -31,6 +31,9 @@ module.exports = {
 
   async updateRecurrence(req, res) {
     try {
+      console.log("Recurrence ID:", req.params.id);
+      console.log("Request Body:", req.body);
+
       const recurrence = new Recurrence({ id: req.params.id, ...req.body });
       await recurrence.update();
       res.status(200).json(recurrence);
