@@ -11,6 +11,7 @@ import { type TaskDTO as TaskType, TaskApi as Task, Project } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Filter, Search, LayoutGrid, Calendar, Rows } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,6 +32,7 @@ export function Dashboard() {
   const [tasks, setTasks] = useState<TaskType[]>([])
   const [allTasksCache, setAllTasksCache] = useState<TaskType[] | null>(null)
   const myProjectIdsRef = useRef<Set<string>>(new Set())
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false); 
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -81,9 +83,12 @@ export function Dashboard() {
   }, [ownerFilter, allTasksCache, profile?.id])
 
   const handleTaskCreated = (newTask: TaskType) => {
-    setTasks(prev => [newTask, ...prev])
-    if (allTasksCache) setAllTasksCache(prev => prev ? [newTask, ...prev] : prev)
-  }
+    setTasks((prev) => [newTask, ...prev]); // Add new task to tasks
+    if (allTasksCache) {
+      setAllTasksCache((prev) => (prev ? [newTask, ...prev] : prev)); // Update allTasksCache
+    }
+    setIsCreateTaskOpen(false); // Close the modal
+  };
 
   const handleTaskUpdate = (updatedTask: TaskType) => {
     setTasks(prev => prev.map(t => (t.id === updatedTask.id ? updatedTask : t)))
@@ -163,9 +168,22 @@ export function Dashboard() {
           <p className="text-muted-foreground">Manage your team's tasks and projects</p>
         </div>
         <div className="flex gap-2">
-          <CreateTask userId={profile?.id || ""} onTaskCreated={handleTaskCreated} />
+          {/* Open the CreateTask modal */}
+          <Button onClick={() => setIsCreateTaskOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Task
+          </Button>
         </div>
       </div>
+
+      {/* Conditionally render the CreateTask modal */}
+      {isCreateTaskOpen && (
+        <CreateTask
+          userId={profile?.id || ""}
+          onTaskCreated={handleTaskCreated}
+          onClose={() => setIsCreateTaskOpen(false)} // Close the modal
+        />
+      )}
 
       {/* Filters, Search, and View Switcher */}
       <div className="flex items-center gap-4 mb-6">

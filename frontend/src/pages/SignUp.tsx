@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -9,20 +9,77 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Role } from "@/contexts/AuthContext"
+import { Profile } from "@/lib/api";
 
 const ROLE_OPTIONS: Role[] = ['Staff', 'Manager', 'Director', 'Senior Management'];
 
 export default function SignUp() {
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [role, setRole] = useState<Role>('Staff');
-  const [error, setError] = useState<string | null>(null)
-  const [ok, setOk] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<Role>("Staff");
+  const [teams, setTeams] = useState<Array<{ id: string; name: string; department_id: string }>>([]);
+  const [team, setTeam] = useState<string | undefined>(undefined);
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+  const [department, setDepartment] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+useEffect(() => {
+  const fetchTeams = async () => {
+    try {
+      const response = await Profile.getAllTeams(); // Fetch teams from the API
+      console.log("API Response:", response); // Log the API response for debugging
+
+      if (response && Array.isArray(response.data)) {
+        setTeams(response.data); // Extract the `data` property and set teams
+      } else {
+        console.error("Unexpected API response format:", response);
+        setTeams([]); // Fallback to an empty array
+      }
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+      setTeams([]); // Fallback to an empty array in case of an error
+    }
+  };
+  const fetchDepartments = async () => {
+    try {
+      const response = await Profile.getAllDepartments(); // Fetch departments from the API
+      console.log("Departments API Response:", response); // Log the API response for debugging
+
+      if (response && Array.isArray(response.data)) {
+        setDepartments(response.data); // Extract the `data` property and set departments
+      } else {
+        console.error("Unexpected API response format:", response);
+        setDepartments([]); // Fallback to an empty array
+      }
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      setDepartments([]); // Fallback to an empty array in case of an error
+    }
+  };
+
+  fetchTeams();
+  fetchDepartments();
+}, []);
+
+  const handleTeamChange = (teamId: string | undefined) => {
+    setTeam(teamId);
+
+    // Automatically set the department based on the selected team's department_id
+    if (teamId) {
+      const selectedTeam = teams.find((t) => t.id === teamId);
+      if (selectedTeam) {
+        setDepartment(selectedTeam.department_id); // Set department to the team's department_id
+      }
+    } else {
+      setDepartment(undefined); // Reset department if no team is selected
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,22 +103,34 @@ export default function SignUp() {
     setLoading(true)
 
     // 1) Sign up: stash role + names in user metadata (read by SQL trigger)
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+    const payload = {
+      email: email,
+      password: password,
       options: {
         data: {
           initial_role: role,      // for your trigger to coerce role
           first_name: first,       // for your trigger to build display_name
           last_name: last,         // for your trigger to build display_name
           display_name: displayName, // optional convenience copy
+          team,                    // for your trigger to set team_id
+          department,              // for your trigger to set department_id
         },
       },
-    })
+    };
+
+    // Log the payload for debugging
+    console.log("Payload being sent to supabase.auth.signUp:", payload);
+
+    setLoading(true);
+
+    // Send the payload to Supabase
+    const { data, error } = await supabase.auth.signUp(payload);
     if (error) {
-      setLoading(false)
-      return setError(error.message)
+      setLoading(false);
+      return setError(error.message);
     }
+
+    setLoading(false);
 
     // 2) If a session exists immediately (no email confirm), also update profiles now
     //    This keeps the app "demo-friendly" and consistent even if trigger already ran.
@@ -165,6 +234,44 @@ export default function SignUp() {
               <p className="text-xs text-muted-foreground">
                 In production, roles are assigned by admins, not end-users.
               </p>
+            </div>
+
+            {/* Team Field */}
+            <div className="space-y-2">
+              <Label>Team</Label>
+              <Select value={team || "none"} onValueChange={(v) => handleTeamChange(v === "none" ? undefined : v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a team (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem> {/* Use "none" as the value for the "None" option */}
+                  {Array.isArray(teams) &&
+                    teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Department Field */}
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Select value={department || "none"} onValueChange={(v) => setDepartment(v === "none" ? undefined : v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a department (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem> {/* Use "none" as the value for the "None" option */}
+                  {Array.isArray(departments) &&
+                    departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}

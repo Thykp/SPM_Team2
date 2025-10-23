@@ -94,6 +94,31 @@ class Task {
         return filteredTasks;
     }
 
+    static async getTasksByProject(projectId, startDate, endDate){
+        let query = supabase
+            .from(Task.taskTable)
+            .select(`
+                *,
+                participants:${Task.taskParticipantTable}(profile_id, is_owner)
+            `)
+            .eq('project_id', projectId);
+
+        if (startDate && endDate) {
+            startDate = new Date(startDate).toISOString();
+            endDate = new Date(endDate).toISOString();
+            query = query.gte('created_at', startDate).lte('created_at', endDate);
+        }
+
+        const { data, error } = await query;
+        
+        if (error){
+            console.error("Error in getTasksByProject:", error);
+            throw new DatabaseError("Failed to retrieve tasks by project", error);
+        }
+        
+        return data || [];
+    }
+
     constructor(data){
     this.id = data.id || null;
     this.parent_task_id = data.parent_task_id || null;
@@ -142,6 +167,11 @@ class Task {
             errors.push("At least one participant must be an owner");
         }
 
+        const uniqueProfiles = new Set(this.participants.map(p => p.profile_id));
+        if (uniqueProfiles.size !== this.participants.length) {
+            errors.push("Duplicate profile IDs found in participants");
+        }
+
         if (errors.length > 0) {
             throw new ValidationError(errors);
         }
@@ -171,6 +201,21 @@ class Task {
     }
 
     async createTask(){
+        const { data: existingTask, error: findError } = await supabase
+            .from(Task.taskTable)
+            .select("*")
+            .eq("title", this.title)
+            .single();
+
+        if (findError && findError.code !== "PGRST116") { // Ignore "row not found" errors
+            console.error("Error checking for duplicate task title:", findError);
+            throw new DatabaseError("Failed to check for duplicate task title", findError);
+        }
+
+        if (existingTask) {
+            throw new ValidationError(`A task with the title "${this.title}" already exists.`);
+        }
+
         const { data, error } = await supabase
         .from(Task.taskTable)
         .insert({
@@ -198,6 +243,22 @@ class Task {
     }
 
     async updateTask(){
+        const { data: existingTask, error: findError } = await supabase
+            .from(Task.taskTable)
+            .select("*")
+            .eq("title", this.title)
+            .neq("id", this.id) // Exclude the current task
+            .single();
+
+        if (findError && findError.code !== "PGRST116") { // Ignore "row not found" errors
+            console.error("Error checking for duplicate task title:", findError);
+            throw new DatabaseError("Failed to check for duplicate task title", findError);
+        }
+
+        if (existingTask) {
+            throw new ValidationError(`A task with the title "${this.title}" already exists.`);
+        }
+
         const { error } = await supabase
             .from(Task.taskTable)
             .update({
@@ -233,6 +294,13 @@ class Task {
     }
 
     async addTaskParticipants(){
+        if (!this.participants || this.participants.length === 0) {
+            console.log("No participants to add");
+            return;
+        }
+
+        console.log("Participants to be added:", this.participants);
+
         const participantDetails = this.participants.map(participant => ({
             task_id: this.id,
             profile_id: participant.profile_id,

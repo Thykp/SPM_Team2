@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.service.annotation.PatchExchange;
+import org.springframework.http.MediaType;
 
 import com.spm.manage_task.dto.TaskDto;
 import com.spm.manage_task.dto.TaskPostRequestDto;
@@ -46,9 +46,21 @@ public class TaskController {
 
     // POST for task
     @PostMapping("/new")
-    public ResponseEntity<String> createTask(@RequestBody TaskPostRequestDto taskReq){
-        taskService.createTask(taskReq);
-        return ResponseEntity.status(200).body("Task created successfully");
+    public ResponseEntity<String> createTask(@RequestBody TaskPostRequestDto taskReq) {
+        try {
+            taskService.createTask(taskReq);
+            return ResponseEntity.status(200).body("Task created successfully");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Task creation failed")) {
+                // Return a proper JSON response
+                return ResponseEntity.status(400)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(e.getMessage().replace("Task creation failed: ", ""));
+            }
+            return ResponseEntity.status(500)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error\": \"An unexpected error occurred: " + e.getMessage() + "\"}");
+        }
     }
 
     // GET based on task id
@@ -61,8 +73,21 @@ public class TaskController {
     // PUT route to update a task (based on task id)
     @PutMapping("/edit/{taskId}")
     public ResponseEntity<String> updateTask(@PathVariable String taskId, @RequestBody TaskPostRequestDto updatedTask) {
-        taskService.updateTask(taskId, updatedTask);
-        return ResponseEntity.ok("Task updated successfully");
+        try {
+            taskService.updateTask(taskId, updatedTask);
+            return ResponseEntity.status(200).body("Task updated successfully");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Task update failed")) {
+                // Extract the error message and return it as a proper JSON response
+                String errorMessage = e.getMessage().replace("Task update failed: ", "");
+                return ResponseEntity.status(400)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(errorMessage); // Directly return the error message
+            }
+            return ResponseEntity.status(500)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error\": \"An unexpected error occurred: " + e.getMessage() + "\"}");
+        }
     }
 
     // GET subtasks related to current task id
@@ -78,44 +103,46 @@ public class TaskController {
         return ResponseEntity.ok(reminder);
     }
 
-
    @PostMapping("/reminder/{taskId}/{userId}")
-public ResponseEntity<Map<String, Object>> setTaskDeadlineReminder(
-        @PathVariable String taskId,
-        @PathVariable String userId,
-        @RequestBody Map<String, List<Integer>> requestBody) {
+    public ResponseEntity<Map<String, Object>> setTaskDeadlineReminder(
+            @PathVariable String taskId,
+            @PathVariable String userId,
+            @RequestBody Map<String, List<Integer>> requestBody) {
 
-    List<Integer> reminders = requestBody.get("deadline_reminder");
-    if (reminders == null) {
-        return ResponseEntity.badRequest()
-                .body(Map.of("error", "deadline_reminder must be provided"));
+        List<Integer> reminders = requestBody.get("deadline_reminder");
+        if (reminders == null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "deadline_reminder must be provided"));
+        }
+
+        try {
+            taskService.setTaskDeadlineReminder(taskId, userId, reminders);
+
+            // Return immediately what was sent
+            return ResponseEntity.ok(Map.of(
+                    "task_id", taskId,
+                    "deadline_reminder", reminders
+            ));
+        } catch (Exception e) {
+            // log the full exception to see why 500 occurs
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of(
+                    "error", "Failed to update deadline reminder",
+                    "details", e.getMessage()
+            ));
+        }
     }
-
-    try {
-        taskService.setTaskDeadlineReminder(taskId, userId, reminders);
-
-        // Return immediately what was sent
-        return ResponseEntity.ok(Map.of(
-                "task_id", taskId,
-                "deadline_reminder", reminders
-        ));
-    } catch (Exception e) {
-        // log the full exception to see why 500 occurs
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of(
-                "error", "Failed to update deadline reminder",
-                "details", e.getMessage()
-        ));
-    }
-}
-
-
     
     // DELETE task by task id
+    // DELETE a task based on task id
     @DeleteMapping("/{taskId}")
     public ResponseEntity<String> deleteTask(@PathVariable String taskId) {
-        taskService.deleteTask(taskId);
-        return ResponseEntity.ok("Task deleted successfully");
+        try {
+            taskService.deleteTask(taskId);
+            return ResponseEntity.ok("Task deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body("Failed to delete task: " + e.getMessage());
+        }
     }
     
 }

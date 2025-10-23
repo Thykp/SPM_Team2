@@ -2,11 +2,10 @@ const { supabase } = require("../../db/supabase");
 const Task = require("../../model/task");
 const { TaskNotFoundError, ValidationError, DatabaseError } = require("../../model/TaskError");
 
-jest.mock("../../db/supabase");
-
 describe('Task Class Test', () => {
     beforeEach(()=>{
-        jest.clearAllMocks();
+        // Don't clear all mocks as it would reset our global supabase mock
+        // jest.clearAllMocks();
 
         // spy on console.error and initialize a mockImplementation to do nothing
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -430,6 +429,323 @@ describe('Task Class Test', () => {
         });
     });
 
+    describe('getTasksByProject()', () => {
+        test('Should retrieve all tasks for a project without date filter', async () => {
+            const mockTasks = [
+                { 
+                    id: 'task-1', 
+                    title: 'Task 1',
+                    project_id: 'project-123',
+                    participants: [
+                        { profile_id: 'user-1', is_owner: true }
+                    ],
+                    status: 'Ongoing',
+                    priority: 5,
+                    created_at: '2025-01-15T00:00:00Z'
+                },
+                { 
+                    id: 'task-2', 
+                    title: 'Task 2',
+                    project_id: 'project-123',
+                    participants: [
+                        { profile_id: 'user-2', is_owner: true }
+                    ],
+                    status: 'Completed',
+                    priority: 3,
+                    created_at: '2025-02-20T00:00:00Z'
+                },
+            ];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: mockTasks,
+                        error: null
+                    })
+                })
+            });
+
+            const result = await Task.getTasksByProject('project-123');
+
+            expect(result).toEqual(mockTasks);
+            expect(result).toHaveLength(2);
+            expect(supabase.from).toHaveBeenCalledWith('revamped_task');
+        });
+
+        test('Should retrieve tasks for a project with date range filter', async () => {
+            const mockTasks = [
+                { 
+                    id: 'task-1', 
+                    title: 'Task 1',
+                    project_id: 'project-123',
+                    participants: [
+                        { profile_id: 'user-1', is_owner: true }
+                    ],
+                    status: 'Ongoing',
+                    priority: 5,
+                    created_at: '2025-02-01T00:00:00Z'
+                },
+            ];
+
+            const mockQuery = {
+                data: mockTasks,
+                error: null
+            };
+
+            const gteChain = jest.fn().mockReturnValue({
+                lte: jest.fn().mockResolvedValue(mockQuery)
+            });
+
+            const eqChain = jest.fn().mockReturnValue({
+                gte: gteChain
+            });
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: eqChain
+                })
+            });
+
+            const result = await Task.getTasksByProject(
+                'project-123', 
+                '2025-02-01', 
+                '2025-02-28'
+            );
+
+            expect(result).toEqual(mockTasks);
+            expect(result).toHaveLength(1);
+            expect(gteChain).toHaveBeenCalledWith('created_at', expect.any(String));
+        });
+
+        test('Should include tasks with participants array', async () => {
+            const mockTasks = [
+                { 
+                    id: 'task-1', 
+                    title: 'Task with multiple participants',
+                    project_id: 'project-123',
+                    participants: [
+                        { profile_id: 'user-1', is_owner: true },
+                        { profile_id: 'user-2', is_owner: false },
+                        { profile_id: 'user-3', is_owner: false }
+                    ],
+                    status: 'Under Review',
+                    priority: 2,
+                    created_at: '2025-01-15T00:00:00Z'
+                },
+            ];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: mockTasks,
+                        error: null
+                    })
+                })
+            });
+
+            const result = await Task.getTasksByProject('project-123');
+
+            expect(result[0].participants).toHaveLength(3);
+            expect(result[0].participants[0].is_owner).toBe(true);
+            expect(result[0].participants[1].is_owner).toBe(false);
+        });
+
+        test('Should handle tasks with no participants', async () => {
+            const mockTasks = [
+                { 
+                    id: 'task-1', 
+                    title: 'Unassigned Task',
+                    project_id: 'project-123',
+                    participants: [],
+                    status: 'Unassigned',
+                    priority: 5,
+                    created_at: '2025-01-15T00:00:00Z'
+                },
+            ];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: mockTasks,
+                        error: null
+                    })
+                })
+            });
+
+            const result = await Task.getTasksByProject('project-123');
+
+            expect(result).toHaveLength(1);
+            expect(result[0].participants).toEqual([]);
+        });
+
+        test('Should return empty array when no tasks found for project', async () => {
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: [],
+                        error: null
+                    })
+                })
+            });
+
+            const result = await Task.getTasksByProject('non-existent-project');
+
+            expect(result).toEqual([]);
+            expect(result).toHaveLength(0);
+        });
+
+        test('Should return empty array when data is null', async () => {
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: null,
+                        error: null
+                    })
+                })
+            });
+
+            const result = await Task.getTasksByProject('project-123');
+
+            expect(result).toEqual([]);
+        });
+
+        test('Should throw DatabaseError on query failure', async () => {
+            const mockError = { message: 'Database connection failed' };
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: null,
+                        error: mockError
+                    })
+                })
+            });
+
+            await expect(Task.getTasksByProject('project-123'))
+                .rejects
+                .toThrow(DatabaseError);
+            
+            await expect(Task.getTasksByProject('project-123'))
+                .rejects
+                .toThrow('Failed to retrieve tasks by project');
+        });
+
+        test('Should handle subtasks (tasks with parent_task_id)', async () => {
+            const mockTasks = [
+                { 
+                    id: 'task-1', 
+                    title: 'Parent Task',
+                    project_id: 'project-123',
+                    parent_task_id: null,
+                    participants: [
+                        { profile_id: 'user-1', is_owner: true }
+                    ],
+                    status: 'Ongoing',
+                    priority: 5,
+                    created_at: '2025-01-15T00:00:00Z'
+                },
+                { 
+                    id: 'task-2', 
+                    title: 'Subtask',
+                    project_id: 'project-123',
+                    parent_task_id: 'task-1',
+                    participants: [
+                        { profile_id: 'user-1', is_owner: true }
+                    ],
+                    status: 'Ongoing',
+                    priority: 5,
+                    created_at: '2025-01-16T00:00:00Z'
+                },
+            ];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: mockTasks,
+                        error: null
+                    })
+                })
+            });
+
+            const result = await Task.getTasksByProject('project-123');
+
+            expect(result).toHaveLength(2);
+            expect(result[0].parent_task_id).toBeNull();
+            expect(result[1].parent_task_id).toBe('task-1');
+        });
+
+        test('Should properly convert date strings to ISO format', async () => {
+            const mockQuery = {
+                data: [],
+                error: null
+            };
+
+            const gteChain = jest.fn().mockReturnValue({
+                lte: jest.fn().mockResolvedValue(mockQuery)
+            });
+
+            const eqChain = jest.fn().mockReturnValue({
+                gte: gteChain
+            });
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: eqChain
+                })
+            });
+
+            await Task.getTasksByProject('project-123', '2025-01-01', '2025-12-31');
+
+            // Verify that gte was called with ISO formatted date
+            expect(gteChain).toHaveBeenCalledWith(
+                'created_at', 
+                expect.stringMatching(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+            );
+        });
+
+        test('Should retrieve tasks with all task fields', async () => {
+            const mockTasks = [
+                { 
+                    id: 'task-1', 
+                    title: 'Complete Task',
+                    description: 'Task description',
+                    project_id: 'project-123',
+                    parent_task_id: null,
+                    deadline: '2025-12-31T00:00:00Z',
+                    participants: [
+                        { profile_id: 'user-1', is_owner: true }
+                    ],
+                    status: 'Ongoing',
+                    priority: 5,
+                    created_at: '2025-01-15T00:00:00Z',
+                    updated_at: '2025-01-20T00:00:00Z'
+                },
+            ];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockResolvedValue({
+                        data: mockTasks,
+                        error: null
+                    })
+                })
+            });
+
+            const result = await Task.getTasksByProject('project-123');
+
+            expect(result[0]).toHaveProperty('id');
+            expect(result[0]).toHaveProperty('title');
+            expect(result[0]).toHaveProperty('description');
+            expect(result[0]).toHaveProperty('project_id');
+            expect(result[0]).toHaveProperty('deadline');
+            expect(result[0]).toHaveProperty('status');
+            expect(result[0]).toHaveProperty('priority');
+            expect(result[0]).toHaveProperty('participants');
+            expect(result[0]).toHaveProperty('created_at');
+            expect(result[0]).toHaveProperty('updated_at');
+        });
+    });
+
     describe('getTaskDetails()', () => {
         test('Should retrieve task details successfully', async () => {
             const mockTask = {
@@ -507,8 +823,20 @@ describe('Task Class Test', () => {
                 priority: 5
             };
 
-            // Mock task insert
+            // Mock: 1st call - check for duplicate (no existing task found)
+            // Mock: 2nd call - insert new task
+            // Mock: 3rd call - insert participants
             supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: { code: 'PGRST116' } // Row not found
+                            })
+                        })
+                    })
+                })
                 .mockReturnValueOnce({
                     insert: jest.fn().mockReturnValue({
                         select: jest.fn().mockReturnValue({
@@ -519,7 +847,6 @@ describe('Task Class Test', () => {
                         })
                     })
                 })
-                // Mock participants insert
                 .mockReturnValueOnce({
                     insert: jest.fn().mockResolvedValue({
                         data: [],
@@ -545,16 +872,29 @@ describe('Task Class Test', () => {
         test('Should throw DatabaseError on insert failure', async () => {
             const mockError = { message: 'Insert failed' };
 
-            supabase.from = jest.fn().mockReturnValue({
-                insert: jest.fn().mockReturnValue({
+            // Mock: 1st call - check for duplicate (no existing task)
+            // Mock: 2nd call - insert fails
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
                     select: jest.fn().mockReturnValue({
-                        single: jest.fn().mockResolvedValue({
-                            data: null,
-                            error: mockError
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: { code: 'PGRST116' }
+                            })
                         })
                     })
                 })
-            });
+                .mockReturnValueOnce({
+                    insert: jest.fn().mockReturnValue({
+                        select: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: mockError
+                            })
+                        })
+                    })
+                });
 
             const task = new Task({
                 title: 'New Task',
@@ -562,7 +902,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Test',
                 status: 'ongoing',
-                participants: []
+                participants: [],
+                priority: 5
             });
 
             await expect(task.createTask())
@@ -573,22 +914,46 @@ describe('Task Class Test', () => {
 
     describe('updateTask()', () => {
         test('Should update task successfully', async () => {
-            // Mock update, delete participants, add participants
+            // Mock: 1st call - check for duplicate title (no duplicate)
+            // Mock: 2nd call - update task
+            // Mock: 3rd call - delete old participants
+            // Mock: 4th call - insert new participants
             supabase.from = jest.fn()
                 .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            neq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: null,
+                                    error: { code: 'PGRST116' }
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
                     update: jest.fn().mockReturnValue({
-                        eq: jest.fn().mockResolvedValue({ data: null, error: null })
+                        eq: jest.fn().mockResolvedValue({
+                            data: null,
+                            error: null
+                        })
                     })
                 })
                 .mockReturnValueOnce({
                     delete: jest.fn().mockReturnValue({
                         eq: jest.fn().mockReturnValue({
-                            select: jest.fn().mockResolvedValue({ data: [], error: null })
+                            select: jest.fn().mockResolvedValue({
+                                data: [],
+                                error: null
+                            })
                         })
                     })
                 })
                 .mockReturnValueOnce({
-                    insert: jest.fn().mockResolvedValue({ data: [], error: null })
+                    insert: jest.fn().mockResolvedValue({
+                        data: [],
+                        error: null
+                    })
                 });
 
             const task = new Task({
@@ -608,14 +973,29 @@ describe('Task Class Test', () => {
         test('Should throw DatabaseError on update failure', async () => {
             const mockError = { message: 'Update failed' };
 
-            supabase.from = jest.fn().mockReturnValue({
-                update: jest.fn().mockReturnValue({
-                    eq: jest.fn().mockResolvedValue({
-                        data: null,
-                        error: mockError
+            // Mock: 1st call - check for duplicate title (no duplicate)
+            // Mock: 2nd call - update fails
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            neq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: null,
+                                    error: { code: 'PGRST116' }
+                                })
+                            })
+                        })
                     })
                 })
-            });
+                .mockReturnValueOnce({
+                    update: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockResolvedValue({
+                            data: null,
+                            error: mockError
+                        })
+                    })
+                });
 
             const task = new Task({
                 id: 'task-123',
@@ -624,7 +1004,8 @@ describe('Task Class Test', () => {
                 deadline: '2025-12-31',
                 description: 'Updated',
                 status: 'ongoing',
-                participants: []
+                participants: [],
+                priority: 5
             });
 
             await expect(task.updateTask())

@@ -16,6 +16,7 @@ describe('Task API - Integration Tests', () => {
         TASK_PARTICIPANT: 'revamped_task_participant'
     };
 
+    // Increase timeout for beforeAll hook (database operations can be slow)
     beforeAll(async () => {
         jest.clearAllMocks();
 
@@ -104,7 +105,7 @@ describe('Task API - Integration Tests', () => {
             throw subtaskParticipantError;
         }
         console.log('Added 1 participant to subtask');
-    });
+    }, 30000); // 30 second timeout for database setup
 
     afterAll(async () => {
         // Clean up: delete participants first (foreign key constraint)
@@ -169,7 +170,7 @@ describe('Task API - Integration Tests', () => {
                 console.log(`Deleted project: ${testProjectId}`);
             }
         }
-    });
+    }, 30000); // 30 second timeout for database cleanup
 
 
     describe('GET /task - Get all tasks', () => {
@@ -363,7 +364,7 @@ describe('Task API - Integration Tests', () => {
                 .expect(400);
 
             expect(response.body.error).toBeDefined();
-            expect(response.body.details).toBeDefined();
+            expect(response.body.error).toContain('required');
         });
 
         test('should return 400 for task without participants', async () => {

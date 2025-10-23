@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -41,7 +42,7 @@ class ProjectIntegrationTest {
     @Order(1)
     @DisplayName("Should check service health")
     void testHealthCheck() throws Exception {
-        mockMvc.perform(get("/api/v1/projects"))
+        mockMvc.perform(get("/projects"))
                 .andExpect(status().isOk());
     }
 
@@ -53,19 +54,22 @@ class ProjectIntegrationTest {
         request.setTitle("Integration Test Project");
         request.setDescription("Created by integration test");
         request.setOwnerId(OWNER_ID);
+        request.setCollaborators(Collections.emptyList());
 
-        MvcResult result = mockMvc.perform(post("/api/v1/projects")
+        MvcResult result = mockMvc.perform(post("/projects")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").exists())
-                .andExpect(jsonPath("$.data.title").value("Integration Test Project"))
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.title").value("Integration Test Project"))
+                .andExpect(jsonPath("$.description").value("Created by integration test"))
+                .andExpect(jsonPath("$.owner").value(OWNER_ID.toString())) // Convert OWNER_ID to a string
+                .andExpect(jsonPath("$.collaborators").isArray())
                 .andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
         Map<String, Object> response = objectMapper.readValue(responseBody, Map.class);
-        Map<String, Object> data = (Map<String, Object>) response.get("data");
+        Map<String, Object> data = response;
         testProjectId = UUID.fromString((String) data.get("id"));
 
         assertThat(testProjectId).withFailMessage("Failed to create project - testProjectId is null").isNotNull();
@@ -78,7 +82,7 @@ class ProjectIntegrationTest {
     void testGetProjectById() throws Exception {
         assertThat(testProjectId).withFailMessage("testProjectId is null - testCreateProject failed").isNotNull();
 
-        mockMvc.perform(get("/api/v1/projects/{id}", testProjectId))
+        mockMvc.perform(get("/projects/{id}", testProjectId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(testProjectId.toString()))
                 .andExpect(jsonPath("$.title").value("Integration Test Project"));
@@ -92,7 +96,7 @@ class ProjectIntegrationTest {
 
         // Composite service propagates the 404 error from atomic service
         try {
-            mockMvc.perform(get("/api/v1/projects/{id}", nonExistentId))
+            mockMvc.perform(get("/projects/{id}", nonExistentId))
                     .andExpect(status().isNotFound());
         } catch (Exception e) {
             // Expected - atomic service returns 404, composite doesn't catch it
@@ -105,7 +109,7 @@ class ProjectIntegrationTest {
     @Order(5)
     @DisplayName("Should get all projects")
     void testGetAllProjects() throws Exception {
-        mockMvc.perform(get("/api/v1/projects/all"))
+        mockMvc.perform(get("/projects/all"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
@@ -114,7 +118,7 @@ class ProjectIntegrationTest {
     @Order(6)
     @DisplayName("Should get projects by user")
     void testGetProjectsByUser() throws Exception {
-        mockMvc.perform(get("/api/v1/projects/user/{userId}", OWNER_ID))
+        mockMvc.perform(get("/projects/user/{userId}", OWNER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
@@ -129,7 +133,7 @@ class ProjectIntegrationTest {
         request.setTitle("Updated Integration Test Project");
         request.setDescription("Updated by integration test");
 
-        mockMvc.perform(put("/api/v1/projects/{id}", testProjectId)
+        mockMvc.perform(put("/projects/{id}", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -148,7 +152,7 @@ class ProjectIntegrationTest {
         request.setTitle("Partially Updated Title");
         request.setDescription("Keeping description required"); // ← FIXED: description is NOT NULL in DB
 
-        mockMvc.perform(put("/api/v1/projects/{id}", testProjectId)
+        mockMvc.perform(put("/projects/{id}", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -165,7 +169,7 @@ class ProjectIntegrationTest {
         UpdateCollaboratorsRequest request = new UpdateCollaboratorsRequest();
         request.setCollaborators(List.of(COLLABORATOR_1, COLLABORATOR_2));
 
-        mockMvc.perform(put("/api/v1/projects/{id}/collaborators", testProjectId)
+        mockMvc.perform(put("/projects/{id}/collaborators", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -183,7 +187,7 @@ class ProjectIntegrationTest {
         UpdateCollaboratorsRequest request = new UpdateCollaboratorsRequest();
         request.setCollaborators(List.of(COLLABORATOR_2));
 
-        mockMvc.perform(put("/api/v1/projects/{id}/collaborators", testProjectId)
+        mockMvc.perform(put("/projects/{id}/collaborators", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -198,7 +202,7 @@ class ProjectIntegrationTest {
         UpdateCollaboratorsRequest request = new UpdateCollaboratorsRequest();
         request.setCollaborators(List.of());
 
-        mockMvc.perform(put("/api/v1/projects/{id}/collaborators", testProjectId)
+        mockMvc.perform(put("/projects/{id}/collaborators", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -212,7 +216,7 @@ class ProjectIntegrationTest {
 
         String requestBody = "{\"new_owner_id\":\"" + NEW_OWNER + "\"}";
 
-        mockMvc.perform(put("/api/v1/projects/{id}/owner", testProjectId)
+        mockMvc.perform(put("/projects/{id}/owner", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -229,7 +233,7 @@ class ProjectIntegrationTest {
 
         String invalidRequest = "{\"new_owner_id\":\"not-a-valid-uuid\"}";
 
-        mockMvc.perform(put("/api/v1/projects/{id}/owner", testProjectId)
+        mockMvc.perform(put("/projects/{id}/owner", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest))
                 .andExpect(status().isBadRequest());
@@ -245,7 +249,7 @@ class ProjectIntegrationTest {
 
         // Composite service propagates 400 error from atomic service
         try {
-            mockMvc.perform(put("/api/v1/projects/{id}/owner", testProjectId)
+            mockMvc.perform(put("/projects/{id}/owner", testProjectId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(invalidRequest))
                     .andExpect(status().isBadRequest());
@@ -268,12 +272,12 @@ class ProjectIntegrationTest {
         UpdateCollaboratorsRequest request2 = new UpdateCollaboratorsRequest();
         request2.setCollaborators(List.of(COLLABORATOR_2));
 
-        mockMvc.perform(put("/api/v1/projects/{id}/collaborators", testProjectId)
+        mockMvc.perform(put("/projects/{id}/collaborators", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request1)))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(put("/api/v1/projects/{id}/collaborators", testProjectId)
+        mockMvc.perform(put("/projects/{id}/collaborators", testProjectId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request2)))
                 .andExpect(status().isOk());
@@ -285,7 +289,7 @@ class ProjectIntegrationTest {
     void testDeleteProject() throws Exception {
         assertThat(testProjectId).withFailMessage("testProjectId is null").isNotNull();
 
-        mockMvc.perform(delete("/api/v1/projects/{id}", testProjectId))
+        mockMvc.perform(delete("/projects/{id}", testProjectId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
@@ -298,7 +302,7 @@ class ProjectIntegrationTest {
     void testDeleteNonExistentProject() throws Exception {
         UUID nonExistentId = UUID.randomUUID();
 
-        mockMvc.perform(delete("/api/v1/projects/{id}", nonExistentId))
+        mockMvc.perform(delete("/projects/{id}", nonExistentId))
                 .andExpect(status().isOk());
     }
 
@@ -309,7 +313,7 @@ class ProjectIntegrationTest {
         NewProjectRequest request = new NewProjectRequest();
 
         try {
-            mockMvc.perform(post("/api/v1/projects")
+            mockMvc.perform(post("/projects")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().is4xxClientError());
@@ -329,7 +333,7 @@ class ProjectIntegrationTest {
         request.setDescription("Should Fail");
 
         try {
-            mockMvc.perform(put("/api/v1/projects/{id}", nonExistentId)
+            mockMvc.perform(put("/projects/{id}", nonExistentId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isNotFound());
