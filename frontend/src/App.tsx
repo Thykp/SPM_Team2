@@ -5,6 +5,7 @@ import SignUp from './pages/SignUp'
 import { AppLayout } from './layouts/AppLayout'
 import { Dashboard } from './pages/app/Dashboard'
 import { Settings } from './pages/app/Settings'
+import { Reports } from "./pages/app/Reports"
 import Project from './pages/app/Project'
 import ProjectDetail from './pages/app/ProjectDetail'
 import ManageUser from './pages/app/ManageUser'
@@ -21,14 +22,6 @@ function App() {
       <Route path="/signup" element={<SignUp />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/app" element={<AppLayout />}>
-          <Route
-            path="staff-tasks"
-            element={
-              <RoleGate allow={["Manager", "Director", "Senior Management"]}>
-                <StaffTasks />
-              </RoleGate>
-            }
-          />
           <Route index element={<Dashboard />} />
           <Route path="projects" element={<Project />} />
           <Route path="project/:projectId" element={<ProjectDetail />} />
@@ -45,6 +38,22 @@ function App() {
             element={
               <RoleGate allow={["Manager", "Director", "Senior Management"]}>
                 <ManageUser />
+              </RoleGate>
+            }
+          />
+          <Route
+            path="staff-tasks"
+            element={
+              <RoleGate allow={["Manager", "Director", "Senior Management"]}>
+                <StaffTasks />
+              </RoleGate>
+            }
+          />
+          <Route
+            path="reports"
+            element={
+              <RoleGate allow={["Staff", "Manager", "Director", "Senior Management"]}>
+                <Reports />
               </RoleGate>
             }
           />

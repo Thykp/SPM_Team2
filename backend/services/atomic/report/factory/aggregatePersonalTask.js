@@ -43,7 +43,7 @@ async function prepareReportData(taskList, startDate, endDate){
         const dateB = b.rawDeadline ? new Date(b.rawDeadline) : new Date(8640000000000000);
         if (dateA < dateB) return -1;
         if (dateA > dateB) return 1;
-        return a.priority - b.priority;
+        return b.priority - a.priority;
       });
 
     // Calculate KPIs in a single pass for better performance
@@ -54,9 +54,9 @@ async function prepareReportData(taskList, startDate, endDate){
       if (task.status === "Ongoing") acc.ongoingTasks++;
       if (task.status === "Overdue") acc.overdueTasks++;
       
-      if (task.priority <= 3) acc.highPriorityTasks++;
+      if (task.priority <= 3) acc.lowPriorityTasks++;
       else if (task.priority <= 7) acc.mediumPriorityTasks++;
-      else acc.lowPriorityTasks++;
+      else acc.highPriorityTasks++;
       
       return acc;
     }, {
@@ -80,8 +80,8 @@ async function prepareReportData(taskList, startDate, endDate){
     );
 
     const priorityPieChart = await generatePie(
-      ['High (1-3)', 'Medium (4-7)', 'Low (8-10)'],
-      [taskKPIs.highPriorityTasks, taskKPIs.mediumPriorityTasks, taskKPIs.lowPriorityTasks]
+      ['Low (1-3)', 'Medium (4-7)', 'High (8-10)'],
+      [taskKPIs.lowPriorityTasks, taskKPIs.mediumPriorityTasks, taskKPIs.highPriorityTasks]
     );
     
     return {
