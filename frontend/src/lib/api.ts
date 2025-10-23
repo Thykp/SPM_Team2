@@ -182,9 +182,7 @@ export const Profile = {
 export type UpdateProjectRequest = {
   title?: string;
   description?: string;
-  tasklist?: string[];
-  owner?: string;
-  collaborators?: string[];
+  // Note: owner, collaborators, and tasklist should be updated via separate endpoints
 };
 
 export const Project = {
