@@ -86,6 +86,13 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
         return formattedDate;
     }
 
+    const formatToLocalDatetime = (dateString: string) => {
+        const date = new Date(dateString);
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+        return localDate.toISOString().slice(0, 16).replace('T', ' ');
+    };
+
     const getStatusBadgeVariant = (status: string) => {
         switch (status) {
             case "Completed":
@@ -182,7 +189,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                     <div>
                       <p className="text-sm font-medium">Deadline</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(currentTask.deadline)}
+                        {formatToLocalDatetime(currentTask.deadline)}
                       </p>
                     </div>
                   </div>
