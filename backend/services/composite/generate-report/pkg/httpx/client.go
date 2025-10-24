@@ -2,6 +2,10 @@ package httpx
 
 import "net/http"
 
+func NewClient() *http.Client {
+	return &http.Client{}
+}
+
 func CloneHeaders(src http.Header) http.Header {
 	dst := make(http.Header, len(src))
 	for k, v := range src {
