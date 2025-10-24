@@ -80,9 +80,59 @@ async function createReportStorage(filePathOrBuffer, fileName = null) {
     };
 }
 
+async function getReportsByProfileId(profileId) {
+    const { data, error } = await supabase
+        .from(REPORT_TABLE)
+        .select('*')
+        .eq('profile_id', profileId)
+        .order('created_at', { ascending: false });
+    
+    if (error) {
+        throw new InternalError('fetch reports for profile', error);
+    }
+    
+    return data;
+}
+
+async function deleteReport(reportId) {
+    const { data, error } = await supabase
+        .from(REPORT_TABLE)
+        .delete()
+        .eq('id', reportId)
+        .select();
+    
+    if (error) {
+        throw new InternalError('delete report from database', error);
+    }
+    
+    if (!data || data.length === 0) {
+        throw new ValidationError('Report not found');
+    }
+    
+    const deletedReport = data[0];
+    const fileName = extractFileName(deletedReport.filepath);
+    
+    const { error: storageError } = await supabase.storage
+        .from(REPORT_STORAGE)
+        .remove([fileName]);
+    
+    if (storageError) {
+        console.error('Failed to delete file from storage:', storageError);
+    }
+    
+    return deletedReport;
+}
+
+function extractFileName(filepath) {
+    const urlParts = filepath.split('/');
+    return urlParts[urlParts.length - 1];
+}
+
 module.exports = {
     createReport, 
     createReportStorage, 
     createReportStorageFromPath, 
-    createReportStorageFromFile
+    createReportStorageFromFile,
+    getReportsByProfileId,
+    deleteReport
 }

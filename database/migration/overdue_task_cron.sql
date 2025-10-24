@@ -29,8 +29,8 @@ comment on function public.update_overdue_tasks() is
 -- 3. Schedule the cron job to run every 30 minutes
 -- =========================
 select cron.schedule(
-  'update-overdue-tasks-every-30min',    -- Unique job name
-  '*/30 * * * *',                         -- Cron expression: every 30 minutes
+  'update-overdue-tasks-every-5min',    -- Unique job name
+  '*/5 * * * *',                         -- Cron expression: every 30 minutes
   $$select public.update_overdue_tasks();$$
 );
 

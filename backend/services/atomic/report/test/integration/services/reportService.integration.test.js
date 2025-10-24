@@ -3,7 +3,7 @@ require('dotenv').config();
 
 // Integration tests for reportService with real Supabase
 // Requires SUPABASE_URL and SUPABASE_API_KEY environment variables
-const { createReport, createReportStorage, createReportStorageFromPath, createReportStorageFromFile } = require('../../../services/reportService');
+const { createReport, createReportStorage, createReportStorageFromPath, createReportStorageFromFile, getReportsByProfileId, deleteReport } = require('../../../services/reportService');
 const { supabase } = require('../../../db/supabase');
 const { InternalError, ValidationError } = require('../../../model/AppError');
 const fs = require('fs').promises;
@@ -147,6 +147,128 @@ describe('ReportService Integration Tests', () => {
             expect(reports).toBeDefined();
             expect(reports.length).toBeGreaterThan(0);
             expect(reports[0].filepath).toBe(storageResult.publicUrl);
+        });
+    });
+
+    describe('getReportsByProfileId', () => {
+        test('Should fetch reports by profile_id from real database', async () => {
+            // First create a report to ensure there's data
+            const storageResult = await createReportStorage(testFilePath);
+            const reportData = {
+                profile_id: TEST_PROFILE_ID,
+                title: `Get Reports Test - ${Date.now()}`
+            };
+            await createReport(reportData, storageResult.publicUrl);
+
+            // Now fetch reports for this profile
+            const reports = await getReportsByProfileId(TEST_PROFILE_ID);
+
+            expect(reports).toBeDefined();
+            expect(Array.isArray(reports)).toBe(true);
+            expect(reports.length).toBeGreaterThan(0);
+            
+            // Verify the report structure
+            const report = reports[0];
+            expect(report).toHaveProperty('id');
+            expect(report).toHaveProperty('profile_id');
+            expect(report).toHaveProperty('title');
+            expect(report).toHaveProperty('filepath');
+            expect(report).toHaveProperty('created_at');
+            expect(report.profile_id).toBe(TEST_PROFILE_ID);
+        });
+
+        test('Should return empty array for profile with no reports', async () => {
+            const nonExistentProfileId = '00000000-0000-0000-0000-000000000000';
+            const reports = await getReportsByProfileId(nonExistentProfileId);
+
+            expect(reports).toBeDefined();
+            expect(Array.isArray(reports)).toBe(true);
+            expect(reports.length).toBe(0);
+        });
+
+        test('Should order reports by created_at descending', async () => {
+            const reports = await getReportsByProfileId(TEST_PROFILE_ID);
+
+            if (reports.length > 1) {
+                for (let i = 0; i < reports.length - 1; i++) {
+                    const currentDate = new Date(reports[i].created_at);
+                    const nextDate = new Date(reports[i + 1].created_at);
+                    expect(currentDate.getTime()).toBeGreaterThanOrEqual(nextDate.getTime());
+                }
+            }
+        });
+    });
+
+    describe('deleteReport', () => {
+        let testReportIdForDeletion;
+        let testFileNameForDeletion;
+
+        beforeAll(async () => {
+            // Create a test report specifically for deletion
+            testFileNameForDeletion = `test-delete-${Date.now()}.pdf`;
+            const fileBuffer = await fs.readFile(testFilePath);
+            
+            const { publicUrl } = await createReportStorage(fileBuffer, testFileNameForDeletion);
+            
+            const reportData = {
+                profile_id: TEST_PROFILE_ID,
+                title: `Delete Test Report - ${Date.now()}`
+            };
+            
+            const filepath = await createReport(reportData, publicUrl);
+            
+            // Get the report ID
+            const reports = await supabase
+                .from('revamped_report')
+                .select('*')
+                .eq('filepath', publicUrl)
+                .limit(1);
+            
+            if (reports.data && reports.data.length > 0) {
+                testReportIdForDeletion = reports.data[0].id;
+            }
+        });
+
+        test('Should delete report and file from real storage', async () => {
+            expect(testReportIdForDeletion).toBeDefined();
+
+            // Delete the report
+            const deletedReport = await deleteReport(testReportIdForDeletion);
+
+            expect(deletedReport).toBeDefined();
+            expect(deletedReport.id).toBe(testReportIdForDeletion);
+            expect(deletedReport.profile_id).toBe(TEST_PROFILE_ID);
+
+            // Verify the report is deleted from database
+            const { data: reports, error } = await supabase
+                .from('revamped_report')
+                .select('*')
+                .eq('id', testReportIdForDeletion);
+
+            expect(error).toBeNull();
+            expect(reports).toBeDefined();
+            expect(reports.length).toBe(0);
+
+            // Verify the file is deleted from storage
+            const { data: files, error: storageError } = await supabase.storage
+                .from('reports')
+                .list('', { 
+                    search: testFileNameForDeletion 
+                });
+
+            expect(storageError).toBeNull();
+            expect(files).toBeDefined();
+            // File should not be found
+            const fileExists = files.some(file => file.name === testFileNameForDeletion);
+            expect(fileExists).toBe(false);
+        });
+
+        test('Should throw ValidationError when deleting non-existent report', async () => {
+            const nonExistentReportId = '00000000-0000-0000-0000-000000000000';
+
+            await expect(deleteReport(nonExistentReportId))
+                .rejects
+                .toThrow('Report not found');
         });
     });
 });

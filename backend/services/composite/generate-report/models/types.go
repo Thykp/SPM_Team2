@@ -4,6 +4,7 @@ package models
 type GenerateRequest struct {
 	StartDate string `json:"startDate" binding:"required"`
 	EndDate   string `json:"endDate"   binding:"required"`
+	UserID    string `json:"userId,omitempty"`
 }
 
 // Kafka envelopes
@@ -22,18 +23,32 @@ type GenerateEvent struct {
 
 type GenerateProjectEvent struct {
 	ProjectID string `json:"projectId"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	UserID    string `json:"userId"`
 }
 
 type TeamGenerateEvent struct {
 	TeamID    string `json:"teamId"`
 	StartDate string `json:"startDate"`
 	EndDate   string `json:"endDate"`
+	UserID    string `json:"userId"`
 }
 
 type DepartmentGenerateEvent struct {
 	DepartmentID string `json:"departmentId"`
 	StartDate    string `json:"startDate"`
 	EndDate      string `json:"endDate"`
+	UserID       string `json:"userId"`
+}
+
+type ReportRecord struct {
+	ID        string `json:"id"`
+	ProfileID string `json:"profile_id"`
+	Title     string `json:"title"`
+	Filepath  string `json:"filepath"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // Atomic report service response
