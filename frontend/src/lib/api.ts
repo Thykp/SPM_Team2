@@ -96,6 +96,9 @@ export type ProfileRequestDetailsDto = {
   id: string;
 };
 
+export type Notification = {
+  
+}
 
 // --- Task participants ---
 export type TaskParticipant = { profile_id: string; is_owner: boolean };

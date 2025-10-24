@@ -1,4 +1,4 @@
-const { broadcastToUser } = require("./websocket");
+const { broadcastToUser, formatWsAdded, formatWsUpdate, formatWsReminder } = require("./websocket");
 const { postToSupabase } = require("./postSupabase");
 const { sendDeadlineOrAddedEmail, sendUpdates  } = require("./email")
 const axios = require("axios");
@@ -39,8 +39,6 @@ async function processReminderNotification(payload) {
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
 
-  const wsPayload = { ...payload, push };
-  broadcastToUser(payload.user_id, wsPayload); //TODO: decide the content in the notification
 
   const highPriority = taskContent.priority > 7;
   const mediumPriority = taskContent.priority > 4 && taskContent.priority <= 7;
@@ -77,6 +75,10 @@ async function processReminderNotification(payload) {
     },
   }
 
+  const wsPayload = { ...emailPayload, push };
+  broadcastPayload = formatWsReminder(wsPayload)
+  broadcastToUser(payload.user_id, broadcastPayload); //TODO: decide the content in the notification
+
   if (emailPref) {
     sendDeadlineOrAddedEmail(emailPayload)
   }
@@ -90,9 +92,9 @@ async function processAddedNotification(payload){
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
 
-  const wsPayload = { ...payload, push };
-  broadcastToUser(payload.user_id, wsPayload); //TODO: decide the content in the notification
-
+  let wsPayload = formatWsAdded(payload)
+  wsPayload = { ...wsPayload, push };
+  broadcastToUser(payload.user_id, wsPayload);
 
   const emailPayload = {
     email: email,
@@ -128,13 +130,11 @@ async function processUpdateNotification(payload){
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
 
-  // const wsPayload = Object.assign({}, payload, {
-  //   // update_type: niceUpdateType,
-  //   // push: push,
-  //   // timestamp: Date.now()
-  // }, resourceFlags);
-
-  // broadcastToUser(payload.user_id, wsPayload);
+  let wsPayloads = formatWsUpdate(payload)
+  wsPayloads.forEach(p => {
+    p = {...p, push}
+    broadcastToUser(payload.user_id,p)
+  });
 
   if (emailPref) {
     sendUpdates({
