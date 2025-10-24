@@ -20,7 +20,6 @@ async function pollNotifications(setName) {
   console.info(`[poller] Found ${notifications.length} notifications in ${setName}`);
 
   if (setName === "update") {
-    // --- NEW LOGIC FOR UPDATE ---
     const updatesByUser = {};
 
     for (const n of notifications) {

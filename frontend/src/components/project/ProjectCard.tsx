@@ -195,34 +195,71 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                 if (onProjectUpdate) {
                     onProjectUpdate(updatedProjectData);
                 }
+                const hasNonOwnerChanges =
+                    (updatedProject.title !== currentProject.title ||
+                    updatedProject.description !== currentProject.description);
+
+                const hasOwnerChange = updatedProject.owner !== currentProject.owner;
+                const collaboratorsToNotify = updatedProjectData.members.filter(id => id !== profile?.id) || [];
+
+                if (hasNonOwnerChanges && collaboratorsToNotify.length != 0) {
+                    await NotificationAPI.publishUpdate({
+                        updateType: "Edited",
+                        resourceType: "project",
+                        resourceId:updatedProject.id,
+                        resourceContent: { 
+                            updated: {...updatedProject},
+                            original: {...currentProject}
+                        },
+                        collaboratorIds: collaboratorsToNotify,
+                        updatedBy: profile?.display_name || "Unknown User",
+                    });
+                }
+
+                if (updatedProject.owner != currentProject.owner){
+                    await NotificationAPI.publishUpdate({
+                        updateType: "Assigned",
+                        resourceType: "project",
+                        resourceId:updatedProject.id,
+                        resourceContent: { 
+                            updated: {...updatedProject},
+                            original: {...currentProject}
+                        },
+                        collaboratorIds: [updatedProject.owner],
+                        updatedBy: profile?.display_name || "Unknown User",
+                    });
+                }
                 
                 setIsEditDialogOpen(false);
 
                 if (newlyAdded.length > 0) {
-                try {
-                    console.log("Publishing notification for new collaborators...");
+                    try {
+                        console.log("Publishing notification for new collaborators...");
 
-                    await NotificationAPI.publishAddedToResource({
-                        resourceId: project.id,
-                        resourceType: "project",
-                        collaboratorIds: newlyAdded,
-                        resourceContent:{ ...updatedProjectData },
-                        addedBy: profile?.display_name || "unknown",
-                    }); 
-                    console.log(JSON.stringify({
-                        resourceId: project.id,
-                        resourceType: "project",
-                        resourceContent:{ ...updatedProjectData },
-                        collaboratorIds: newlyAdded,
-                        addedBy: profile?.display_name || "unknown",
-                    }))
+                        await NotificationAPI.publishAddedToResource({
+                            resourceId: project.id,
+                            resourceType: "project",
+                            collaboratorIds: newlyAdded,
+                            resourceContent:{ 
+                                updated: {...updatedProjectData},
+                                original: {...currentProjectData}
+                            },
+                            addedBy: profile?.display_name || "unknown",
+                        }); 
+                        console.log(JSON.stringify({
+                            resourceId: project.id,
+                            resourceType: "project",
+                            resourceContent:{ ...updatedProjectData },
+                            collaboratorIds: newlyAdded,
+                            addedBy: profile?.display_name || "unknown",
+                        }))
 
-                    console.log("Notification published for new collaborators:", newlyAdded);
-                } catch (notifyError) {
-                    console.error("Failed to publish notification:", notifyError);
+                        console.log("Notification published for new collaborators:", newlyAdded);
+                    } catch (notifyError) {
+                        console.error("Failed to publish notification:", notifyError);
+                    }
+
                 }
-
-            }
             } else {
                 console.error('Update failed:', result);
             }

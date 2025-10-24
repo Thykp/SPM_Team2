@@ -171,9 +171,6 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
       };
       await TaskApi.updateTask(taskId, taskData);
 
-      onClose();
-      onTaskUpdated?.();
-
       // --- Notify collaborators when newly added ---
       const newlyAdded = selectedCollaborators.filter((id) => !originalCollaborators.includes(id));
 
@@ -192,7 +189,6 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
         }
       }
 
-
     // --- Notify collaborators about edits ---
       const collaboratorsToNotify = selectedCollaborators.filter(id => id !== profile?.id);
       if (collaboratorsToNotify.length > 0 && originalTask) {
@@ -201,8 +197,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
           originalTask.description !== taskData.description ||
           originalTask.status !== taskData.status ||
           originalTask.priority !== taskData.priority ||
-          originalTask.deadline !== taskData.deadline)
-
+          originalTask.deadline !== taskData.deadline.replace(".000Z", "+00:00"))
 
         if (hasNonOwnerChanges) {
           await NotificationAPI.publishUpdate({
@@ -234,6 +229,8 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
         });
       }
 
+      onClose();
+      onTaskUpdated?.();
     } catch (err) {
       console.error("Failed to update task:", err);
     } finally {

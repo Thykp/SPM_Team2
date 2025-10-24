@@ -60,7 +60,7 @@ async function processReminderNotification(payload) {
   }
 
 
-  deadline = formatLocalDateTime(taskContent.deadline)
+  deadline = formatSingaporeDateTime(taskContent.deadline)
 
   const emailPayload = { ...payload,
     email: email,
@@ -78,7 +78,7 @@ async function processReminderNotification(payload) {
   }
 
   if (emailPref) {
-    // sendDeadlineOrAddedEmail(emailPayload)
+    sendDeadlineOrAddedEmail(emailPayload)
   }
 };
 
@@ -101,7 +101,7 @@ async function processAddedNotification(payload){
   }
 
   if (emailPref) {
-    // sendDeadlineOrAddedEmail(emailPayload)
+    sendDeadlineOrAddedEmail(emailPayload)
   }
 }
 
@@ -109,42 +109,19 @@ async function processUpdateNotification(payload){
   // await postToSupabase(notifData);
 
  try {
-  const resourceNiceNames = {
-    project: "Project",
-    "project-task": "Project Task",
-    "project-subtask": "Project Subtask",
-    subtask: "Subtask",
-    task: "Task",
-  };
-
-  const resourceFlags = {
-    isProject: payload.resource_type === "project",
-    isProjectTask: payload.resource_type === "project-task",
-    isProjectSubtask: payload.resource_type === "project-subtask",
-    isSubtask: payload.resource_type === "subtask",
-    isTask: payload.resource_type === "task",
-  };
-
-  const niceUpdateType = `${resourceNiceNames[payload.resource_type] || payload.resource_type} ${payload.update_type}`;
 
   const { email, delivery_method } = await getUserPreferences(payload.user_id); 
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
 
   const wsPayload = Object.assign({}, payload, {
-    update_type: niceUpdateType,
-    push: push,
-    timestamp: Date.now()
+    // update_type: niceUpdateType,
+    // push: push,
+    // timestamp: Date.now()
   }, resourceFlags);
 
   broadcastToUser(payload.user_id, wsPayload);
 
-
-  const emailPayload = {
-    email: email,
-    ...payload,
-    update_type: niceUpdateType,
-  }
 
   if (emailPref) {
     sendUpdates(emailPayload)
@@ -196,16 +173,79 @@ async function handleUpdate(payloads) {
 }
 
 async function handleAddedToResource(payload) {
-  // if (!Array.isArray(payload.collaborator_ids)) return;
-  // console.info(`[handler] Added-to-resource -> users: ${payload.collaborator_ids.join(", ")}`);
+  if (!Array.isArray(payload.collaborator_ids)) return;
 
-  console.log(payload)
-  // for () {
-    
-  //   console.info(`[handler] Added-to-resource for ${modifiedPayload.resource_type}-> modified payload ${JSON.stringify(modifiedPayload)}`)
-  //   await processAddedNotification(modifiedPayload);
-  // }
+  console.info(`[handler] Added-to-resource -> users: ${payload.collaborator_ids.join(", ")}`);
+  console.log(payload);
+
+  const { resource_type, resource_id, resource_content } = payload;
+
+  let isTask = false;
+  let isSubtask = false;
+  let isProject = false;
+  let isProjectTask = false;
+  let isProjectSubtask = false;
+  let isHighPriority = false;
+  let isMediumPriority = false;
+  let isLowPriority = false;
+  let link = '';
+
+  if (resource_type === 'task' && resource_id === 'task') {
+    isTask = true;
+    link = 'https://www.youtube.com';
+  } 
+  else if (resource_type === 'task' && resource_id !== 'task') {
+    isSubtask = true;
+    link = 'https://www.youtube.com';
+  } 
+  else if (resource_type === 'project' && !resource_content.project_id && !resource_content.parent) {
+    isProject = true;
+    link = `http://localhost:5173/app/project/${resource_content.id}`;
+  } 
+  else if (resource_type === 'project' && resource_content.project_id && !resource_content.parent) {
+    isProjectTask = true;
+    link = `http://localhost:5173/app/project/${resource_content.project_id}`;
+  } 
+  else if (resource_type === 'project' && resource_content.project_id && resource_content.parent) {
+    isProjectSubtask = true;
+    link = `http://localhost:5173/app/project/${resource_content.project_id}`;
+  }
+
+  const isTaskLike = isTask || isSubtask || isProjectTask || isProjectSubtask;
+  if (isTaskLike && typeof resource_content.priority === 'number') {
+    const priority = resource_content.priority;
+    if (priority > 7) {
+      isHighPriority = true;
+    } else if (priority > 4) {
+      isMediumPriority = true;
+    } else {
+      isLowPriority = true;
+    }
+  }
+
+  for (const user_id of payload.collaborator_ids) {
+    const modifiedPayload = {
+      ...payload,
+      user_id,
+      link,
+      isTask,
+      isSubtask,
+      isProject,
+      isProjectTask,
+      isProjectSubtask,
+      isHighPriority,
+      isMediumPriority,
+      isLowPriority,
+    };
+
+    console.info(
+      `[handler] Added-to-resource for ${payload.resource_type} -> modified payload: ${JSON.stringify(modifiedPayload)}`
+    );
+
+    await processAddedNotification(modifiedPayload);
+  }
 }
+
 
 module.exports = {
   handleDeadlineReminder,
