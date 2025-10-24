@@ -1,37 +1,37 @@
-# ---------- BUILD STAGE ----------
+# ---------- build stage ----------
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy everything in the context
-COPY . /app
+# Pre-fetch deps (faster rebuilds)
+COPY pom.xml .
+RUN mvn -q -B dependency:go-offline
 
-# Verify files are copied (debug)
-RUN echo "Listing /app after COPY:" && ls -lR /app
+# Build the jar
+COPY src ./src
+RUN mvn -q -DskipTests clean package
 
-# Build the fat jar (skip tests for faster build)
-RUN mvn -B -DskipTests clean package
-
-# ---------- RUN STAGE ----------
+# ---------- run stage ----------
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-# Create a non-root user
+# (optional) run as non-root
 RUN useradd -r -s /usr/sbin/nologin appuser
 USER appuser
 
-# Set Spring profile for Docker
+# Spring profile for Docker (expects application-docker.properties in your jar)
 ENV SPRING_PROFILES_ACTIVE=docker
+# Optional JVM opts (tune as you like)
 ENV JAVA_OPTS=""
 
-# Expose application port
 EXPOSE 8091
 
-# Copy the jar built by Maven
+# Copy the fat jar from build stage (updated for manage-task project)
 COPY --from=build /app/target/manage_task-0.0.1-SNAPSHOT.jar /app/app.jar
 
-# Optional TCP healthcheck
+# (optional) simple TCP healthcheck without curl/wget
+# If you prefer an HTTP check, install curl/wget or point Kong at your / endpoint.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-  CMD bash -c '</dev/tcp/127.0.0.1/8091' || exit 1
+  CMD bash -lc '</dev/tcp/127.0.0.1/8091' || exit 1
 
-# Run the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+# Run it
+ENTRYPOINT ["bash","-lc","java $JAVA_OPTS -jar /app/app.jar"]

@@ -1,37 +1,36 @@
 # ---------- build stage ----------
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
-
-# Pre-fetch deps (faster rebuilds)
 COPY pom.xml .
 RUN mvn -q -B dependency:go-offline
-
-# Build the jar
-COPY . /app
+COPY src ./src
 RUN mvn -q -DskipTests clean package
 
 # ---------- run stage ----------
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-# (optional) run as non-root
+# create unprivileged user
 RUN useradd -r -s /usr/sbin/nologin appuser
-USER appuser
 
-# Spring profile for Docker (expects application-docker.properties in your jar)
 ENV SPRING_PROFILES_ACTIVE=docker
-# Optional JVM opts (tune as you like)
 ENV JAVA_OPTS=""
 
 EXPOSE 8092
 
-# Copy the fat jar from build stage
-COPY --from=build /app/target/organise-project.jar /app/app.jar
+# copy *all* jars, then select the fat (repackaged) one
+COPY --from=build /app/target/*.jar /app/
 
-# (optional) simple TCP healthcheck without curl/wget
-# If you prefer an HTTP check, install curl/wget or point Kong at your / endpoint.
+# pick the first non-plain jar and rename to app.jar
+RUN set -eux; \
+    JAR="$(ls /app/*.jar | grep -v -- '-plain\.jar$' | head -n1 || true)"; \
+    if [ -z "$JAR" ]; then echo "No runnable JAR found in /app:"; ls -l /app; exit 1; fi; \
+    mv "$JAR" /app/app.jar; \
+    chown appuser:appuser /app/app.jar; \
+    ls -l /app
+
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
   CMD bash -lc '</dev/tcp/127.0.0.1/8092' || exit 1
 
-# Run it
-ENTRYPOINT ["bash","-lc","java $JAVA_OPTS -jar /app/app.jar"]
+USER appuser
+ENTRYPOINT ["sh","-lc","exec java $JAVA_OPTS -jar /app/app.jar"]
