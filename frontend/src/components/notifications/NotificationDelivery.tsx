@@ -35,7 +35,7 @@ export function NotificationDelivery({ userId }: Props) {
 
     try {
       await Notification.updateDeliveryPreferences(userId, updated);
-      await refreshPreferences(userId);
+      await refreshPreferences();
       showToast("Success", "Notification preferences updated", "#c1ffe8ff", "#044b00ff");
     } catch (err) {
       console.error("Failed to update notification preferences:", err);

@@ -51,7 +51,7 @@ export function NotificationFrequency({ userId }: Props) {
 
     try {
       await Notification.updateFrequencyPreferences(userId, payload);
-      await refreshPreferences(userId);
+      await refreshPreferences();
       showToast("Success", "Frequency Settings Saved", "#c1ffe8ff", "#044b00ff");
     } catch (err) {
       console.error("Failed to save frequency preferences:", err);
