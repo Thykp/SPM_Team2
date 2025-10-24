@@ -274,7 +274,8 @@ router.post('/team/:teamId', async (req, res) => {
     const fileName = `${teamId}-TeamReport-${ts}.pdf`;
     const { publicUrl } = await createReportStorage(pdf, fileName);
 
-    const reportTitle = `Team Report: ${teamData.name}`;
+    const formatDate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
+    const reportTitle = `Team Report: ${teamData.name} between ${formatDate(startDate)} and ${formatDate(endDate)}`;
     await createReport({ profile_id: userId, title: reportTitle }, publicUrl);
 
     res.json({
@@ -338,7 +339,8 @@ router.post('/department/:departmentId', async (req, res) => {
     const fileName = `${departmentId}-DepartmentReport-${ts}.pdf`;
     const { publicUrl } = await createReportStorage(pdf, fileName);
 
-    const reportTitle = `Department Report: ${deptData.name}`;
+    const formatDate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
+    const reportTitle = `Department Report: ${deptData.name} between ${formatDate(startDate)} and ${formatDate(endDate)}`;
     await createReport({ profile_id: userId, title: reportTitle }, publicUrl);
 
     res.json({
