@@ -47,6 +47,9 @@ jobs:
     defaults:
       run:
         working-directory: backend/services/atomic/report
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
