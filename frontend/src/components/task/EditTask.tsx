@@ -216,14 +216,13 @@ useEffect(() => {
       // Close the modal after updating
       onClose();
 
-      console.log(originalTask?.deadline, updatedTaskDetails.deadline)
       // --- Notify collaborators when newly added ---
       const newlyAdded = updatedTaskDetails.collaborators.filter((id) => !originalCollaborators.includes(id));
       if (newlyAdded.length > 0) {
         try {
           await NotificationAPI.publishAddedToResource({
             resourceType: "task",
-            resourceId: "task",
+            resourceId: taskId,
             collaboratorIds: newlyAdded,
             resourceContent: {...updatedTaskDetails},
             addedBy: profile?.display_name || "Unknown User",
@@ -245,24 +244,33 @@ useEffect(() => {
         originalTask.deadline !== updatedTaskDetails.deadline.replace(".000Z", "+00:00"))
 
       if (hasNonOwnerChanges) {
-          await NotificationAPI.publishUpdate({
-            updateType: "Edited",
-            resourceType: "project",
-            resourceId:taskId,
-            resourceContent: { 
-              updated: {...updatedTaskDetails},
-              original: {...originalTask}
-            },
-            collaboratorIds: collaboratorsToNotify,
-            updatedBy: profile?.display_name || "Unknown User",
-          });
-        }  
-      }
+        await NotificationAPI.publishUpdate({
+          updateType: "Edited",
+          resourceType: "task",
+          resourceId:taskId,
+          resourceContent: { 
+            updated: {...updatedTaskDetails},
+            original: {...originalTask}
+          },
+          collaboratorIds: collaboratorsToNotify,
+          updatedBy: profile?.display_name || "Unknown User",
+        });
+        console.log(JSON.stringify({updateType: "Edited",
+          resourceType: "task",
+          resourceId:taskId,
+          resourceContent: { 
+            updated: {...updatedTaskDetails},
+            original: {...originalTask}
+          },
+          collaboratorIds: collaboratorsToNotify,
+          updatedBy: profile?.display_name || "Unknown User",}))
+      }  
+    }
       // --- Notify new owner of assignment---
       if (originalTask?.owner !== updatedTaskDetails.owner && updatedTaskDetails.owner) {
         await NotificationAPI.publishUpdate({
           updateType: "Assigned",
-          resourceType: "project",
+          resourceType: "task",
             resourceId:taskId,
             resourceContent: {
               updated: {...updatedTaskDetails},

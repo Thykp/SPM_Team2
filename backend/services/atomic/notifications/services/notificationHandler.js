@@ -107,6 +107,20 @@ async function processAddedNotification(payload){
 
 async function processUpdateNotification(payload){
   // await postToSupabase(notifData);
+  const allUpdatedTimestamps = [
+    ...payload.batched_resources.project.map(p => new Date(p.resource_content.updated.updated_at)),
+    ...payload.batched_resources.task.map(t => new Date(t.resource_content.updated.updated_at))
+  ];
+
+  // Get the oldest timestamp
+  const oldestUpdate = new Date(Math.min(...allUpdatedTimestamps));
+
+  const now = new Date();
+  const diffMs = now - oldestUpdate;
+
+  const isImmediate = diffMs < 10 * 60 * 1000; // last 10 minutes
+  const isDaily = diffMs < 24 * 60 * 60 * 1000; // last 24 hours
+  const isWeekly = diffMs < 7 * 24 * 60 * 60 * 1000; // last 7 days
 
  try {
 
@@ -114,17 +128,24 @@ async function processUpdateNotification(payload){
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
 
-  const wsPayload = Object.assign({}, payload, {
-    // update_type: niceUpdateType,
-    // push: push,
-    // timestamp: Date.now()
-  }, resourceFlags);
+  // const wsPayload = Object.assign({}, payload, {
+  //   // update_type: niceUpdateType,
+  //   // push: push,
+  //   // timestamp: Date.now()
+  // }, resourceFlags);
 
-  broadcastToUser(payload.user_id, wsPayload);
-
+  // broadcastToUser(payload.user_id, wsPayload);
 
   if (emailPref) {
-    sendUpdates(emailPayload)
+    sendUpdates({
+      ...payload,
+      email: email,
+      isImmediate,
+      isDaily,
+      isWeekly
+    })
+
+    console.log(JSON.stringify({...payload, email}))
   } 
   } catch (err){
     console.error("[processUpdateNotification] Failed:", err);
@@ -140,37 +161,54 @@ async function handleDeadlineReminder(payload) {
   await processReminderNotification(payload);
 }
 
-async function handleUpdate(payloads) {
-  console.info(`[handler] Received ${payloads.length} update(s)`);
-
-  const grouped = {};
+async function handleUpdate(userId, payloads) {
+  // Initialize both resource types
+  const batchedResources = {
+    project: [],
+    task: [],
+  };
 
   for (const payload of payloads) {
-    const { update_type, resource_type, resource_id, resource_content, collaboratorIds, updatedBy, user_id  } = payload;
+    const { update_type, resource_type, resource_id, resource_content, updated_by, original_sent } = payload;
 
-    if (!resource_id) {
-      console.warn("[handler] Skipping payload with no resource_id:", payload);
+    if (!resource_type || !resource_id) {
+      console.warn("[UpdateHandler] Skipping payload with missing resource_type or resource_id:", payload);
       continue;
     }
 
-    if (!grouped[resource_type]) grouped[resource_type] = {};
-
-    if (!grouped[resource_type][resource_id]) {
-      grouped[resource_type][resource_id] = { update_type, user_id, resource_type, resource_id, resource_content, collaboratorIds, updatedBy };
-    }
-    
-    processUpdateNotification(payload)
+    batchedResources[resource_type].push({
+      update_type,
+      resource_id,
+      user_id: userId,
+      updated_by,
+      original_sent : new Date(original_sent).toDateString().replace(" GMT", " (UTC)"),
+      resource_content: {
+        ...resource_content,
+        updated: {
+          ...resource_content.updated,
+          deadline: new Date(resource_content.updated.deadline).toUTCString().replace(/ GMT.*$/, ' (UTC)')
+        },
+        original: {
+          ...resource_content.original,
+          deadline: new Date(resource_content.original.deadline).toUTCString().replace(/ GMT.*$/, ' (UTC)')
+        }
+      }
+    });
   }
 
-  // Convert each resource_type map to an array
-  const result = {};
-  for (const rType of Object.keys(grouped)) {
-    result[rType] = Object.values(grouped[rType]);
-  }
+  const modifiedPayload = {
+    user_id: userId,
+    batched_resources: batchedResources,
+    hasProject: batchedResources.project.length > 0,
+    hasTask: batchedResources.task.length > 0,
+  };
 
-  console.info("[handler] Grouped updates:", JSON.stringify(result, null, 2));
-  return result;
+  console.log(JSON.stringify(modifiedPayload));
+  console.info("[handler] Batched updates:", JSON.stringify(modifiedPayload, null, 2));
+
+  processUpdateNotification(modifiedPayload);
 }
+
 
 async function handleAddedToResource(payload) {
   if (!Array.isArray(payload.collaborator_ids)) return;

@@ -199,7 +199,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                     (updatedProject.title !== currentProject.title ||
                     updatedProject.description !== currentProject.description);
 
-                const hasOwnerChange = updatedProject.owner !== currentProject.owner;
                 const collaboratorsToNotify = updatedProjectData.members.filter(id => id !== profile?.id) || [];
 
                 if (hasNonOwnerChanges && collaboratorsToNotify.length != 0) {
