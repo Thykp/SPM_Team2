@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"generate-report/models"
 )
@@ -14,10 +15,15 @@ import (
 type Client interface {
 	// Personal
 	Generate(ctx context.Context, userID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
+	// Project
+	GenerateProjectReport(ctx context.Context, projectID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Team
-	GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
+	GenerateTeam(ctx context.Context, teamID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Department
-	GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error)
+	GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
+
+	GetByUser(ctx context.Context, userID, correlationID string) ([]models.ReportRecord, int, error)
+	DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error)
 }
 
 type client struct {
@@ -66,23 +72,117 @@ func (c *client) doJSON(ctx context.Context, method, url, correlationID string, 
 // ----- personal -----
 
 func (c *client) Generate(ctx context.Context, userID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
+	userID = strings.TrimSpace(userID)
 	url := fmt.Sprintf("%s/report/%s", c.base, userID) // atomic: POST /report/:userId
 	body := map[string]string{"startDate": startDate, "endDate": endDate}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
 }
 
+// ----- project -----
+
+func (c *client) GenerateProjectReport(ctx context.Context, projectID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
+	// Trim whitespace from project ID and user ID
+	projectID = strings.TrimSpace(projectID)
+	userID = strings.TrimSpace(userID)
+
+	url := fmt.Sprintf("%s/report/project/%s", c.base, projectID)
+	body := map[string]string{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"userId":    userID,
+	}
+	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
+}
+
 // ----- team -----
 
-func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
-	url := fmt.Sprintf("%s/report/team/%s", c.base, teamID) // atomic: POST /report/team/:teamId
-	body := map[string]string{"startDate": startDate, "endDate": endDate}
+func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
+	teamID = strings.TrimSpace(teamID)
+	url := fmt.Sprintf("%s/report/team/%s", c.base, teamID)
+	body := map[string]string{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"userId":    userID,
+	}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
 }
 
 // ----- department -----
 
-func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, correlationID string) (models.ReportServiceResponse, int, error) {
-	url := fmt.Sprintf("%s/report/department/%s", c.base, departmentID) // atomic: POST /report/department/:departmentId
-	body := map[string]string{"startDate": startDate, "endDate": endDate}
+func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
+	departmentID = strings.TrimSpace(departmentID)
+	url := fmt.Sprintf("%s/report/department/%s", c.base, departmentID)
+	body := map[string]string{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"userId":    userID,
+	}
 	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
+}
+
+func (c *client) GetByUser(ctx context.Context, userID, correlationID string) ([]models.ReportRecord, int, error) {
+	userID = strings.TrimSpace(userID)
+	url := fmt.Sprintf("%s/report/profile/%s", c.base, userID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if correlationID != "" {
+		req.Header.Set("X-Request-ID", correlationID)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+
+	var items []models.ReportRecord
+	if err := json.Unmarshal(data, &items); err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("report svc bad JSON: %w, raw=%s", err, string(data))
+	}
+
+	return items, resp.StatusCode, nil
+}
+
+func (c *client) DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error) {
+	reportID = strings.TrimSpace(reportID)
+	url := fmt.Sprintf("%s/report/%s", c.base, reportID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if correlationID != "" {
+		req.Header.Set("X-Request-ID", correlationID)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+
+	var parsed map[string]any
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			// Return a helpful payload if atomic doesn't return JSON
+			return map[string]any{
+				"success": false,
+				"error": map[string]any{
+					"message": "non-JSON response from report service",
+					"status":  resp.StatusCode,
+					"raw":     string(data),
+				},
+			}, resp.StatusCode, nil
+		}
+	}
+	return parsed, resp.StatusCode, nil
 }

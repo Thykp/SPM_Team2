@@ -6,13 +6,14 @@ const nunjucks = require('nunjucks');
 // Configure Nunjucks to look in the current directory
 const env = nunjucks.configure('./templates', { autoescape: true });
 
-async function renderHtml({ userId, tasks, kpis, reportPeriod, charts, template_file }) {
+async function renderHtml({ userId, tasks, kpis, reportPeriod, charts, template_file, ...otherData }) {
   return env.render(template_file, {
     userId,
     tasks,
     kpis,
     reportPeriod,
-    charts
+    charts,
+    ...otherData  // Pass through all other data (for project reports)
   });
 }
 

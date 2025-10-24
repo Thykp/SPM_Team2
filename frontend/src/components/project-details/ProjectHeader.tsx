@@ -12,8 +12,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CollaboratorPicker } from '@/components/CollaboratorPicker';
-import { Project, type ProjectDto, type TaskDTO, type UpdateProjectRequest } from '@/lib/api';
+import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
+import { Project, type ProjectDto, type TaskDTO, type UpdateProjectRequest, Profile } from '@/lib/api';
 import CreateProjectTask from './CreateProjectTask';
 
 interface ProjectHeaderProps {
@@ -39,36 +39,39 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
     });
     
     // State for collaborator picker
-    // const [users, setUsers] = useState<LiteUser[]>([]);
-    // const [userSearchTerm, setUserSearchTerm] = useState('');
-    // const [loadingUsers, setLoadingUsers] = useState(false);
+    const [users, setUsers] = useState<any[]>([]);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
+    const [loadingUsers, setLoadingUsers] = useState(false);
 
-    // // Load users when edit dialog opens
-    // useEffect(() => {
-    //     if (isEditDialogOpen && users.length === 0) {
-    //         setLoadingUsers(true);
-    //         Profile.getAllUsers()
-    //             .then((data) => {
-    //                 setUsers(data);
-    //             })
-    //             .catch(() => {
-    //                 // Silent error handling
-    //             })
-    //             .finally(() => {
-    //                 setLoadingUsers(false);
-    //             });
-    //     }
-    // }, [isEditDialogOpen, users.length]);
+    // Load users when edit dialog opens
+    React.useEffect(() => {
+        if (isEditDialogOpen && users.length === 0) {
+            setLoadingUsers(true);
+            Profile.getAllUsers()
+                .then((data) => {
+                    setUsers(data);
+                })
+                .catch(() => {
+                    // Silent error handling
+                })
+                .finally(() => {
+                    setLoadingUsers(false);
+                });
+        }
+    }, [isEditDialogOpen, users.length]);
 
-    // // Helper function to toggle collaborator selection
-    // const handleToggleCollaborator = (userId: string) => {
-    //     setEditForm(prev => ({
-    //         ...prev,
-    //         collaborators: prev.collaborators.includes(userId)
-    //             ? prev.collaborators.filter(id => id !== userId)
-    //             : [...prev.collaborators, userId]
-    //     }));
-    // };
+    // Helper function to toggle collaborator selection
+    const handleToggleCollaborator = (userId: string) => {
+        setEditForm(prev => {
+            const newCollaborators = prev.collaborators.includes(userId)
+                ? prev.collaborators.filter(id => id !== userId)
+                : [...prev.collaborators, userId];
+            return {
+                ...prev,
+                collaborators: newCollaborators
+            };
+        });
+    };
 
     const handleEditProject = async () => {
         try {
@@ -80,16 +83,17 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                 description: project.description,
                 collaborators: currentProject.collaborators || [],
             });
-            // setUserSearchTerm(''); // Reset search term
+            setUserSearchTerm(''); // Reset search term
             setIsEditDialogOpen(true);
-        } catch {
+        } catch (error) {
+            console.error('❌ Error fetching project:', error);
             // Fallback to local data
             setEditForm({
                 title: project.title,
                 description: project.description,
                 collaborators: project.collaborators || [],
             });
-            // setUserSearchTerm('');
+            setUserSearchTerm('');
             setIsEditDialogOpen(true);
         } finally {
             setIsLoadingEdit(false);
@@ -100,19 +104,16 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
         try {
             setIsLoading(true);
             
-            // Get the current project data to preserve all fields
-            const currentProject = await Project.getById(project.id);
-            
-            // Build update payload with current values + changes
+            // 1. Update project details (title, description)
             const updateData: UpdateProjectRequest = {
                 title: editForm.title,
                 description: editForm.description,
-                owner: currentProject.owner,
-                collaborators: editForm.collaborators,
-                tasklist: currentProject.tasklist || undefined,
             };
 
             const result = await Project.updateProject(project.id, updateData);
+            
+            // 2. Update collaborators separately
+            await Project.updateCollaborators(project.id, editForm.collaborators);
             
             if (result.success) {
                 // Create updated project data
@@ -130,8 +131,8 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                 
                 setIsEditDialogOpen(false);
             }
-        } catch {
-            // Silent error handling
+        } catch (error) {
+            console.error('❌ Error saving project:', error);
         } finally {
             setIsLoading(false);
         }
@@ -199,12 +200,13 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
                             />
                         </div>
                         <CollaboratorPicker
-                            mode="project"
-                            projectId={project.id}
-                            initialSelected={editForm.collaborators}
-                            onSaved={(ids) =>
-                                setEditForm(prev => ({ ...prev, collaborators: ids }))
-                            }
+                            users={users}
+                            userSearchTerm={userSearchTerm}
+                            onUserSearchChange={setUserSearchTerm}
+                            selectedCollaborators={editForm.collaborators}
+                            onToggleCollaborator={handleToggleCollaborator}
+                            loadingUsers={loadingUsers}
+                            currentUserId={project.owner}
                         />
                     </div>
                     <DialogFooter>

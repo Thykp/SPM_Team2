@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,7 +17,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { type TaskDTO, TaskApi } from '@/lib/api';
-import { Check, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Calendar, MoreVertical, Edit, Trash2, Gauge } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import EditProjectTask from './EditProjectTask';
 
 interface SubtaskCardProps {
@@ -34,30 +34,20 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const getInitials = (name?: string) => {
-        if (!name) return '?';
-        return name
-            .split(' ')
-            .map(n => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
-    };
-
     const getStatusColor = (status: TaskDTO['status']) => {
         switch (status) {
             case 'Unassigned':
-                return 'bg-gray-100 text-gray-700';
+                return 'bg-gray-100 text-gray-800';
             case 'Ongoing':
-                return 'bg-blue-100 text-blue-700';
+                return 'bg-blue-100 text-blue-800';
             case 'Under Review':
-                return 'bg-yellow-100 text-yellow-700';
+                return 'bg-yellow-100 text-yellow-800';
             case 'Completed':
-                return 'bg-green-100 text-green-700';
+                return 'bg-green-100 text-green-800';
             case 'Overdue':
-                return 'bg-red-100 text-red-700';
+                return 'bg-red-100 text-red-800';
             default:
-                return 'bg-gray-100 text-gray-700';
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
@@ -87,76 +77,94 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, 
     return (
         <>
             <Card 
-                className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-slate-300"
+                className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-purple-300"
                 onClick={handleCardClick}
             >
-            <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {subtask.status === 'Completed' && (
-                            <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        )}
-                        <p className="text-sm font-medium truncate flex-1">{subtask.title}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                        {subtask.priority && (
-                            <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                P{subtask.priority}
-                            </Badge>
-                        )}
-                        <Badge className={`text-xs ${getStatusColor(subtask.status)}`}>
-                            {subtask.status}
-                        </Badge>
-                        {subtask.ownerName ? (
-                            <Avatar className="h-6 w-6">
-                                <AvatarFallback className="text-xs">
-                                    {getInitials(subtask.ownerName)}
-                                </AvatarFallback>
-                            </Avatar>
-                        ) : (
-                            <Avatar className="h-6 w-6">
-                                <AvatarFallback className="text-xs">?</AvatarFallback>
-                            </Avatar>
-                        )}
+                <CardContent className="p-4">
+                    <div className="space-y-2">
+                        {/* Title and menu */}
+                        <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-medium line-clamp-2">{subtask.title}</h4>
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="subtask-menu h-8 w-8 p-0 flex-shrink-0"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowEditDialog(true);
+                                        }}
+                                    >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit Subtask
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowDeleteDialog(true);
+                                        }}
+                                        className="text-red-600 focus:text-red-600"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete Subtask
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                         
-                        {/* Dropdown Menu */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="subtask-menu h-6 w-6 p-0 flex-shrink-0"
-                                    onClick={(e) => e.stopPropagation()}
+                        {/* Description */}
+                        <div>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                                {subtask.description || 'No description'}
+                            </p>
+                        </div>
+                        
+                        {/* Task metadata */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex gap-2">
+                                <Badge 
+                                    variant="outline" 
+                                    className={`text-xs ${getStatusColor(subtask.status)}`}
                                 >
-                                    <MoreVertical className="h-3 w-3" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowEditDialog(true);
-                                    }}
-                                >
-                                    <Edit className="h-3 w-3 mr-2" />
-                                    Edit Subtask
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowDeleteDialog(true);
-                                    }}
-                                    className="text-red-600 focus:text-red-600"
-                                >
-                                    <Trash2 className="h-3 w-3 mr-2" />
-                                    Delete Subtask
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                    {subtask.status}
+                                </Badge>
+                            </div>
+                            
+                            {/* Priority badge */}
+                            <Badge 
+                                variant="outline" 
+                                className={cn(
+                                    "text-xs font-medium",
+                                    (subtask.priority ?? 0) >= 8 ? "border-red-500 text-red-700 bg-red-50" :
+                                    (subtask.priority ?? 0) >= 4 ? "border-yellow-500 text-yellow-700 bg-yellow-50" :
+                                    "border-green-500 text-green-700 bg-green-50"
+                                )}
+                            >
+                                <Gauge className="h-3 w-3 mr-1" />
+                                {subtask.priority ?? "N/A"}
+                            </Badge>
+                        </div>
+                        
+                        {/* Due date */}
+                        {subtask.deadline && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Due {new Date(subtask.deadline).toLocaleDateString()}
+                            </div>
+                        )}
                     </div>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
         
         {/* Edit Subtask Dialog */}
         {showEditDialog && (

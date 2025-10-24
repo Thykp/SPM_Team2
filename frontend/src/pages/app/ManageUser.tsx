@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/layout/Loader";
 import { cn } from "@/lib/utils";
-import { Users, Building2, FileDown } from "lucide-react";
+import { Users, Building2, FileDown, Loader2 } from "lucide-react";
 
 type CacheEntry<T> = { ts: number; data: T };
 const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
@@ -155,7 +155,7 @@ export default function ManageUser() {
   const [myDepartmentId, setMyDepartmentId] = useState<string | null>(null);
 
   const [reportBusy, setReportBusy] = useState<"team" | "department" | null>(null);
-  const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
+  const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string; href?: string } | null>(null);
 
   // Cache keys
   const USERS_CACHE_KEY = "manageUser:users:all";
@@ -286,16 +286,36 @@ export default function ManageUser() {
     setReportBusy(kind);
 
     try {
+      if (!myUserId) throw new Error("Your user ID is missing from the session.");
+
       if (kind === "team") {
         if (!canSeeTeamButton(myRole)) throw new Error("You are not allowed to generate a team report.");
         if (!myTeamId) throw new Error("Your team is not set.");
-        const res = await Report.generateTeam(myTeamId, { startDate, endDate });
-        setBanner({ type: "success", msg: res?.message || "Team report requested successfully." });
+        const res = await Report.generateTeam(myTeamId, { startDate, endDate, userId: myUserId });
+
+        // Support both shapes: {data: {reportUrl, reportTitle}} from atomic
+        // and a simpler {url, message} shape if used elsewhere.
+        const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
+        const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
+
+        setBanner({
+          type: href ? "success" : "info",
+          msg: title || "Team report requested successfully.",
+          href,
+        });
       } else {
         if (!canSeeDepartmentButton(myRole)) throw new Error("You are not allowed to generate a department report.");
         if (!myDepartmentId) throw new Error("Your department is not set.");
-        const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate });
-        setBanner({ type: "success", msg: res?.message || "Department report requested successfully." });
+        const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate, userId: myUserId });
+
+        const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
+        const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
+
+        setBanner({
+          type: href ? "success" : "info",
+          msg: title || "Department report requested successfully.",
+          href,
+        });
       }
     } catch (e: any) {
       setBanner({ type: "error", msg: e?.message || "Failed to generate report." });
@@ -305,6 +325,8 @@ export default function ManageUser() {
   }
 
   const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate);
+  const disableTeamBtn = reportBusy !== null || !myTeamId || !myUserId || dateInvalid;
+  const disableDeptBtn = reportBusy !== null || !myDepartmentId || !myUserId || dateInvalid;
 
   return (
     <div>
@@ -326,8 +348,21 @@ export default function ManageUser() {
                 : "border-border bg-muted/30 text-foreground"
             )}
             role="status"
+            aria-live="polite"
           >
-            {banner.msg}
+            <div className="flex items-center justify-between gap-3">
+              <span>{banner.msg}</span>
+              {banner.href && (
+                <a
+                  href={banner.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 font-medium"
+                >
+                  Open report
+                </a>
+              )}
+            </div>
           </div>
         )}
 
@@ -354,9 +389,12 @@ export default function ManageUser() {
               {canSeeTeamButton(myRole) && (
                 <Button
                   onClick={() => callReport("team")}
-                  disabled={reportBusy !== null || !myTeamId || dateInvalid}
+                  disabled={disableTeamBtn}
+                  aria-busy={reportBusy === "team"}
                   title={
-                    !myTeamId
+                    !myUserId
+                      ? "Missing user id"
+                      : !myTeamId
                       ? "No team associated with your profile"
                       : dateInvalid
                       ? "Invalid date range"
@@ -369,18 +407,29 @@ export default function ManageUser() {
                     "disabled:opacity-60 disabled:cursor-not-allowed"
                   )}
                 >
-                  <Users className="h-4 w-4" />
-                  <span className="hidden sm:inline">Team Report</span>
-                  <span className="sm:hidden">Team</span>
+                  {reportBusy === "team" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Users className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {reportBusy === "team" ? "Generating…" : "Team Report"}
+                  </span>
+                  <span className="sm:hidden">
+                    {reportBusy === "team" ? "…" : "Team"}
+                  </span>
                 </Button>
               )}
 
               {canSeeDepartmentButton(myRole) && (
                 <Button
                   onClick={() => callReport("department")}
-                  disabled={reportBusy !== null || !myDepartmentId || dateInvalid}
+                  disabled={disableDeptBtn}
+                  aria-busy={reportBusy === "department"}
                   title={
-                    !myDepartmentId
+                    !myUserId
+                      ? "Missing user id"
+                      : !myDepartmentId
                       ? "No department associated with your profile"
                       : dateInvalid
                       ? "Invalid date range"
@@ -393,9 +442,17 @@ export default function ManageUser() {
                     "disabled:opacity-60 disabled:cursor-not-allowed"
                   )}
                 >
-                  <Building2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Department Report</span>
-                  <span className="sm:hidden">Dept</span>
+                  {reportBusy === "department" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Building2 className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {reportBusy === "department" ? "Generating…" : "Department Report"}
+                  </span>
+                  <span className="sm:hidden">
+                    {reportBusy === "department" ? "…" : "Dept"}
+                  </span>
                 </Button>
               )}
             </div>

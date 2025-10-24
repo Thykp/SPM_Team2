@@ -21,8 +21,19 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus } from "lucide-react";
+import { Plus, ChevronsUpDown, Check } from "lucide-react";
 import { TaskApi as TaskAPI, type TaskPostRequestDto, type TaskDTO, Profile, Project } from "@/lib/api";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CreateProjectTaskProps {
   userId: string;
@@ -53,11 +64,21 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
 }) => {
+  const { user } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange || setInternalOpen;
+
+  // Helper function to format date for datetime-local input
+  const formatToLocalDatetime = (dateString: string) => {
+    const date = new Date(dateString);
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+    return localDate.toISOString().slice(0, 16);
+  };
+
   const [newTask, setNewTask] = useState<{
     title: string;
     description: string;
@@ -69,19 +90,27 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
     description: "",
     status: "Unassigned",
     priority: 5,
-    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default 7 days from now, formatted as YYYY-MM-DD
+    deadline: formatToLocalDatetime(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
   });
   const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
+  const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [projectCollaboratorIds, setProjectCollaboratorIds] = useState<string[]>([]);
   const [projectOwner, setProjectOwner] = useState<string>("");
   const [parentTask, setParentTask] = useState<TaskDTO | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState<any[]>([]);
+  const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
 
   // Fetch project details and users when dialog opens
   useEffect(() => {
     if (open) {
+      setLoadingMembers(true);
+      setParentTask(null); // Reset parent task
+      
       // Fetch project to get its collaborators and owner
       Project.getById(projectId)
         .then((project) => {
@@ -94,6 +123,14 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
         .then((users) => {
           setProjectMembers(users);
           
+          // Store current user profile
+          if (user?.id) {
+            const currentUserProfile = users.find((u: any) => u.id === user.id);
+            if (currentUserProfile) {
+              setCurrentUser(currentUserProfile);
+            }
+          }
+          
           // If creating a subtask, fetch the parent task
           if (parentTaskId) {
             return TaskAPI.getTasksById(parentTaskId);
@@ -104,12 +141,77 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
           if (parentTaskData) {
             setParentTask(parentTaskData);
           }
+          setLoadingMembers(false);
         })
         .catch((err) => {
           console.error("Failed to fetch project details or users:", err);
+          setLoadingMembers(false);
         });
     }
-  }, [open, projectId, parentTaskId]);
+  }, [open, projectId, parentTaskId, user?.id]);
+
+  // Filter assignable users based on current user's role and project membership
+  useEffect(() => {
+    const fetchAssignableUsers = async () => {
+      if (!currentUser || projectMembers.length === 0) return;
+
+      try {
+        const { role: currentUserRole, team_id: currentUserTeamId, department_id: currentUserDepartmentId } = currentUser;
+
+        // First filter: Only project members (collaborators + owner)
+        const projectMemberUsers = projectMembers.filter((member: any) => 
+          projectCollaboratorIds.includes(member.id) || member.id === projectOwner
+        );
+
+        // For subtasks, further filter to only parent task participants
+        let eligibleMembers = projectMemberUsers;
+        if (parentTaskId && parentTask) {
+          const parentParticipants = [
+            parentTask.owner,
+            ...(parentTask.collaborators || [])
+          ].filter((id): id is string => id != null);
+          eligibleMembers = projectMemberUsers.filter((member: any) => 
+            parentParticipants.includes(member.id)
+          );
+        }
+
+        // Second filter: Apply role-based restrictions
+        let filteredUsers = eligibleMembers.filter((user: any) => {
+          switch (currentUserRole) {
+            case "Senior Management":
+              return true; // Senior Management can assign to anyone in the project
+            case "Director":
+              return (
+                user.role !== "Senior Management" &&
+                user.department_id === currentUserDepartmentId
+              );
+            case "Manager":
+              return user.role === "Staff" && user.team_id === currentUserTeamId;
+            default:
+              return false; // Staff and other roles cannot assign owners
+          }
+        });
+
+        // Map to owner options for the combobox
+        const options = filteredUsers.map((user: any) => ({
+          value: user.id,
+          label: user.display_name,
+        }));
+
+        setOwnerOptions(options);
+        setAssignableUsers(filteredUsers);
+
+        // Auto-select current user as owner by default if they're in the list
+        if (filteredUsers.some((u: any) => u.id === userId) && !selectedOwner) {
+          setSelectedOwner(userId);
+        }
+      } catch (err) {
+        console.error("Error fetching assignable users:", err);
+      }
+    };
+
+    fetchAssignableUsers();
+  }, [currentUser, projectMembers, projectCollaboratorIds, projectOwner, parentTaskId, parentTask, userId, selectedOwner]);
 
   // Filter members based on search query and project membership
   const filteredMembers = useMemo(() => {
@@ -151,9 +253,10 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       description: "", 
       status: "Unassigned",
       priority: 5,
-      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      deadline: formatToLocalDatetime(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
     });
     setSelectedCollaborators([]);
+    setSelectedOwner("");
     setSearchQuery("");
   };
 
@@ -162,31 +265,30 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
     setLoading(true);
 
     try {
-      // Create task data in TaskPostRequestDto format
+      // If the current user assigns the task to someone else, add them to collaborators
+      let finalCollaborators = selectedCollaborators;
+      if (selectedOwner && selectedOwner !== userId && !selectedCollaborators.includes(userId)) {
+        finalCollaborators = [...selectedCollaborators, userId];
+      }
+
       const taskData: TaskPostRequestDto = {
         title: newTask.title,
         description: newTask.description,
         status: newTask.status,
-        owner: userId,
-        collaborators: selectedCollaborators, // Include selected collaborators
-        deadline: new Date(newTask.deadline).toISOString(), // User-selected deadline
-        project_id: projectId, // Include project ID
-        parent: parentTaskId || null, // Use parent task ID if creating subtask
+        owner: selectedOwner || userId, // Use selected owner or default to current user
+        collaborators: finalCollaborators,
+        deadline: new Date(newTask.deadline).toISOString(),
         priority: newTask.priority,
+        project_id: projectId,
+        parent: parentTaskId || null, // Add parent task ID if creating a subtask
       };
 
-      console.log('Creating task with data:', taskData);
-
-      // Use the new createTaskWithProjectData API method
-      const response = await TaskAPI.createTask(taskData);
-      
-      console.log('Task created successfully:', response);
-      onTaskCreated(response);
-      resetForm();
+      const createdTask = await TaskAPI.createTask(taskData);
+      onTaskCreated(createdTask);
       setOpen(false);
+      resetForm();
     } catch (err) {
       console.error("Failed to create task:", err);
-      // You could add error toast here
     } finally {
       setLoading(false);
     }
@@ -322,15 +424,82 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
             </Label>
             <Input
               id="deadline"
-              type="date"
+              type="datetime-local"
               value={newTask.deadline}
               onChange={(e) =>
                 setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
               }
-              min={new Date().toISOString().split('T')[0]}
+              min={new Date().toISOString().slice(0, 16)}
               className="h-11"
               required
             />
+          </div>
+
+          {/* Owner */}
+          <div className="space-y-2">
+            <Label htmlFor="owner" className="text-base font-medium">
+              Task Owner
+            </Label>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded="false"
+                  className="w-full justify-between h-11"
+                  ref={(el) => {
+                    if (el) {
+                      const triggerWidth = el.offsetWidth;
+                      document.documentElement.style.setProperty(
+                        "--popover-width",
+                        `${triggerWidth}px`
+                      );
+                    }
+                  }}
+                >
+                  {selectedOwner
+                    ? ownerOptions.find((o) => o.value === selectedOwner)?.label || "Select an owner"
+                    : "Select an owner"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-0 z-[60]"
+                style={{ width: "var(--popover-width)" }}
+              >
+                <Command>
+                  <CommandInput placeholder="Search owner..." />
+                  <CommandList>
+                    <CommandEmpty>No owner found.</CommandEmpty>
+                    <CommandGroup>
+                      {assignableUsers.map((user: any) => {
+                        const selected = selectedOwner === user.id;
+                        return (
+                          <CommandItem
+                            key={user.id}
+                            value={user.display_name}
+                            onSelect={() => {
+                              console.log("Selected Owner:", user);
+                              setSelectedOwner(user.id);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selected ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {user.display_name}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Collaborators */}
@@ -346,13 +515,17 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
                 className="h-10"
               />
               <div className="max-h-48 overflow-y-auto space-y-2">
-                {filteredMembers.length === 0 ? (
+                {loadingMembers ? (
                   <p className="text-sm text-muted-foreground text-center py-2">
-                    {searchQuery ? "No members found" : "Loading members..."}
+                    Loading members...
+                  </p>
+                ) : filteredMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    {searchQuery ? "No members found" : "No collaborators available"}
                   </p>
                 ) : (
                   filteredMembers
-                    .filter((member: any) => member.id !== userId) // Exclude the task owner
+                    .filter((member: any) => member.id !== selectedOwner && member.id !== userId) // Exclude the selected owner and current user
                     .map((member: any) => (
                       <label
                         key={member.id}

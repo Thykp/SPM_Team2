@@ -8,7 +8,7 @@ const GENERATE_REPORT_API = import.meta.env.VITE_REPORT_API || `${KONG_BASE_URL}
 const api = axios.create({
   baseURL: KONG_BASE_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 15000,
+  timeout: 30000, // Increased to 30 seconds
 });
 
 // ----- Types -----
@@ -63,7 +63,7 @@ export type TaskDTO = {
 export type ProjectDto = {
   id: string;
   createdat?: string | null;
-  created_at?: string | null; // should standardise to either createdat or created_at later
+  created_at?: string | null;
   title: string;
   tasklist: string[] | null;
   description: string;
@@ -198,9 +198,7 @@ export const Profile = {
 export type UpdateProjectRequest = {
   title?: string;
   description?: string;
-  tasklist?: string[];
-  owner?: string;
-  collaborators?: string[];
+  // Note: owner, collaborators, and tasklist should be updated via separate endpoints
 };
 
 export const Project = {
@@ -326,6 +324,19 @@ export type GenerateReportBody = {
   endDate: string;
 };
 
+export type GenerateScopedReportBody = GenerateReportBody & {
+  userId: string;
+};
+
+export type ReportRecord = {
+  id: string;
+  profile_id: string;
+  title: string;
+  filepath: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export const Report = {
 
   generate: async (
@@ -337,9 +348,34 @@ export const Report = {
     return data;
   },
 
+  generateProject: async (
+    projectId: string,
+    body: GenerateScopedReportBody
+  ): Promise<{ 
+    success: boolean; 
+    data?: { 
+      reportUrl: string; 
+      reportTitle: string; 
+      taskCount: number;
+      collaboratorCount?: number;
+    }; 
+    error?: { 
+      code: string; 
+      message: string; 
+      details?: any;
+    };
+    jobId?: string; 
+    message?: string; 
+    url?: string;
+  }> => {
+    const url = `${GENERATE_REPORT_API}/project/${projectId}`;
+    const { data } = await api.post(url, body);
+    return data;
+  },
+
   generateTeam: async (
     teamId: string,
-    body: GenerateReportBody
+    body: GenerateScopedReportBody
   ): Promise<{ jobId?: string; message?: string; url?: string }> => {
     const url = `${GENERATE_REPORT_API}/team/${teamId}`;
     const { data } = await api.post(url, body);
@@ -348,13 +384,25 @@ export const Report = {
 
   generateDepartment: async (
     departmentId: string,
-    body: GenerateReportBody
+    body: GenerateScopedReportBody
   ): Promise<{ jobId?: string; message?: string; url?: string }> => {
     const url = `${GENERATE_REPORT_API}/department/${departmentId}`;
     const { data } = await api.post(url, body);
     return data;
   },
-  
+
+  getByUser: async (userId: string): Promise<ReportRecord[]> => {
+    const url = `${GENERATE_REPORT_API}/${userId}`;
+    const { data } = await api.get<ReportRecord[]>(url);
+    return Array.isArray(data) ? data : [];
+  },
+
+  delete: async (reportId: string): Promise<{ message?: string } & any> => {
+    const url = `${GENERATE_REPORT_API}/${reportId}`;
+    const { data } = await api.delete(url);
+    return data ?? { message: "Deleted" };
+  },
+
 };
 
 export const Recurrence = {

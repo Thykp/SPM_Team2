@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import EditTask from "./EditTask"; // Import the EditTask component
 import { TaskApi, type TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
 import { useAuth } from "@/contexts/AuthContext";
 import { RecurTask } from "./RecurTask";
+import { cn } from "@/lib/utils";
  
 
 type TaskProps = {
@@ -60,12 +62,29 @@ export const Task: React.FC<TaskProps> = ({
   return (
     <div className={`p-4 rounded relative ${getStatusColor(taskContent.status)}`}>
       <div 
-        className="cursor-pointer"
+        className="cursor-pointer pr-2 pb-2"
         onClick={() => setShowDetails(true)}
       >
         <h3 className="text-lg font-bold">{taskContent.title}</h3>
         <p className="text-sm text-gray-600">{taskContent.description}</p>
-        <span className="text-xs capitalize">{taskContent.status}</span>
+        
+        {/* Bottom row with status and priority */}
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs capitalize">{taskContent.status}</span>
+          
+          <Badge 
+            variant="outline" 
+            className={cn(
+              "text-xs font-medium",
+              (taskContent.priority ?? 0) >= 8 ? "border-red-500 text-red-700 bg-red-50" :
+              (taskContent.priority ?? 0) >= 4 ? "border-yellow-500 text-yellow-700 bg-yellow-50" :
+              "border-green-500 text-green-700 bg-green-50"
+            )}
+          >
+            <Gauge className="h-3 w-3 mr-1" />
+            {taskContent.priority ?? "N/A"}
+          </Badge>
+        </div>
       </div>
 
       <div className="absolute top-2 right-2">
