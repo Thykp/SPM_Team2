@@ -130,11 +130,12 @@ async function processUpdateNotification(payload){
   const { email, delivery_method } = await getUserPreferences(payload.user_id); 
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
-
   let wsPayloads = formatWsUpdate(payload)
   wsPayloads.forEach(p => {
     p = {...p, push}
+    console.info(`[processUpdateNotifications]: ${JSON.stringify(p)}`)
     broadcastToUser(payload.user_id,p)
+    postToSupabase({...p, "user_id": payload.user_id})
   });
 
   if (emailPref) {

@@ -101,16 +101,18 @@ function formatWsAdded(payload) {
 
 
 
+
+
 function formatWsUpdate(batchedResources) {
   const wsNotifications = [];
 
   // Process Projects
-  (batchedResources.project || []).forEach((proj) => {
+  (batchedResources.batched_resources.project || []).forEach((proj) => {
     const updated = proj.resource_content.updated;
     const notificationId = crypto.randomUUID();
 
     wsNotifications.push({
-      id: notificationId,  // Include the UUID in the notification object
+      id: notificationId,
       title: `Updated Project: ${updated.title}`,
       link: `/app/project/${proj.resource_id}`,
       description: `Project updated by ${proj.updated_by || 'Unknown'}. Description: "${updated.description || ''}".`
@@ -118,19 +120,16 @@ function formatWsUpdate(batchedResources) {
   });
 
   // Process Tasks
-  (batchedResources.task || []).forEach((task) => {
+  (batchedResources.batched_resources.task || []).forEach(( task) => {
     const updated = task.resource_content.updated;
     const notificationId = crypto.randomUUID();
 
     let titlePrefix;
     if (updated.parent) {
-      // Has a parent → subtask
       titlePrefix = `Updated Project Subtask: ${updated.title}`;
     } else if (updated.project_id) {
-      // Belongs to a project → project task
       titlePrefix = `Updated Project Task: ${updated.title}`;
     } else {
-      // Normal task
       titlePrefix = `Updated Task: ${updated.title}`;
     }
 
@@ -141,17 +140,18 @@ function formatWsUpdate(batchedResources) {
     const description = `Updated by ${task.updated_by || 'Unknown'}. Status: ${updated.status || 'N/A'}, Priority: ${updated.priority || 'N/A'}.`;
 
     wsNotifications.push({
-      id: notificationId,  // Include the UUID in the notification object
+      id: notificationId,
       title: titlePrefix,
       link,
       description
     });
   });
 
-  console.log(`[FormatWsUpdate]: ${wsNotifications}`)
+  console.log(`[FormatWsUpdate]: ${JSON.stringify(wsNotifications)}`);
 
   return wsNotifications;
 }
+
 
 
 function formatWsReminder(wsPayload) {
@@ -159,7 +159,7 @@ function formatWsReminder(wsPayload) {
 
   const task = wsPayload.task;
 
-  const notificationId = crypto.randomUUID();;
+  const notificationId = crypto.randomUUID();
 
   const link = task.project_id
     ? `/app/project/${task.project_id}`
