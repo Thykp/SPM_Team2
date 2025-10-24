@@ -135,7 +135,7 @@ function formatWsUpdate(batchedResources) {
 
     const link = updated.project_id
       ? `/app/project/${updated.project_id}`
-      : `/app/task/${task.resource_id}`;
+      : `/app?taskName=${task.title}`;
 
     const description = `Updated by ${task.updated_by || 'Unknown'}. Status: ${updated.status || 'N/A'}, Priority: ${updated.priority || 'N/A'}.`;
 
@@ -163,7 +163,7 @@ function formatWsReminder(wsPayload) {
 
   const link = task.project_id
     ? `/app/project/${task.project_id}`
-    : `/app/task/${wsPayload.resource_id}`;
+    : `/app?taskName=${wsPayload.resource_content.title}`;
 
   // Construct title
   const title = `Upcoming Deadline: ${task.title}`;
