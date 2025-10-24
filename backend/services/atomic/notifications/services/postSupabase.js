@@ -3,6 +3,7 @@ const { supabase } = require("../db/supabase");
 async function postToSupabase(notification) {
   try {
     const {
+      id,
       user_id, 
       title,
       description,
@@ -10,6 +11,7 @@ async function postToSupabase(notification) {
     } = notification;
 
     const record = {
+      id,
       "to_user_id": user_id,
       title,
       description,

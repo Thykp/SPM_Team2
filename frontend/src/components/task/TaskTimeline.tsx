@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TaskDTO } from "@/lib/api"
-import { TaskReminder } from "./TaskReminder"
 import { Task as TaskBody } from "@/components/task/Task"
 
 type TaskTimelineProps = {

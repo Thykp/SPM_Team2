@@ -39,26 +39,26 @@ export function NotificationsPanel({ userId }: { userId: string }) {
       ws.send(JSON.stringify({ type: "identify", userId }));
     };
 
-    ws.onmessage = (event) => {
-      try {
-        const newNotif: Notification = JSON.parse(event.data);
+   ws.onmessage = (event) => {
+    try {
+      const newNotif: Notification & { push?: boolean } = JSON.parse(event.data);
 
-        // optional toast
-        if ((window as any).addToast && newNotif.id !== lastToastId) {
-          (window as any).addToast({
-            id: newNotif.id,
-            title: newNotif.title || "Notification",
-            description: newNotif.description || "",
-            url: newNotif.link || undefined,
-          });
-          setLastToastId(newNotif.id);
-        }
-
-        setNotifications((prev) => [newNotif, ...prev]);
-      } catch (err) {
-        console.error("❌ Failed to parse WS message:", err);
+      if (newNotif.push && (window as any).addToast && newNotif.id !== lastToastId) {
+        (window as any).addToast({
+          id: newNotif.id,
+          title: newNotif.title || "Notification",
+          description: newNotif.description || "",
+          url: newNotif.link || undefined,
+        });
+        setLastToastId(newNotif.id);
       }
-    };
+
+      setNotifications((prev) => [newNotif, ...prev]);
+    } catch (err) {
+      console.error("Failed to parse WS message:", err);
+    }
+  };
+
 
     ws.onclose = () => console.log("❌ Notifications WS closed");
     ws.onerror = (err) => console.error("❌ Notifications WS error:", err);

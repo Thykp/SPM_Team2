@@ -31,7 +31,6 @@ async function getTaskDetails(taskId){
 }
 
 async function processReminderNotification(payload) {
-  // await postToSupabase(notifData);
 
   const { email, delivery_method } = await getUserPreferences(payload.user_id); // { email: "email", delivery_method:[delivery-method]}
   const taskContent = await getTaskDetails(payload.resource_id)
@@ -87,7 +86,6 @@ async function processReminderNotification(payload) {
 };
 
 async function processAddedNotification(payload){
-  // await postToSupabase(notifData);
 
   const { email, delivery_method } = await getUserPreferences(payload.user_id); // { email: "email", delivery_method:[delivery-method]}
 

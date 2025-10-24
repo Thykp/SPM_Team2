@@ -139,7 +139,9 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, 
                                 >
                                     {subtask.status}
                                 </Badge>
-                            < TaskReminder taskId={subtask.id} status={subtask.status} deadline={subtask.deadline}/>
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <TaskReminder taskId={subtask.id} status={subtask.status} deadline={subtask.deadline}/>
+                            </div>
                             </div>
                             {/* Priority badge */}
                             <Badge 

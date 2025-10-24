@@ -85,16 +85,21 @@ function formatWsAdded(payload) {
     if (payload.resource_content.status) description += ` (${payload.resource_content.status})`;
   }
 
-  console.info(`[FormatWsAdded]: ${JSON.stringify({title: `Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
+  const notificationId = crypto.randomUUID();; 
+
+  console.info(`[FormatWsAdded]: ${JSON.stringify({ title: `Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
     description,
-    link: payload.link,})}`)
+    link: payload.link, })}`);
 
   return {
+    id: notificationId,
     title: `[${priority}] Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
     description,
     link: payload.link,
   };
 }
+
+
 
 function formatWsUpdate(batchedResources) {
   const wsNotifications = [];
@@ -102,7 +107,10 @@ function formatWsUpdate(batchedResources) {
   // Process Projects
   (batchedResources.project || []).forEach((proj) => {
     const updated = proj.resource_content.updated;
+    const notificationId = crypto.randomUUID();
+
     wsNotifications.push({
+      id: notificationId,  // Include the UUID in the notification object
       title: `Updated Project: ${updated.title}`,
       link: `/app/project/${proj.resource_id}`,
       description: `Project updated by ${proj.updated_by || 'Unknown'}. Description: "${updated.description || ''}".`
@@ -112,6 +120,7 @@ function formatWsUpdate(batchedResources) {
   // Process Tasks
   (batchedResources.task || []).forEach((task) => {
     const updated = task.resource_content.updated;
+    const notificationId = crypto.randomUUID();
 
     let titlePrefix;
     if (updated.parent) {
@@ -132,6 +141,7 @@ function formatWsUpdate(batchedResources) {
     const description = `Updated by ${task.updated_by || 'Unknown'}. Status: ${updated.status || 'N/A'}, Priority: ${updated.priority || 'N/A'}.`;
 
     wsNotifications.push({
+      id: notificationId,  // Include the UUID in the notification object
       title: titlePrefix,
       link,
       description
@@ -143,12 +153,14 @@ function formatWsUpdate(batchedResources) {
   return wsNotifications;
 }
 
+
 function formatWsReminder(wsPayload) {
   if (!wsPayload || !wsPayload.task) return null;
 
   const task = wsPayload.task;
 
-  // Determine link: if task belongs to a project, link to project; else, task page
+  const notificationId = crypto.randomUUID();;
+
   const link = task.project_id
     ? `/app/project/${task.project_id}`
     : `/app/task/${wsPayload.resource_id}`;
@@ -156,18 +168,20 @@ function formatWsReminder(wsPayload) {
   // Construct title
   const title = `Upcoming Deadline: ${task.title}`;
 
-  // Construct description
   const description = `Reminder set for ${wsPayload.day} day(s) before deadline. ` +
     `Status: ${task.status || 'N/A'}, Priority: ${task.priority || 'N/A'}. ` +
     `${task.description ? `Description: "${task.description}"` : ''}`;
 
-  console.info(`[FormatWsReminder]: ${JSON.stringify({title, link, description})}`)
+  console.info(`[FormatWsReminder]: ${JSON.stringify({ title, link, description })}`);
+
   return {
+    id: notificationId,  
     title,
     link,
     description
   };
 }
+
 
 
 module.exports = { initWebSocketServer, broadcastToUser, formatWsAdded, formatWsUpdate, formatWsReminder };

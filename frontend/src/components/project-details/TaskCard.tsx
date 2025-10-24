@@ -140,7 +140,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                         <div className="flex-1 min-w-0">
                             <h4 className="font-medium line-clamp-2">{task.title}</h4>
                         </div>
-                        <div>
+                        <div onClick={(e) => e.stopPropagation()}>
                             <TaskReminder taskId={task.id} status={task.status} deadline={task.deadline}/>
                         </div>
                         <DropdownMenu>

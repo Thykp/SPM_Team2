@@ -7,6 +7,7 @@ import { User, Calendar, Users, ChevronLeft, ChevronRight, Gauge } from "lucide-
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { TaskReminder } from "./TaskReminder";
 
 
 type TaskDetailProps = {
@@ -278,6 +279,9 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                           </div>
                           
                           <div className="flex items-center justify-between">
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <TaskReminder taskId={subTask.id} status={subTask.status} deadline={subTask.deadline}/>
+                            </div>
                             <Badge variant={getStatusBadgeVariant(subTask.status)} className="text-xs">
                               {subTask.status}
                             </Badge>
