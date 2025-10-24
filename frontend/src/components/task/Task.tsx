@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import EditTask from "./EditTask"; // Import the EditTask component
 import { TaskApi, type TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
+import { TaskReminder } from "./TaskReminder";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
  
@@ -85,7 +86,9 @@ export const Task: React.FC<TaskProps> = ({
         </div>
       </div>
 
-      <div className="absolute top-2 right-2">
+      <div className="absolute top-2 right-2 flex items-center space-x-2">
+        <TaskReminder taskId={taskContent.id} status={taskContent.status} deadline={taskContent.deadline}/>
+
         <Button
           variant="ghost"
           size="icon"

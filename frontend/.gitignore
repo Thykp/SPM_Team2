@@ -26,3 +26,5 @@ package*.*
 *.sln
 *.sw?
 *.env
+
+dockerfile

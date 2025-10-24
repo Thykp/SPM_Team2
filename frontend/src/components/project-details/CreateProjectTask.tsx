@@ -23,6 +23,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, ChevronsUpDown, Check } from "lucide-react";
 import { TaskApi as TaskAPI, type TaskPostRequestDto, type TaskDTO, Profile, Project } from "@/lib/api";
+import { Notification as NotificationAPI } from "@/lib/api";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command,
@@ -64,6 +65,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
 }) => {
+  const { profile } = useAuth();
   const { user } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   
@@ -286,6 +288,28 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       const createdTask = await TaskAPI.createTask(taskData);
       onTaskCreated(createdTask);
       setOpen(false);
+
+      // Notify collaborators upon creation
+      if (selectedCollaborators.length > 0) {
+        const payload = {
+          resourceType: "project",
+          resourceId: String(taskData.project_id),
+          resourceContent: { ...taskData },
+          collaboratorIds: taskData.collaborators,
+          addedBy: profile?.display_name || "Unknown User",
+        };
+
+        console.log("Publishing notifications for project task creation:", payload);
+
+        try {
+          const notifResponse = await NotificationAPI.publishAddedToResource(payload);
+          console.log("Notification published upon creating project task:", notifResponse);
+        } catch (notifErr) {
+          console.error("Failed to publish notification upon creating project task:", notifErr);
+        }
+      } else {
+        console.log("No collaborators selected — no notification sent upon creating project task.");
+      }
       resetForm();
     } catch (err) {
       console.error("Failed to create task:", err);

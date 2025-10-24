@@ -30,7 +30,7 @@ export type TaskRow = {
   owner_id?: string | null;       // returned by /task/users (backend aggregation)
   participants?: string[] | null; // returned by /task/users (backend aggregation)
 };
-
+ 
 // Task payload for create/update (atomic service)
 export type TaskPostRequestDto = {
   title: string;
@@ -59,6 +59,12 @@ export type TaskDTO = {
   ownerDepartment?: string;
   priority?: number;
 };
+
+export type TaskDeadlineReminder = {
+  id: string;
+  deadline_reminder: []
+}
+
 
 export type ProjectDto = {
   id: string;
@@ -89,6 +95,18 @@ export type Profile = {
 export type ProfileRequestDetailsDto = {
   id: string;
 };
+
+export type Notification = {
+  id: string;            
+  to_user_id: string;
+  title: string;
+  description: string;    
+  link?: string | null;
+  read: boolean; 
+  user_set_read: boolean;
+  created_at?: string;
+};
+
 
 // --- Task participants ---
 export type TaskParticipant = { profile_id: string; is_owner: boolean };
@@ -141,6 +159,16 @@ export type GetAllUsers = {
   team: string | null;
 };
 
+export type UpdateProjectRequest = {
+  title?: string;
+  description?: string;
+  tasklist?: string[];
+  owner?: string;
+  collaborators?: string[];
+};
+
+
+
 // ----- Services -----
 export const Profile = {
   getAllUsers: async (): Promise<GetAllUsers[]> => {
@@ -179,11 +207,11 @@ export const Profile = {
   },
 };
 
-export type UpdateProjectRequest = {
-  title?: string;
-  description?: string;
-  // Note: owner, collaborators, and tasklist should be updated via separate endpoints
-};
+// export type UpdateProjectRequest = {
+//   title?: string;
+//   description?: string;
+//   // Note: owner, collaborators, and tasklist should be updated via separate endpoints
+// };
 
 export const Project = {
   updateCollaborators: async (
@@ -278,6 +306,17 @@ export const TaskApi = {
   deleteTask: async (taskId: string): Promise<void> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/${taskId}`;
     await api.delete(url);
+  },
+
+  getDeadlineReminder: async (taskId: string, userId: string): Promise<TaskDeadlineReminder> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/reminder/${taskId}/${userId}`;
+    const { data } = await api.get<TaskDeadlineReminder>(url);
+    return data
+  },
+
+  setDeadlineReminder: async (taskId: string, userId: string, reminders: number[]): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-task/api/task/reminder/${taskId}/${userId}`;
+    await api.post(url, {deadline_reminder: reminders});
   },
 };
 
@@ -389,5 +428,115 @@ export const Report = {
 
 };
 
+export const Notification = {
+  getNotifications: async (userId: string): Promise<Notification[]> => {
+    const url = `${KONG_BASE_URL}/notifications/${userId}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  markAsRead: async (ids: string[]): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/read`;
+    await api.patch(url, { ids });
+  },
+
+  getDeliveryPreferences: async (userId: string): Promise<{ email: string; delivery_method: string[] }> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/delivery/${userId}`;
+    const response = await api.get(url);
+    console.log("Delivery response:");
+    return response.data.preferences;
+  },
+
+  updateDeliveryPreferences: async (userId: string, preferences: string[]): Promise<void> => {
+    const validPrefs = ["in-app", "email"];
+    const filteredPrefs = preferences.filter(p => validPrefs.includes(p));
+
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/delivery/${userId}`;
+    await api.post(url, filteredPrefs);
+  },
+
+  getFrequencyPreferences: async (userId: string): Promise<{
+    delivery_frequency: string;
+    delivery_time: string;
+    delivery_day: string;
+  }> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/frequency/${userId}`;
+    const response = await api.get(url);
+    return response.data.data; 
+  },
+
+  updateFrequencyPreferences: async (
+    userId: string,
+    payload: {
+      delivery_frequency: string;
+      delivery_time?: string | "00:00"; 
+      delivery_day?: string | null;
+    }
+  ): Promise<{
+    delivery_frequency: string;
+    delivery_time: string;
+    delivery_day: string;
+  }> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/preferences/frequency/${userId}`;
+    const response = await api.post(url, payload);
+    return response.data.data;
+  },
+
+  publishDeadlineReminder: async ({taskId, userId, deadline,reminderDays, username,}: { taskId: string; userId: string; deadline: string; reminderDays: number[]; username: string;}): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/publish/deadline-reminder`;
+
+    const payload = { taskId, userId, reminderDays, deadline, username};
+
+    await api.post(url, payload);
+  },
+
+  publishAddedToResource: async ({ resourceType, resourceId, resourceContent, collaboratorIds, addedBy}:{ resourceType: string; resourceId: string; resourceContent: Record<string, any>, collaboratorIds: string[], addedBy: string}): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/publish/added-to-resource`;
+
+    const payload = { resourceType, resourceId, collaboratorIds, resourceContent, addedBy };
+    try {
+    await api.post(url, payload);
+  } catch (err: unknown) {
+    console.error("Failed to publish 'added to resource' notification:", err);
+    throw new Error(
+      err instanceof Error
+        ? err.message
+        : "Unknown error occurred while publishing added-to-resource notification"
+    );
+  }
+  },
+
+  publishUpdate: async ({ updateType, resourceId, resourceType, resourceContent, collaboratorIds, updatedBy
+  }: {updateType: "Assigned" | "Edited"; resourceId: string; resourceType: "project" | "task"; resourceContent: Record<string, any>; collaboratorIds: string[]; updatedBy: string;}): Promise<void> => {
+    const url = `${KONG_BASE_URL}/manage-notifications/publish/update`;
+    const payload = {updateType, resourceId, resourceType, resourceContent, collaboratorIds, updatedBy };
+    
+    try {
+      await api.post(url, payload);
+    } catch (err: unknown) {
+      console.error("Failed to publish 'update' notification:", err);
+      throw new Error(
+        err instanceof Error
+          ? err.message
+          : "Unknown error occurred while publishing update notification"
+      );
+    }
+  },
+
+  deleteNotification: async (userId: string, notifId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/${userId}/${notifId}`;
+    await api.delete(url);
+  },
+
+  deleteAllNotification: async (userId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/all/${userId}`;
+    await api.delete(url);
+  },
+
+  toggleReadNotification: async (notifId: string): Promise<void> => {
+    const url = `${KONG_BASE_URL}/notifications/toggle/${notifId}`
+    await api.patch(url)
+  },
+}
 
 export default api;

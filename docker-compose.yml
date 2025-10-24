@@ -159,6 +159,24 @@ services:
       - spm-net
     ports:
       - "8090:8090"
+    depends_on:
+      - profile
+      - redis
+
+  
+  manage-notification:
+    build:
+      context: ./backend/services/composite/manage-notification
+      dockerfile: dockerfile
+    container_name: manage-notification
+    restart: unless-stopped
+    networks:
+      - spm-net
+    ports:
+      - "4202:4202"
+    depends_on:
+      - notifications
+
 
   generate-report:
     build:

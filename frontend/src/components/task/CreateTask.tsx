@@ -25,6 +25,9 @@ type UserRow = {
   team: string | null;
 };
 
+import { useAuth } from "@/contexts/AuthContext"; 
+import { Notification as NotificationApi } from "@/lib/api";
+
 interface CreateTaskProps {
   userId: string;
   onTaskCreated: (task: any) => void;
@@ -42,6 +45,7 @@ const STATUSES = [
 type StatusType = (typeof STATUSES)[number];
 
 const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose }) => {
+  const { profile } = useAuth();
   const [newTask, setNewTask] = useState<{
     title: string;
     description: string;
@@ -122,6 +126,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
     fetchAssignableUsers();
   }, [userId]);
 
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -140,6 +145,15 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
 
       const createdTask = await TaskApi.createTask(taskData);
       onTaskCreated(createdTask);
+
+      await NotificationApi.publishAddedToResource({
+        resourceType: "task",
+        resourceId: "task",
+        collaboratorIds: taskData.collaborators,
+        resourceContent: { ...taskData },
+        addedBy: profile?.display_name || "Unknown User",
+      });
+
       onClose();
     } catch (err: any) {
         console.error("Failed to create task:", err);

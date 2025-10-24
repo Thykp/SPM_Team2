@@ -20,6 +20,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, ChevronsUpDown, Check } from "lucide-react";
 import { TaskApi, Profile, Project, type TaskPostRequestDto } from "@/lib/api";
+import { Notification as NotificationAPI } from "@/lib/api";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command,
@@ -55,6 +56,9 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
   onClose,
   onTaskUpdated,
 }) => {
+  const { profile } = useAuth();
+  const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
+
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetchingTask, setFetchingTask] = useState(true);
@@ -68,7 +72,7 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
     collaborators: string[];
     parent: string | null;
   } | null>(null);
-  
+  const [originalTask, setOriginalTask] = useState<typeof task>(null);
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,7 +107,20 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
           collaborators: taskData.collaborators || [],
           parent: taskData.parent || null,
         });
+        
+        setOriginalTask({
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          priority: taskData.priority || 5,
+          deadline: taskData.deadline,
+          owner: taskData.owner,
+          collaborators: taskData.collaborators || [],
+          parent: taskData.parent || null,
+        });
+
         setSelectedCollaborators(taskData.collaborators || []);
+        setOriginalCollaborators(taskData.collaborators || []);
 
         // Fetch project details to get collaborators and owner
         const project = await Project.getById(projectId);
@@ -248,8 +265,65 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
         parent: task.parent,
         priority: task.priority,
       };
-
       await TaskApi.updateTask(taskId, taskData);
+
+      // --- Notify collaborators when newly added ---
+      const newlyAdded = selectedCollaborators.filter((id) => !originalCollaborators.includes(id));
+
+      if (newlyAdded.length > 0) {
+        try {
+          await NotificationAPI.publishAddedToResource({
+            resourceType: "project",
+            resourceId: String(taskData.project_id),
+            collaboratorIds: newlyAdded,
+            resourceContent: {...taskData},
+            addedBy: profile?.display_name || "Unknown User",
+          });
+          console.log("Notifications published for new collaborators when project edited:", newlyAdded);
+        } catch (notifyErr) {
+          console.error("Failed to publish notification on project edited:", notifyErr);
+        }
+      }
+
+    // --- Notify collaborators about edits ---
+      const collaboratorsToNotify = selectedCollaborators.filter(id => id !== profile?.id);
+      if (collaboratorsToNotify.length > 0 && originalTask) {
+        const hasNonOwnerChanges = (
+          originalTask.title !== taskData.title ||
+          originalTask.description !== taskData.description ||
+          originalTask.status !== taskData.status ||
+          originalTask.priority !== taskData.priority ||
+          originalTask.deadline !== taskData.deadline.replace(".000Z", "+00:00"))
+
+        if (hasNonOwnerChanges) {
+          await NotificationAPI.publishUpdate({
+            updateType: "Edited",
+            resourceType: "project",
+            resourceId:taskId,
+            resourceContent: { 
+              updated: {...taskData},
+              original: {...originalTask}
+          },
+            collaboratorIds: collaboratorsToNotify,
+            updatedBy: profile?.display_name || "Unknown User",
+          });
+        }
+      }
+
+      // --- Notify new owner of assignment---
+      if (originalTask?.owner !== taskData.owner && taskData.owner) {
+        await NotificationAPI.publishUpdate({
+          updateType: "Assigned",
+          resourceType: "project",
+            resourceId:taskId,
+            resourceContent: {
+              updated: {...taskData},
+              original: {...originalTask}
+            },
+            collaboratorIds: [taskData.owner],
+            updatedBy: profile?.display_name || "Unknown User",
+        });
+      }
 
       onClose();
       onTaskUpdated?.();
