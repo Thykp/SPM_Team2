@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
 import EditProjectTask from './EditProjectTask';
 import CreateProjectTask from './CreateProjectTask';
+import { TaskReminder } from '../task/TaskReminder';
 
 interface TaskCardProps {
     task: TaskDTO;
@@ -138,6 +139,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                         </div>
                         <div className="flex-1 min-w-0">
                             <h4 className="font-medium line-clamp-2">{task.title}</h4>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <TaskReminder taskId={task.id} status={task.status} deadline={task.deadline}/>
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

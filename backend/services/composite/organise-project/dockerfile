@@ -7,7 +7,7 @@ COPY pom.xml .
 RUN mvn -q -B dependency:go-offline
 
 # Build the jar
-COPY src ./src
+COPY . /app
 RUN mvn -q -DskipTests clean package
 
 # ---------- run stage ----------
@@ -26,7 +26,7 @@ ENV JAVA_OPTS=""
 EXPOSE 8092
 
 # Copy the fat jar from build stage
-COPY --from=build /app/target/spm-0.0.1-SNAPSHOT.jar /app/app.jar
+COPY --from=build /app/target/organise-project.jar /app/app.jar
 
 # (optional) simple TCP healthcheck without curl/wget
 # If you prefer an HTTP check, install curl/wget or point Kong at your / endpoint.

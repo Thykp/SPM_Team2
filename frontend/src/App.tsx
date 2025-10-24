@@ -4,7 +4,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import { AppLayout } from './layouts/AppLayout'
 import { Dashboard } from './pages/app/Dashboard'
-import { Settings } from './pages/app/Settings'
+import { Settings } from './pages/app/NotificationSettings'
 import { Reports } from "./pages/app/Reports"
 import Project from './pages/app/Project'
 import ProjectDetail from './pages/app/ProjectDetail'
