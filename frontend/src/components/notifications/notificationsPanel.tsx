@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "@/lib/api";
-import { Notification as notif } from "@/lib/api";
+import { Notification as NotificationApi } from "@/lib/api"; // renamed
 import { NotificationItem } from "./notificationItem";
 
 export function NotificationsPanel({ userId }: { userId: string }) {
@@ -22,7 +22,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
 
     const fetchAll = async () => {
       try {
-        const data = await notif.getNotifications(userId);
+        const data = await NotificationApi.getNotifications(userId);
         if (isMounted) setNotifications(data);
       } catch (err) {
         console.error("❌ Failed to fetch notifications:", err);
@@ -44,15 +44,12 @@ export function NotificationsPanel({ userId }: { userId: string }) {
         const newNotif: Notification = JSON.parse(event.data);
 
         // optional toast
-        let title = "Notification";
-        if (newNotif.resource_type === "task") title = "Added to new Task";
-        else if (newNotif.resource_type === "project") title = "Added to new Project";
-
         if ((window as any).addToast && newNotif.id !== lastToastId) {
           (window as any).addToast({
             id: newNotif.id,
-            title,
-            description: `${newNotif.from_username ?? "Unknown"}: ${newNotif.notif_text}`,
+            title: newNotif.title || "Notification",
+            description: newNotif.description || "",
+            url: newNotif.link || undefined,
           });
           setLastToastId(newNotif.id);
         }
@@ -75,7 +72,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
   // ------------------ Delete single / all ------------------
   const handleDelete = async (notifId: string) => {
     try {
-      await notif.deleteNotification(userId, notifId);
+      await NotificationApi.deleteNotification(userId, notifId);
       setNotifications((prev) => prev.filter((n) => n.id !== notifId));
     } catch (err) {
       console.error("❌ Failed to delete notification:", err);
@@ -84,7 +81,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
 
   const handleDeleteAll = async () => {
     try {
-      await notif.deleteAllNotification(userId);
+      await NotificationApi.deleteAllNotification(userId);
       setNotifications([]);
     } catch (err) {
       console.error("❌ Failed to delete all notifications:", err);
@@ -99,7 +96,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
           n.id === notifId ? { ...n, user_set_read: !n.user_set_read } : n
         )
       );
-      await notif.toggleReadNotification(notifId);
+      await NotificationApi.toggleReadNotification(notifId);
     } catch (err) {
       console.error("❌ Failed to toggle read for notification:", err);
     }
@@ -122,7 +119,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
             toMarkRead.includes(n.id) ? { ...n, read: true } : n
           )
         );
-        await notif.markAsRead(toMarkRead);
+        await NotificationApi.markAsRead(toMarkRead);
       } catch (err) {
         console.error("❌ Failed to mark notifications as read:", err);
       }

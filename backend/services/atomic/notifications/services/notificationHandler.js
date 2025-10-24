@@ -79,6 +79,8 @@ async function processReminderNotification(payload) {
   broadcastPayload = formatWsReminder(wsPayload)
   broadcastToUser(payload.user_id, broadcastPayload); //TODO: decide the content in the notification
 
+  postToSupabase({...broadcastPayload, "user_id": payload.user_id})
+
   if (emailPref) {
     sendDeadlineOrAddedEmail(emailPayload)
   }
@@ -95,6 +97,7 @@ async function processAddedNotification(payload){
   let wsPayload = formatWsAdded(payload)
   wsPayload = { ...wsPayload, push };
   broadcastToUser(payload.user_id, wsPayload);
+  postToSupabase({...wsPayload, "user_id": payload.user_id})
 
   const emailPayload = {
     email: email,

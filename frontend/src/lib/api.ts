@@ -97,8 +97,16 @@ export type ProfileRequestDetailsDto = {
 };
 
 export type Notification = {
-  
-}
+  id: string;            
+  to_user_id: string;
+  title: string;
+  description: string;    
+  link?: string | null;
+  read: boolean; 
+  user_set_read: boolean;
+  created_at?: string;
+};
+
 
 // --- Task participants ---
 export type TaskParticipant = { profile_id: string; is_owner: boolean };
