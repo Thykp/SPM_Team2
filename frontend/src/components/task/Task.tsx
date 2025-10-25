@@ -10,6 +10,7 @@ import { RecurTask } from "./RecurTask";
 import { cn } from "@/lib/utils";
 import { Edit, Trash2, Plus, Gauge } from "lucide-react";
 import CreateSubtask from "./CreateSubtask";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ export const Task: React.FC<TaskProps> = ({
   const [showDetails, setShowDetails] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -53,6 +55,13 @@ export const Task: React.FC<TaskProps> = ({
 
     const deleteTask = async () => {
       try {
+
+        // Check if the current user is the owner of the task
+        if (taskContent.owner !== profile?.id) {
+          alert("You are not authorized to delete this task.");
+          return;
+        }
+
         setDeleting(true); // Set deleting state to true
         await TaskApi.deleteTask(taskContent.id); // Call the deleteTask API
         console.log(`Task ${taskContent.id} deleted successfully`);
@@ -138,13 +147,11 @@ export const Task: React.FC<TaskProps> = ({
               )}
               
               <DropdownMenuItem
-                onClick={async () => {
-                  await deleteTask(); // Call the deleteTask function
-                }}
+                  onClick={() => setShowDeleteConfirmation(true)} 
                 className="text-destructive"
               >
-                <Trash2 className="h-4 w-4 mr-2 text-red-500" />
-                {deleting ? "Deleting..." : "Delete Task"}
+              <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+              Delete Task
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -181,6 +188,34 @@ export const Task: React.FC<TaskProps> = ({
           onOpenChange={setShowAddSubtaskDialog}
           currentUserId={profile?.id || ""}
         />
+      )}
+
+      {showDeleteConfirmation && (
+        <Dialog open={true} onOpenChange={() => setShowDeleteConfirmation(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Task</DialogTitle>
+            </DialogHeader>
+            <p>Are you sure you want to delete the task "{taskContent.title}"? This action cannot be undone.</p>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirmation(false)} // Close the dialog
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  await deleteTask(); // Call the deleteTask function
+                  setShowDeleteConfirmation(false); // Close the dialog after deletion
+                }}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       <TaskDetailNavigator
