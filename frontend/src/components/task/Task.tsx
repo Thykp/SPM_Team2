@@ -169,6 +169,7 @@ export const Task: React.FC<TaskProps> = ({
       {showAddSubtaskDialog && (
         <CreateSubtask
           parentTaskId={taskContent.id} // Pass the current task ID as the parentTaskId
+          parentTaskDeadline={taskContent.deadline} // Pass the parent task deadline for validation
           projectId={taskContent.project_id || ""} // Pass the project ID
           onSubtaskCreated={(newSubtask) => {
             console.log("Subtask created:", newSubtask);
