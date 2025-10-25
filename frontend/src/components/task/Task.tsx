@@ -108,30 +108,34 @@ export const Task: React.FC<TaskProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditing(true); // Open the EditTask modal
-                }}
-              >
-                <Edit className="h-4 w-4 mr-2 text-gray-500" />
-                Edit Task
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setRecurring(true); // Open the RecurTask modal
-                }}
-              >
-                <Gauge className="h-4 w-4 mr-2 text-gray-500" />
-                Recur Task
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setShowAddSubtaskDialog(true); // Open the Add Subtask dialog
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2 text-gray-500" />
-                Add Subtask
-              </DropdownMenuItem>
+              {taskContent.status !== "Completed" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setEditing(true); // Open the EditTask modal
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2 text-gray-500" />
+                    Edit Task
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setRecurring(true); // Open the RecurTask modal
+                    }}
+                  >
+                    <Gauge className="h-4 w-4 mr-2 text-gray-500" />
+                    Recur Task
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setShowAddSubtaskDialog(true); // Open the Add Subtask dialog
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2 text-gray-500" />
+                    Add Subtask
+                  </DropdownMenuItem>
+                </>
+              )}
               
               <DropdownMenuItem
                 onClick={async () => {

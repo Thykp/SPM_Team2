@@ -278,13 +278,15 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                   </Badge>
                   </div>
                   {/* Add Subtask Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddSubtaskDialog(true)} // Open the Add Subtask modal
-                  >
-                    + Add Subtask
-                  </Button>
+                  {currentTask.status !== "Completed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddSubtaskDialog(true)} // Open the Add Subtask modal
+                    >
+                      + Add Subtask
+                    </Button>
+                  )}
                 </div>
                 
                 <div className="max-h-[40vh] overflow-y-auto">
