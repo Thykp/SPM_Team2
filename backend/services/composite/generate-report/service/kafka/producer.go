@@ -22,7 +22,7 @@ type producer struct {
 }
 
 func NewKafkaProducer(ctx context.Context, brokersCSV string, topic string) (Producer, error) {
-	brokers := splitAndTrim(brokersCSV)
+	brokers := SplitAndTrim(brokersCSV)
 	// Try to ensure the topic exists (best-effort).
 	if err := ensureTopic(ctx, brokers[0], topic); err != nil {
 		// Not fatal if broker refuses (e.g., permissions); we continue anyway.
@@ -69,7 +69,7 @@ func (p *producer) Close() error {
 	return p.writer.Close()
 }
 
-func splitAndTrim(csv string) []string {
+func SplitAndTrim(csv string) []string {
 	parts := strings.Split(csv, ",")
 	out := make([]string, 0, len(parts))
 	for _, s := range parts {
