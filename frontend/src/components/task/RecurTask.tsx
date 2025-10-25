@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Recurrence } from "@/lib/api";
-import type { RecurrencePostRequestDto, RecurrenceDto } from "@/lib/api";
+import type { RecurrencePostRequestDto } from "@/lib/api";
 
 type RecurTaskProps = {
   taskId: string;
