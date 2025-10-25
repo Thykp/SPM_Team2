@@ -146,7 +146,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
 
     return(
       <Sheet 
-        open={true} 
+        open={isOpen}
         onOpenChange={(open) => {
           if (!open) {
             onClose();
