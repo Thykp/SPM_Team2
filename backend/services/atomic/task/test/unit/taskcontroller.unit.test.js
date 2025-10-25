@@ -40,6 +40,19 @@ describe('TaskController', () => {
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith('Health Check: Success!');
         });
+
+        test('Should return 500 on generic error', async () => {
+            const error = new Error('Unexpected error');
+            
+            // Force an error by making res.status throw
+            res.status.mockImplementationOnce(() => {
+                throw error;
+            });
+
+            await TaskController.taskServiceHealthCheck(req, res);
+
+            expect(res.json).toHaveBeenCalledWith({ error: error.message });
+        });
     });
 
     describe('addTask', () => {
@@ -100,6 +113,21 @@ describe('TaskController', () => {
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
         });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Some unexpected error');
+            const mockTask = {
+                validate: jest.fn().mockResolvedValue(true),
+                createTask: jest.fn().mockRejectedValue(genericError),
+            };
+
+            TaskService.checkTask.mockReturnValue(mockTask);
+
+            await TaskController.addTask(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
+        });
     });
 
     describe('getAllTasks', () => {
@@ -127,6 +155,17 @@ describe('TaskController', () => {
 
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+
+            Task.getAllTasks.mockRejectedValue(genericError);
+
+            await TaskController.getAllTasks(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
         });
     });
 
@@ -181,6 +220,21 @@ describe('TaskController', () => {
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
         });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+
+            req.params.id = 'task-123';
+
+            Task.mockImplementation(() => ({
+                getTaskDetails: jest.fn().mockRejectedValue(genericError),
+            }));
+
+            await TaskController.getTaskDetail(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
+        });
     });
 
     describe('getSubTasks', () => {
@@ -213,6 +267,19 @@ describe('TaskController', () => {
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
         });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+
+            req.params.id = 'task-123';
+
+            Subtask.getSubTasksOfParent.mockRejectedValue(genericError);
+
+            await TaskController.getSubTasks(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
+        });
     });
 
     describe('getTaskPerUser', () => {
@@ -243,6 +310,20 @@ describe('TaskController', () => {
             expect(res.json).toHaveBeenCalledWith(mockTasks);
         });
 
+        test('Should retrieve tasks by userId from body when not in params', async () => {
+            const mockTasks = [
+                { id: 'task-1', priority: 5, participants: [{ profile_id: 'user-2' }] },
+            ];
+            req.params = {}; // No userId in params
+            req.body = 'user-2'; // userId in body
+            req.query = {};
+            Task.getTasksByUsers.mockResolvedValue(mockTasks);
+            await TaskController.getTaskPerUser(req, res);
+            expect(Task.getTasksByUsers).toHaveBeenCalledWith('user-2', undefined, undefined);
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(mockTasks);
+        });
+
         test('Should return 500 on DatabaseError', async () => {
             const dbError = new DatabaseError('Failed to retrieve tasks by user');
             req.params.userId = 'user-1';
@@ -251,6 +332,66 @@ describe('TaskController', () => {
             await TaskController.getTaskPerUser(req, res);
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+            req.params.userId = 'user-1';
+            req.query = {};
+            Task.getTasksByUsers.mockRejectedValue(genericError);
+            await TaskController.getTaskPerUser(req, res);
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
+        });
+    });
+
+    describe('getTasksByProject', () => {
+
+        test('Should retrieve tasks by projectId from params (no dates)', async () => {
+            const mockTasks = [
+                { id: 'task-1', priority: 5, project_id: 'project-1' },
+                { id: 'task-2', priority: 3, project_id: 'project-1' },
+            ];
+            req.params.projectId = 'project-1';
+            req.query = {};
+            Task.getTasksByProject.mockResolvedValue(mockTasks);
+            await TaskController.getTasksByProject(req, res);
+            expect(Task.getTasksByProject).toHaveBeenCalledWith('project-1', undefined, undefined);
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(mockTasks);
+        });
+
+        test('Should retrieve tasks by projectId from params with startDate and endDate', async () => {
+            const mockTasks = [
+                { id: 'task-1', priority: 5, project_id: 'project-1' },
+            ];
+            req.params.projectId = 'project-1';
+            req.query = { startDate: '2025-01-01', endDate: '2025-12-31' };
+            Task.getTasksByProject.mockResolvedValue(mockTasks);
+            await TaskController.getTasksByProject(req, res);
+            expect(Task.getTasksByProject).toHaveBeenCalledWith('project-1', '2025-01-01', '2025-12-31');
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(mockTasks);
+        });
+
+        test('Should return 500 on DatabaseError', async () => {
+            const dbError = new DatabaseError('Failed to retrieve tasks by project');
+            req.params.projectId = 'project-1';
+            req.query = {};
+            Task.getTasksByProject.mockRejectedValue(dbError);
+            await TaskController.getTasksByProject(req, res);
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+            req.params.projectId = 'project-1';
+            req.query = {};
+            Task.getTasksByProject.mockRejectedValue(genericError);
+            await TaskController.getTasksByProject(req, res);
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
         });
     });
 
@@ -286,6 +427,29 @@ describe('TaskController', () => {
             });
         });
 
+        test('Should return 400 on ValidationError', async () => {
+            const validationError = new ValidationError(['Title cannot be empty']);
+
+            req.params = {id: 'task-123'};
+            req.body = {title: '' };
+
+            const mockTask = {
+                validate: jest.fn().mockRejectedValue(validationError),
+                updateTask: jest.fn(),
+            };
+
+            // Mock res.set to return res for chaining
+            res.set = jest.fn().mockReturnThis();
+
+            TaskService.checkTask.mockReturnValue(mockTask);
+
+            await TaskController.updateTask(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.set).toHaveBeenCalledWith('Content-Type', 'application/json');
+            expect(res.json).toHaveBeenCalledWith({ error: validationError.message });
+        });
+
         test('Should return 500 on DatabaseError', async () => {
             const dbError = new DatabaseError('Failed to update task');
 
@@ -303,6 +467,25 @@ describe('TaskController', () => {
 
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+
+            req.params = {id: 'task-123'};
+            req.body = {title: 'Updated Task' };
+
+            const mockTask = {
+                validate: jest.fn().mockResolvedValue(undefined),
+                updateTask: jest.fn().mockRejectedValue(genericError),
+            };
+
+            TaskService.checkTask.mockReturnValue(mockTask);
+
+            await TaskController.updateTask(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
         });
     });
 
@@ -336,6 +519,21 @@ describe('TaskController', () => {
 
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+
+            req.params.taskId = 'task-123';
+
+            Task.mockImplementation(() => ({
+                deleteTask: jest.fn().mockRejectedValue(genericError),
+            }));
+
+            await TaskController.deleteTask(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
         });
     });
 });
