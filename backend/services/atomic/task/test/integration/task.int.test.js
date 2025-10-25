@@ -8,8 +8,9 @@ describe('Task API - Integration Tests', () => {
     let testTaskId;
     let testSubtaskId;
     let testProjectId;
-    const testOwnerId = '2787f4d7-db48-41d4-a055-eb9376bfd443';
-    const testCollaboratorId = 'fa7ca246-96e2-47c5-b0f6-8cad0fb122c4';
+    const testOwnerId = 'e9f9a36c-5d22-49c8-9493-30cbf2f3fc67';
+    const testCollaboratorId = '237f73b2-6850-4c5d-849f-56f1164a063b';
+    const thirdUserId = 'de3f4aa2-97e0-4e94-972a-1ba5e6035746';
     const TABLES = {
         PROJECT: 'revamped_project',
         TASK: 'revamped_task',
@@ -444,8 +445,6 @@ describe('Task API - Integration Tests', () => {
         });
 
         test('should update task participants (add new collaborator)', async () => {
-            const thirdUserId = 'd3333333-3333-3333-3333-333333333333';
-            
             const updatedTask = {
                 title: 'Updated Test Task Title',
                 description: 'Updated description for integration test',
