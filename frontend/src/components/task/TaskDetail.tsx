@@ -131,6 +131,8 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
         }
     }
 
+    const isSubtask = Boolean(parentTask || currentTask?.parent);
+
     if (!isOpen) {
         return null;
     }
@@ -265,7 +267,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
               </div>
 
               {/* Only show Subtasks section if current task is not a subtask */}
-              {!parentTask && (
+              {!isSubtask && (
                 <>
                   <Separator />
               {/* Subtasks Section */}
@@ -429,4 +431,3 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
     )
 
 }
-

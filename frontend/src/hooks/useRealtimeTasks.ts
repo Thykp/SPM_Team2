@@ -125,7 +125,7 @@ const transformTaskFromDb = (dbRecord: any): TaskDTO => {
     deadline: dbRecord.deadline || new Date().toISOString(),
     owner: dbRecord.owner || null,
     collaborators: Array.isArray(dbRecord.collaborators) ? dbRecord.collaborators : [],
-    parent: dbRecord.parent || null,
+    parent: dbRecord.parent ?? dbRecord.parent_task_id ?? null,
     project_id: dbRecord.project_id || null,
     ownerName: dbRecord.ownerName || undefined,
     ownerDepartment: dbRecord.ownerDepartment || undefined,

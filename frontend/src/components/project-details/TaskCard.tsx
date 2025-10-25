@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
 import EditProjectTask from './EditProjectTask';
 import CreateProjectTask from './CreateProjectTask';
+import { RecurTask } from '@/components/task/RecurTask';
 
 interface TaskCardProps {
     task: TaskDTO;
@@ -55,6 +56,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
+    const [showRecurDialog, setShowRecurDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     
     const {
@@ -83,15 +85,29 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
         if ((e.target as HTMLElement).closest('.drag-handle') || 
             (e.target as HTMLElement).closest('.task-menu') ||
             showEditDialog ||
-            showAddSubtaskDialog) {
+            showAddSubtaskDialog ||
+            showRecurDialog) {
             return;
         }
         setShowDetails(true);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        const target = e.target as HTMLElement;
+        if (target) {
+            const tagName = target.tagName.toLowerCase();
+            const isEditable =
+                target.isContentEditable ||
+                tagName === 'input' ||
+                tagName === 'textarea' ||
+                tagName === 'select';
+            if (isEditable) {
+                return;
+            }
+        }
+
         // Don't trigger if any dialog is open
-        if (showEditDialog || showAddSubtaskDialog) {
+        if (showEditDialog || showAddSubtaskDialog || showRecurDialog) {
             return;
         }
         if (e.key === 'Enter' || e.key === ' ') {
@@ -159,6 +175,15 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                                 >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit Task
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowRecurDialog(true);
+                                    }}
+                                >
+                                    <Gauge className="h-4 w-4 mr-2" />
+                                    Recur Task
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
                                     onClick={(e) => {
@@ -245,6 +270,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                         }}
                     />
                 </div>
+            )}
+
+            {showRecurDialog && (
+                <RecurTask
+                    taskId={task.id}
+                    onClose={() => {
+                        setShowRecurDialog(false);
+                        onTaskUpdated?.();
+                    }}
+                />
             )}
 
             {/* Add Subtask Dialog */}
