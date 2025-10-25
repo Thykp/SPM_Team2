@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -205,6 +206,62 @@ public class TaskControllerTest {
                 .andExpect(content().string("Task created successfully"));
     }
 
+    @Test
+    void createTask_ShouldReturn400_WhenTaskCreationFails() throws Exception {
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+    
+        TaskPostRequestDto newTask = new TaskPostRequestDto(
+            "New Task",
+            "2024-12-31",
+            "project1",
+            "Task description",
+            "To Do",
+            collaborators,
+            "user1",
+            null,
+            5
+        );
+    
+        doThrow(new RuntimeException("Task creation failed: {\"error\": \"Invalid data\"}"))
+            .when(taskService).createTask(any(TaskPostRequestDto.class));
+    
+        mockMvc.perform(post("/api/task/new")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newTask)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().string("{\"error\": \"Invalid data\"}"));
+    }
+    
+    @Test
+    void createTask_ShouldReturn500_WhenUnexpectedErrorOccurs() throws Exception {
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+    
+        TaskPostRequestDto newTask = new TaskPostRequestDto(
+            "New Task",
+            "2024-12-31",
+            "project1",
+            "Task description",
+            "To Do",
+            collaborators,
+            "user1",
+            null,
+            5
+        );
+    
+        doThrow(new RuntimeException("Database connection failed"))
+            .when(taskService).createTask(any(TaskPostRequestDto.class));
+    
+        mockMvc.perform(post("/api/task/new")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newTask)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("An unexpected error occurred: Database connection failed"));
+    }
+    
     // ==================== GET /api/task/id/{taskId} ====================
 
     @Test
@@ -296,6 +353,66 @@ public class TaskControllerTest {
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Task updated successfully"));
+    }
+
+    @Test
+    void updateTask_ShouldReturn400_WhenTaskUpdateFails() throws Exception {
+        String taskId = "task123";
+        
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+    
+        TaskPostRequestDto updateRequest = new TaskPostRequestDto(
+            "Updated Task",
+            "2024-12-31",
+            "project1",
+            "Updated description",
+            "Done",
+            collaborators,
+            "user1",
+            null,
+            5
+        );
+    
+        doThrow(new RuntimeException("Task update failed: {\"error\": \"Task not found\"}"))
+            .when(taskService).updateTask(eq(taskId), any(TaskPostRequestDto.class));
+    
+        mockMvc.perform(put("/api/task/edit/{taskId}", taskId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().string("{\"error\": \"Task not found\"}"));
+    }
+
+    @Test
+    void updateTask_ShouldReturn500_WhenUnexpectedErrorOccurs() throws Exception {
+        String taskId = "task123";
+        
+        ArrayList<String> collaborators = new ArrayList<>();
+        collaborators.add("user2");
+    
+        TaskPostRequestDto updateRequest = new TaskPostRequestDto(
+            "Updated Task",
+            "2024-12-31",
+            "project1",
+            "Updated description",
+            "Done",
+            collaborators,
+            "user1",
+            null,
+            5
+        );
+    
+        doThrow(new RuntimeException("Unexpected database error"))
+            .when(taskService).updateTask(eq(taskId), any(TaskPostRequestDto.class));
+    
+        mockMvc.perform(put("/api/task/edit/{taskId}", taskId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("An unexpected error occurred: Unexpected database error"));
     }
 
     // ==================== GET /api/task/subtask/{taskId} ====================
@@ -400,5 +517,17 @@ public class TaskControllerTest {
 
         // Verify that the service method was called exactly once
         verify(taskService, times(1)).deleteTask(taskId);
+    }
+
+    @Test
+    void deleteTask_ShouldReturn500_WhenDeletionFails() throws Exception {
+        String taskId = "task123";
+    
+        doThrow(new RuntimeException("Database connection lost"))
+            .when(taskService).deleteTask(taskId);
+    
+        mockMvc.perform(delete("/api/task/{taskId}", taskId))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string("Failed to delete task: Database connection lost"));
     }
 }
