@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { Edit, Trash2 } from "lucide-react";
 import EditTask from "./EditTask";
 import CreateSubtask from "./CreateSubtask";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 
 type TaskDetailProps = {
@@ -244,6 +244,10 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                         // Filter out the owner and any null/undefined values
                         const filteredCollaborators = (currentTask.collaborators || [])
                           .filter(collaborator => collaborator && collaborator !== currentTask.owner);
+
+                          console.log("Filtered Collaboratorzz:", filteredCollaborators);
+                        
+                          console.log("Current Task Collaborators:", currentTask.collaborators);
                         
                         return filteredCollaborators.length > 0 ? (
                           <div className="space-y-1 mt-1">
@@ -280,13 +284,15 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                   </Badge>
                   </div>
                   {/* Add Subtask Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddSubtaskDialog(true)} // Open the Add Subtask modal
-                  >
-                    + Add Subtask
-                  </Button>
+                  {currentTask.status !== "Completed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddSubtaskDialog(true)} // Open the Add Subtask modal
+                    >
+                      + Add Subtask
+                    </Button>
+                  )}
                 </div>
                 
                 <div className="max-h-[40vh] overflow-y-auto">
@@ -381,7 +387,9 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
           {showAddSubtaskDialog && (
             <CreateSubtask
               parentTaskId={currentTask.id} // Pass the current task ID as the parentTaskId
+              parentTaskDeadline={currentTask.deadline} // Pass the parent task deadline for validation
               projectId={currentTask.project_id || ""} // Pass the project ID
+              parentTaskCollaborators={currentTask.collaborators || []} // Pass collaborators
               onSubtaskCreated={(newSubtask) => {
                 console.log("Subtask created:", newSubtask);
                 setShowAddSubtaskDialog(false); // Close the modal after creating the subtask
@@ -398,6 +406,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
             <EditTask
               taskId={editingSubtask.id}
               currentUserId={user?.id || ""}
+              parentTaskCollaborators={currentTask?.collaborators || []} // Pass parent task collaborators
               onClose={() => setEditingSubtask(null)} // Close the edit modal
               onTaskUpdated={() => {
                 setEditingSubtask(null); // Close the modal

@@ -101,12 +101,28 @@ export function Dashboard() {
     loadAllIfNeeded()
   }, [ownerFilter, allTasksCache, profile?.id])
 
-  const handleTaskCreated = (newTask: TaskType) => {
-    setTasks((prev) => [newTask, ...prev]); // Add new task to tasks
-    if (allTasksCache) {
-      setAllTasksCache((prev) => (prev ? [newTask, ...prev] : prev)); // Update allTasksCache
-    }
+  const handleTaskCreated = async () => {
     setIsCreateTaskOpen(false); // Close the modal
+    
+    // Refetch tasks to get the newly created one from backend
+    if (profile?.id) {
+      try {
+        const [myTasks, myProjs] = await Promise.all([
+          Task.getTasksByUserId(profile.id),
+          Project.getByUser(profile.id),
+        ]);
+        setTasks(myTasks || []);
+        myProjectIdsRef.current = new Set((myProjs || []).map(p => p.id));
+        
+        // Also refresh allTasksCache if it exists
+        if (allTasksCache) {
+          const everything = await Task.getAllTask();
+          setAllTasksCache(everything || []);
+        }
+      } catch (err) {
+        console.error("Error refreshing tasks:", err);
+      }
+    }
   };
 
   const handleTaskUpdate = (updatedTask: TaskType) => {
