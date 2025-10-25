@@ -23,6 +23,27 @@ export function AppNavbar() {
   const email = user?.email ?? ""
   const initials = (email ? email[0] : "U").toUpperCase()
 
+  const searchData = [
+    { id: 1, name: "Dashboard", path: "/app" },
+    { id: 2, name: "Projects", path: "/app/projects" },
+    { id: 3, name: "Manage Users", path: "/app/manage-users" },
+    { id: 4, name: "Staff Tasks", path: "/app/staff-tasks" },
+    { id: 5, name: "Reports", path: "/app/reports" },
+  ];
+
+  const [query, setQuery] = useState("");
+  const [filteredResults, setFilteredResults] = useState(searchData);
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toLowerCase();
+    setQuery(value);
+
+    // Filter the search results based on the query
+    const results = searchData.filter((item) =>
+      item.name.toLowerCase().includes(value)
+    );
+    setFilteredResults(results);
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="grid grid-cols-[auto_1fr_auto] items-center h-16 gap-4 px-4 md:px-6">
@@ -50,12 +71,35 @@ export function AppNavbar() {
         <div className={`min-w-0 ${showMobileSearch ? "block" : "hidden md:block"}`}>
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 text-sm bg-muted/50 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-              onBlur={() => setShowMobileSearch(false)}
-            />
+              <input
+                type="search"
+                placeholder="Search..."
+                value={query} // Bind the input value to the query state
+                onChange={handleSearch} // Call handleSearch on input change
+                className="w-full pl-10 pr-4 py-2 text-sm bg-muted/50 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                onBlur={() => setShowMobileSearch(false)}
+              />
+              {/* Search Results Dropdown */}
+              {query && (
+                <div className="absolute top-12 left-0 w-full bg-white shadow-lg border rounded-md z-50">
+                  {filteredResults.length > 0 ? (
+                    <ul>
+                      {filteredResults.map((item) => (
+                        <li key={item.id} className="p-2 hover:bg-gray-100">
+                          <Link
+                            to={item.path}
+                            onClick={() => setQuery("")} // Clear the query to close the dropdown
+                          >
+                            {item.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="p-2 text-sm text-gray-500">No results found.</p>
+                  )}
+                </div>
+              )}
           </div>
         </div>
 

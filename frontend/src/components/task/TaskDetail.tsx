@@ -46,6 +46,13 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
       if (!deletingSubtask) return;
 
       try {
+
+        // Check if the current user is the owner of the subtask
+        if (deletingSubtask.owner !== user?.id) {
+          alert("You are not authorized to delete this subtask.");
+          return;
+        }
+
         await taskAPI.deleteTask(deletingSubtask.id); // Call the delete API
         console.log(`Subtask ${deletingSubtask.id} deleted successfully`);
         setSubTasks((prev) => prev.filter((task) => task.id !== deletingSubtask.id)); // Remove the deleted subtask from the list

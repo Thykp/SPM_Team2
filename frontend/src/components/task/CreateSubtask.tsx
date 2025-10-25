@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogClose } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import CollaboratorPicker from "@/components/project/CollaboratorPickerNewProj";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -104,13 +104,17 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
         console.log("Current User Department ID:", currentUserDepartmentId);
         console.log("Current User Team ID:", currentUserTeamId);
 
-      // Filter users to include only those in the parent task's collaborators
-      const filteredCollaborators= allUsers.filter((user) =>
-        parentTaskCollaborators.includes(user.id)
-      );
+        const parentTaskOwner = allUsers.find((user) => user.id === parentTaskId);
+        let filteredCollaborators = allUsers.filter((user) =>
+          parentTaskCollaborators.includes(user.id)
+        );
 
-      setUsers(filteredCollaborators); // Set the filtered users as collaborators
-      console.log("Filtered Collaborators:", filteredCollaborators);
+        if (parentTaskOwner && !filteredCollaborators.some((user) => user.id === parentTaskOwner.id)) {
+          filteredCollaborators = [parentTaskOwner, ...filteredCollaborators];
+        }
+
+        setUsers(filteredCollaborators); // Set the filtered users as collaborators
+        console.log("Filtered Collaborators:", filteredCollaborators);
 
         // Owners: Filter based on the current user's role
         let filteredUsers = filteredCollaborators.filter((user) => {
@@ -352,7 +356,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
               {/* Collaborators */}
               <div className="space-y-2">
                 <CollaboratorPicker
-                  users={users}
+                  users={users.filter((user) => user.id !== newSubtask.owner)}
                   selectedCollaborators={newSubtask.collaborators}
                   onToggleCollaborator={(userId) => {
                     setNewSubtask((prev) => {
