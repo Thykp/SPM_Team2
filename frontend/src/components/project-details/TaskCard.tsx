@@ -296,7 +296,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                     parentTaskCollaborators={task.collaborators || []}
                     open={showAddSubtaskDialog}
                     onOpenChange={setShowAddSubtaskDialog}
-                    onSubtaskCreated={(newSubtask) => {
+                    onSubtaskCreated={(_newSubtask) => {
                         setShowAddSubtaskDialog(false);
                         onTaskUpdated?.();
                     }}
