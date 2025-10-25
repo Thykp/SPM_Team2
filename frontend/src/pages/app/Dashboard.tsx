@@ -139,9 +139,6 @@ export function Dashboard() {
     }
   }
 
-  const handleTaskCreate = (status: TaskType["status"]) => {
-    console.log("Creating task with status:", status)
-  }
 
   async function handleGenerateReport() {
     if (!profile?.id) return;
@@ -394,7 +391,6 @@ export function Dashboard() {
             tasks={visibleTasks}
             onTaskUpdate={handleTaskUpdate}
             onTaskDelete={handleTaskDelete}
-            onTaskCreate={handleTaskCreate}
           />
         )}
 
