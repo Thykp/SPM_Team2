@@ -52,7 +52,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.RequestID())
-	r.Use(middleware.ErrorHandler())
+	r.Use(middleware.Recovery())
 
 	routers.RegisterRoutes(r, producer, httpClient, reportBaseURL)
 
