@@ -19,6 +19,7 @@ interface CollaboratorPickerProps {
   onToggleCollaborator: (userId: string) => void;
   loadingUsers: boolean;
   currentUserId?: string;
+  disabled?: boolean; // Add the disabled prop
 }
 
 const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
@@ -29,6 +30,7 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
   onToggleCollaborator,
   loadingUsers,
   currentUserId,
+  disabled = false,
 }) => {
     console.log("🔍 CollaboratorPicker users prop:", users);
     // Filter users based on search and exclude current user
@@ -65,6 +67,7 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
         value={userSearchTerm}
         onChange={(e) => onUserSearchChange(e.target.value)}
         className="h-11"
+        disabled={disabled}
       />
 
       {/* Collaborator selection area */}
@@ -88,6 +91,7 @@ const CollaboratorPicker: React.FC<CollaboratorPickerProps> = ({
                   checked={selectedCollaborators.includes(user.id)}
                   // shadcn Checkbox onCheckedChange is boolean | "indeterminate"
                   onCheckedChange={() => onToggleCollaborator(user.id)}
+                  disabled={disabled}
                 />
                 <div className="text-sm">
                   <div className="font-medium">

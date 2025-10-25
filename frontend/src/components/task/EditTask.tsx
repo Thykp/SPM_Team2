@@ -61,6 +61,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null);
   const [error, setError] = useState<string | null>(null); // State to store error messages
+  const isOwner = task?.owner === currentUserId;
 
 
 
@@ -399,7 +400,13 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
                 }
                 className="h-11"
                 required
+                disabled={!isOwner}
               />
+                {!isOwner && (
+                  <p className="text-sm text-gray-500">
+                    Only the task owner can modify the deadline.
+                  </p>
+                )}
             </div>
 
             {/* Collaborators */}
@@ -420,7 +427,13 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
                 }}
                 loadingUsers={loading}
                 currentUserId={task.owner ?? undefined} // Exclude the owner from the collaborator list
+                disabled={!isOwner}
               />
+                {!isOwner && (
+                  <p className="text-sm text-gray-500">
+                    Only the task owner can modify the collaborators.
+                  </p>
+                )}
             </div>
 
 {/* Owner (shadcn searchable combobox) */}
