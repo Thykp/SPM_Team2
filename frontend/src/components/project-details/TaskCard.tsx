@@ -21,14 +21,14 @@ import { type TaskDTO, TaskApi } from '@/lib/api';
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
-import EditProjectTask from './EditProjectTask';
-import CreateProjectTask from './CreateProjectTask';
 import { RecurTask } from '@/components/task/RecurTask';
+import EditTask from '@/components/task/EditTask';
+import CreateSubtask from '@/components/task/CreateSubtask';
 
 interface TaskCardProps {
     task: TaskDTO;
     projectId: string;
-    userId: string; // Add userId for creating subtasks
+    userId: string;
     isDragging?: boolean;
     onTaskDeleted?: (taskId: string) => void;
     onTaskUpdated?: () => void;
@@ -260,9 +260,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
             {/* Edit Task Dialog */}
             {showEditDialog && (
                 <div onClick={(e) => e.stopPropagation()}>
-                    <EditProjectTask
+                    <EditTask
                         taskId={task.id}
-                        projectId={projectId}
+                        currentUserId={userId}
+                        projectId={task.project_id ?? projectId}
+                        parentTaskCollaborators={task.collaborators || []}
                         onClose={() => setShowEditDialog(false)}
                         onTaskUpdated={() => {
                             setShowEditDialog(false);
@@ -283,18 +285,21 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
             )}
 
             {/* Add Subtask Dialog */}
-            <CreateProjectTask
-                userId={userId}
-                projectId={projectId}
-                parentTaskId={task.id}
-                open={showAddSubtaskDialog}
-                onOpenChange={setShowAddSubtaskDialog}
-                onTaskCreated={() => {
-                    setShowAddSubtaskDialog(false);
-                    onTaskUpdated?.();
-                }}
-                triggerButton={<div style={{ display: 'none' }} />}
-            />
+            {showAddSubtaskDialog && (
+                <CreateSubtask
+                    parentTaskId={task.id}
+                    projectId={projectId}
+                    currentUserId={userId}
+                    parentTaskDeadline={task.deadline || new Date().toISOString()}
+                    parentTaskCollaborators={task.collaborators || []}
+                    open={showAddSubtaskDialog}
+                    onOpenChange={setShowAddSubtaskDialog}
+                    onSubtaskCreated={(newSubtask) => {
+                        setShowAddSubtaskDialog(false);
+                        onTaskUpdated?.();
+                    }}
+                />
+            )}
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
