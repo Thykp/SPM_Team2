@@ -7,7 +7,7 @@ import { TaskApi, Profile } from "@/lib/api";
 import { X, ChevronsUpDown, Check } from "lucide-react";
 // import { CollaboratorPicker } from "@/components/CollaboratorPicker";
 import CollaboratorPicker from "@/components/project/CollaboratorPickerNewProj";
-
+import { Project } from "@/lib/api";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command,
@@ -46,11 +46,13 @@ type UserRow = {
 interface EditTaskProps {
   taskId: string; // The ID of the task to be edited
   currentUserId: string; // The current user's ID
+  parentTaskCollaborators?: string[]; // Collaborators from the parent task (optional)
+  projectId?: string | null; // The project ID (optional)
   onClose: () => void;
   onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, onClose, onTaskUpdated }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, projectId, onClose, onTaskUpdated }) => {
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]); // Add state for users
@@ -59,6 +61,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, onClose, onT
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null);
   const [error, setError] = useState<string | null>(null); // State to store error messages
+  const isOwner = task?.owner === currentUserId;
 
 
 
@@ -102,68 +105,92 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, onClose, onT
     fetchTask();
   }, [taskId]);
 
-useEffect(() => {
-  const fetchAssignableUsers = async () => {
-    try {
-      // Fetch all users
-      const allUsers = await Profile.getAllUsers();
-      console.log("All Users:", allUsers);
+  useEffect(() => {
+    const fetchAssignableUsers = async () => {
+      try {
+        // Fetch all users
+        const allUsers = await Profile.getAllUsers();
+        console.log("All Users:", allUsers);
+        console.log("Parent Task Collaborators:", parentTaskCollaborators);
 
-      // Find the current user's profile
-      const currentUserProfile = allUsers.find((user) => user.id === currentUserId);
-      if (!currentUserProfile) {
-        console.error("Current user profile not found");
-        return;
-      }
-
-      console.log("Current User Profile:", currentUserProfile);
-
-      const { role: currentUserRole, team_id: currentUserTeamId, department_id: currentUserDepartmentId } = currentUserProfile;
-
-      // Filter assignable users based on the current user's role
-      let filteredUsers = allUsers.filter((user) => {
-        switch (currentUserRole) {
-          case "Senior Management":
-            return true; // Senior Management can assign anyone
-          case "Director":
-            return (
-              user.role !== "Senior Management" &&
-              user.department_id === currentUserDepartmentId
-            );
-          case "Manager":
-            return user.role === "Staff" && user.team_id === currentUserTeamId;
-          default:
-            return false; // Other roles cannot assign owners
+        // Find the current user's profile
+        const currentUserProfile = allUsers.find((user) => user.id === currentUserId);
+        if (!currentUserProfile) {
+          console.error("Current user profile not found");
+          return;
         }
-      });
 
-      // Ensure the original owner (currentUser) is included in the filtered users
-      if (currentUser && !filteredUsers.some((user) => user.id === currentUser.id)) {
-        filteredUsers = [currentUser, ...filteredUsers];
+        console.log("Current User Profile:", currentUserProfile);
+
+        const { role: currentUserRole, team_id: currentUserTeamId, department_id: currentUserDepartmentId } = currentUserProfile;
+
+        // Initialize filtered collaborators
+        let filteredCollaborators = allUsers;
+
+        // Check if the task is under a project
+        if (projectId) {
+          try {
+            // Fetch project collaborators
+            const project = await Project.getById(projectId);
+            console.log("Project Collaborators:", project.collaborators);
+
+            // Filter collaborators based on the project collaborators
+            filteredCollaborators = allUsers.filter((user) =>
+              project.collaborators.includes(user.id)
+            );
+          } catch (error) {
+            console.error("Error fetching project collaborators:", error);
+          }
+        } else if (task?.parent) {
+          // If the task is a subtask, filter collaborators based on the parent task's collaborators
+          filteredCollaborators = allUsers.filter((user) =>
+            parentTaskCollaborators?.includes(user.id)
+          );
+        }
+
+        setUsers(filteredCollaborators); // Set the filtered users for the CollaboratorPicker
+        console.log("Filtered Collaborators:", filteredCollaborators);
+
+        // Filter assignable users based on the current user's role
+        let filteredUsers = filteredCollaborators.filter((user) => {
+          switch (currentUserRole) {
+            case "Senior Management":
+              return true; // Senior Management can assign anyone
+            case "Director":
+              return (
+                user.role !== "Senior Management" &&
+                user.department_id === currentUserDepartmentId
+              );
+            case "Manager":
+              return user.role === "Staff" && user.team_id === currentUserTeamId;
+            default:
+              return false; // Other roles cannot assign owners
+          }
+        });
+
+        // Ensure the original owner (currentUser) is included in the filtered users
+        if (currentUser && !filteredUsers.some((user) => user.id === currentUser.id)) {
+          filteredUsers = [currentUser, ...filteredUsers];
+        }
+
+        console.log("Filtered Users (assignableUsers):", filteredUsers);
+
+        // Map assignable users to ownerOptions
+        const options = filteredUsers.map((user) => ({
+          value: user.id,
+          label: user.display_name,
+        }));
+        console.log("Owner Options:", options);
+
+        setOwnerOptions(options);
+        setAssignableUsers(filteredUsers); // Store the filtered users for the owner dropdown
+      } catch (err) {
+        console.error("Error fetching assignable users:", err);
       }
+    };
 
-      console.log("Filtered Users (assignableUsers):", filteredUsers);
-
-      // Map assignable users to ownerOptions
-      const options = filteredUsers.map((user) => ({
-        value: user.id,
-        label: user.display_name,
-      }));
-      console.log("Owner Options:", options);
-
-      setOwnerOptions(options);
-      setAssignableUsers(filteredUsers); // Store the filtered users
-    } catch (err) {
-      console.error("Error fetching assignable users:", err);
-    }
-  };
-
-  fetchAssignableUsers();
-}, [currentUserId, task, currentUser]); // Add `currentUser` as a dependency
-
-useEffect(() => {
-  console.log("Task Owner Changed:", task?.owner);
-}, [task?.owner]);
+    fetchAssignableUsers();
+  }, [currentUserId, task, currentUser, parentTaskCollaborators]); // Add `parentTaskCollaborators` as a dependency
 
   const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -373,7 +400,13 @@ useEffect(() => {
                 }
                 className="h-11"
                 required
+                disabled={!isOwner}
               />
+                {!isOwner && (
+                  <p className="text-sm text-gray-500">
+                    Only the task owner can modify the deadline.
+                  </p>
+                )}
             </div>
 
             {/* Collaborators */}
@@ -394,7 +427,13 @@ useEffect(() => {
                 }}
                 loadingUsers={loading}
                 currentUserId={task.owner ?? undefined} // Exclude the owner from the collaborator list
+                disabled={!isOwner}
               />
+                {!isOwner && (
+                  <p className="text-sm text-gray-500">
+                    Only the task owner can modify the collaborators.
+                  </p>
+                )}
             </div>
 
 {/* Owner (shadcn searchable combobox) */}

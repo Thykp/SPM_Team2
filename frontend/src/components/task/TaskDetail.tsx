@@ -5,8 +5,13 @@ import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { User, Calendar, Users, ChevronLeft, ChevronRight, Gauge } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { Edit, Trash2 } from "lucide-react";
+import EditTask from "./EditTask";
+import CreateSubtask from "./CreateSubtask";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 
 type TaskDetailProps = {
@@ -25,6 +30,9 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
     const [loading, setLoading] = useState(false);
     const [userLoading, setUserLoading] = useState(false);
     const [userProfiles, setUserProfiles] = useState<{[key: string]: any}>({});
+    const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
+    const [editingSubtask, setEditingSubtask] = useState<taskType | null>(null);
+    const [deletingSubtask, setDeletingSubtask] = useState<taskType | null>(null);
 
     // Helper function to display user name or "You"
     const getDisplayName = (userId: string): string => {
@@ -32,6 +40,27 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
             return "You";
         }
         return userProfiles[userId]?.display_name || userId;
+    };
+
+    const handleDeleteSubtask = async () => {
+      if (!deletingSubtask) return;
+
+      try {
+
+        // Check if the current user is the owner of the subtask
+        if (deletingSubtask.owner !== user?.id) {
+          alert("You are not authorized to delete this subtask.");
+          return;
+        }
+
+        await taskAPI.deleteTask(deletingSubtask.id); // Call the delete API
+        console.log(`Subtask ${deletingSubtask.id} deleted successfully`);
+        setSubTasks((prev) => prev.filter((task) => task.id !== deletingSubtask.id)); // Remove the deleted subtask from the list
+        setDeletingSubtask(null); // Close the delete confirmation dialog
+      } catch (error) {
+        console.error("Failed to delete subtask:", error);
+        alert("Failed to delete subtask. Please try again.");
+      }
     };
 
     useEffect(() => {
@@ -108,6 +137,8 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                 return "outline";
         }
     }
+
+    const isSubtask = Boolean(parentTask || currentTask?.parent);
 
     if (!isOpen) {
         return null;
@@ -220,6 +251,10 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                         // Filter out the owner and any null/undefined values
                         const filteredCollaborators = (currentTask.collaborators || [])
                           .filter(collaborator => collaborator && collaborator !== currentTask.owner);
+
+                          console.log("Filtered Collaboratorzz:", filteredCollaborators);
+                        
+                          console.log("Current Task Collaborators:", currentTask.collaborators);
                         
                         return filteredCollaborators.length > 0 ? (
                           <div className="space-y-1 mt-1">
@@ -243,16 +278,28 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
               </div>
 
               {/* Only show Subtasks section if current task is not a subtask */}
-              {!parentTask && (
+              {!isSubtask && (
                 <>
                   <Separator />
               {/* Subtasks Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between ">
+                  <div className="flex gap-2">
                   <h4 className="text-lg font-semibold">Subtasks</h4>
                   <Badge variant="outline" className="text-xs">
                     {subTasks.length} {subTasks.length === 1 ? 'task' : 'tasks'}
                   </Badge>
+                  </div>
+                  {/* Add Subtask Button */}
+                  {currentTask.status !== "Completed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddSubtaskDialog(true)} // Open the Add Subtask modal
+                    >
+                      + Add Subtask
+                    </Button>
+                  )}
                 </div>
                 
                 <div className="max-h-[40vh] overflow-y-auto">
@@ -270,12 +317,39 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                         onClick={() => onNavigateToSubTask?.(subTask)}
                       >
                         <div className="space-y-3">
-                          <div>
+                          {/* Title Row with Icons */}
+                          <div className="flex items-center justify-between">
                             <h5 className="font-medium text-sm">{subTask.title}</h5>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {subTask.description}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              {/* Edit Button */}
+                              <button
+                                type="button"
+                                className="p-2 rounded-full hover:bg-primary/20 hover:scale-110 transition-transform transition-colors"
+                                aria-label="Edit Subtask"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent card click event
+                                  setEditingSubtask(subTask); // Open the edit modal
+                                }}
+                              >
+                                <Edit className="h-4 w-4 text-primary" />
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                type="button"
+                                className="p-2 rounded-full hover:bg-destructive/20 hover:scale-110 transition-transform transition-colors"
+                                aria-label="Delete Subtask"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent card click event
+                                  setDeletingSubtask(subTask); // Open the delete confirmation dialog
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </button>
+                            </div>
                           </div>
+
+                          <p className="text-sm text-muted-foreground mt-1">{subTask.description}</p>
                           
                           <div className="flex items-center justify-between">
                             <Badge variant={getStatusBadgeVariant(subTask.status)} className="text-xs">
@@ -315,9 +389,61 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
               </div>
             </div>
           )}
+
+          {/* Add Subtask Modal */}
+          {showAddSubtaskDialog && (
+            <CreateSubtask
+              parentTaskId={currentTask.id} // Pass the current task ID as the parentTaskId
+              parentTaskDeadline={currentTask.deadline} // Pass the parent task deadline for validation
+              projectId={currentTask.project_id || ""} // Pass the project ID
+              parentTaskCollaborators={currentTask.collaborators || []} // Pass collaborators
+              onSubtaskCreated={(newSubtask) => {
+                console.log("Subtask created:", newSubtask);
+                setShowAddSubtaskDialog(false); // Close the modal after creating the subtask
+                getSubTasks(); // Refresh the subtasks list
+              }}
+              open={showAddSubtaskDialog}
+              onOpenChange={setShowAddSubtaskDialog}
+              currentUserId={user?.id || ""}
+            />
+          )}
+
+          {/* Edit Subtask Modal */}
+          {editingSubtask && (
+            <EditTask
+              taskId={editingSubtask.id}
+              currentUserId={user?.id || ""}
+              parentTaskCollaborators={currentTask?.collaborators || []} // Pass parent task collaborators
+              onClose={() => setEditingSubtask(null)} // Close the edit modal
+              onTaskUpdated={() => {
+                setEditingSubtask(null); // Close the modal
+                getSubTasks(); // Refresh the subtasks list
+              }}
+            />
+          )}
+
+          {/* Delete Confirmation Dialog */}
+          {deletingSubtask && (
+            <Dialog open={true} onOpenChange={() => setDeletingSubtask(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Subtask</DialogTitle>
+                </DialogHeader>
+                <p>Are you sure you want to delete this subtask?</p>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeletingSubtask(null)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteSubtask}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
         </SheetContent>
       </Sheet>    
     )
 
 }
-

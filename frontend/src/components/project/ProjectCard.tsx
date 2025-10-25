@@ -38,15 +38,17 @@ interface ProjectUIData {
     startDate: string | null;
     members: string[];
     owner?: string;
+    ownerId?: string;
 }
 
 interface ProjectCardProps {
     project: ProjectUIData;
+    currentUserId?: string;
     onProjectUpdate?: (updatedProject: ProjectUIData) => void;
     onProjectDelete?: (projectId: string) => void;
 }
 
-const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onProjectDelete }) => {
+const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onProjectUpdate, onProjectDelete }) => {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -245,13 +247,15 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onProjectUpdate, onP
                                         <Edit className="h-4 w-4 mr-2" />
                                         {isLoadingEdit ? 'Loading...' : 'Edit Project'}
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                        onClick={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
-                                        className="text-destructive"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete Project
-                                    </DropdownMenuItem>
+                                    {currentUserId && project.ownerId && currentUserId === project.ownerId && (
+                                        <DropdownMenuItem 
+                                            onClick={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
+                                            className="text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete Project
+                                        </DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>

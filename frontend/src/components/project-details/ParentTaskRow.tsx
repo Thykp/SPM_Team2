@@ -10,6 +10,7 @@ interface ParentTaskRowProps {
     subtasks: TaskDTO[];
     statuses: Array<{ id: string; title: string }>;
     projectId: string;
+    currentUserId?: string;
     onSubtaskClick?: (subtask: TaskDTO) => void;
     onSubtaskDeleted?: (subtaskId: string) => void;
     onSubtaskUpdated?: () => void;
@@ -20,6 +21,7 @@ const ParentTaskRow: React.FC<ParentTaskRowProps> = ({
     subtasks, 
     statuses,
     projectId,
+    currentUserId,
     onSubtaskClick,
     onSubtaskDeleted,
     onSubtaskUpdated
@@ -128,6 +130,7 @@ const ParentTaskRow: React.FC<ParentTaskRowProps> = ({
                                     key={subtask.id}
                                     subtask={subtask}
                                     projectId={projectId}
+                                    currentUserId={currentUserId}
                                     onClick={() => onSubtaskClick?.(subtask)}
                                     onSubtaskDeleted={onSubtaskDeleted}
                                     onSubtaskUpdated={onSubtaskUpdated}

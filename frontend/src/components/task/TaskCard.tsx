@@ -111,7 +111,7 @@ export function TaskCard({ tasks }: TaskCardProps) {
       </Card>
 
       {/* Completed Tasks Card */}
-      <Card className="flex-1 opacity-75">
+      <Card className="flex-1">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-muted-foreground">Completed Tasks</CardTitle>

@@ -1,13 +1,23 @@
 import React, { useState } from "react";
-import { MoreHorizontal, Gauge } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import EditTask from "./EditTask"; // Import the EditTask component
 import { TaskApi, type TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
 import { useAuth } from "@/contexts/AuthContext";
+import { RecurTask } from "./RecurTask";
 import { cn } from "@/lib/utils";
- 
+import { Edit, Trash2, Plus, Gauge } from "lucide-react";
+import CreateSubtask from "./CreateSubtask";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; 
 
 type TaskProps = {
   taskContent: apiTask;
@@ -19,10 +29,12 @@ export const Task: React.FC<TaskProps> = ({
   onTaskDeleted,
 }) => {
   const { profile } = useAuth(); 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editing, setEditing] = useState(false); // State to toggle the EditTask modal
+  const [recurring, setRecurring] = useState(false); // State to toggle the RecurTask modal
   const [showDetails, setShowDetails] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -43,6 +55,13 @@ export const Task: React.FC<TaskProps> = ({
 
     const deleteTask = async () => {
       try {
+
+        // Check if the current user is the owner of the task
+        if (taskContent.owner !== profile?.id) {
+          alert("You are not authorized to delete this task.");
+          return;
+        }
+
         setDeleting(true); // Set deleting state to true
         await TaskApi.deleteTask(taskContent.id); // Call the deleteTask API
         console.log(`Task ${taskContent.id} deleted successfully`);
@@ -86,52 +105,117 @@ export const Task: React.FC<TaskProps> = ({
       </div>
 
       <div className="absolute top-2 right-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setDropdownOpen((prev) => !prev)}
-          className="h-8 w-8"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-
-        {dropdownOpen && (
-          <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-300 rounded shadow-lg z-10">
-            <ul className="py-1">
-              <li>
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    setEditing(true); // Open the EditTask modal
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Edit Task
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={async () => {
-                    setDropdownOpen(false);
-                    await deleteTask(); // Call the deleteTask function
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
-                  disabled={deleting} // Disable button while deleting
-                >
-                  {deleting ? "Deleting..." : "Delete Task"}
-                </button>
-              </li>
-            </ul>
-          </div>
-        )}
+        <div className="absolute top-2 right-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {taskContent.status !== "Completed" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setEditing(true); // Open the EditTask modal
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2 text-gray-500" />
+                    Edit Task
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setRecurring(true); // Open the RecurTask modal
+                    }}
+                  >
+                    <Gauge className="h-4 w-4 mr-2 text-gray-500" />
+                    Recur Task
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setShowAddSubtaskDialog(true); // Open the Add Subtask dialog
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2 text-gray-500" />
+                    Add Subtask
+                  </DropdownMenuItem>
+                </>
+              )}
+              
+              <DropdownMenuItem
+                  onClick={() => setShowDeleteConfirmation(true)} 
+                className="text-destructive"
+              >
+              <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+              Delete Task
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {editing && (
         <EditTask
         taskId={taskContent.id}
         currentUserId={profile?.id || ""}
+        projectId={taskContent.project_id || ""} 
         onClose={() => setEditing(false)}
         />
+      )}
+
+      {recurring && (
+        <RecurTask
+          taskId={taskContent.id}
+          onClose={() => setRecurring(false)}
+        />
+      )}
+
+      {showAddSubtaskDialog && (
+        <CreateSubtask
+          parentTaskId={taskContent.id} // Pass the current task ID as the parentTaskId
+          parentTaskDeadline={taskContent.deadline} // Pass the parent task deadline for validation
+          projectId={taskContent.project_id || ""} // Pass the project ID
+          parentTaskCollaborators={taskContent.collaborators || []} // Pass collaborators
+          onSubtaskCreated={(newSubtask) => {
+            console.log("Subtask created:", newSubtask);
+            setShowAddSubtaskDialog(false); // Close the modal after creating the subtask
+          }}
+          open={showAddSubtaskDialog}
+          onOpenChange={setShowAddSubtaskDialog}
+          currentUserId={profile?.id || ""}
+        />
+      )}
+
+      {showDeleteConfirmation && (
+        <Dialog open={true} onOpenChange={() => setShowDeleteConfirmation(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Task</DialogTitle>
+            </DialogHeader>
+            <p>Are you sure you want to delete the task "{taskContent.title}"? This action cannot be undone.</p>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirmation(false)} // Close the dialog
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  await deleteTask(); // Call the deleteTask function
+                  setShowDeleteConfirmation(false); // Close the dialog after deletion
+                }}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       <TaskDetailNavigator
