@@ -155,6 +155,7 @@ export const Task: React.FC<TaskProps> = ({
         <EditTask
         taskId={taskContent.id}
         currentUserId={profile?.id || ""}
+        projectId={taskContent.project_id || ""} 
         onClose={() => setEditing(false)}
         />
       )}
@@ -171,6 +172,7 @@ export const Task: React.FC<TaskProps> = ({
           parentTaskId={taskContent.id} // Pass the current task ID as the parentTaskId
           parentTaskDeadline={taskContent.deadline} // Pass the parent task deadline for validation
           projectId={taskContent.project_id || ""} // Pass the project ID
+          parentTaskCollaborators={taskContent.collaborators || []} // Pass collaborators
           onSubtaskCreated={(newSubtask) => {
             console.log("Subtask created:", newSubtask);
             setShowAddSubtaskDialog(false); // Close the modal after creating the subtask

@@ -33,6 +33,7 @@ interface CreateSubtaskProps {
   parentTaskId: string; // Parent task ID for linking the subtask
   parentTaskDeadline: string; // Parent task deadline for validation
   projectId: string;
+  parentTaskCollaborators: string[]; // Collaborators from the parent task
   onSubtaskCreated: (subtask: TaskDTO) => void; // Callback when a subtask is created
   open: boolean; // Controlled open state
   onOpenChange: (open: boolean) => void; // Callback for open state changes
@@ -50,6 +51,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
   parentTaskId,
   parentTaskDeadline,
   projectId, 
+  parentTaskCollaborators,
   onSubtaskCreated,
   open,
   onOpenChange,
@@ -102,9 +104,13 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
         console.log("Current User Department ID:", currentUserDepartmentId);
         console.log("Current User Team ID:", currentUserTeamId);
 
-        // Collaborators: Include everyone
-        setUsers(allUsers); // Everyone can be a collaborator
-        console.log("Collaborators (Everyone):", allUsers);
+      // Filter users to include only those in the parent task's collaborators
+      const filteredCollaborators= allUsers.filter((user) =>
+        parentTaskCollaborators.includes(user.id)
+      );
+
+      setUsers(filteredCollaborators); // Set the filtered users as collaborators
+      console.log("Filtered Collaborators:", filteredCollaborators);
 
         // Owners: Filter based on the current user's role
         let filteredUsers = allUsers.filter((user) => {
@@ -146,7 +152,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
     };
 
     fetchAssignableUsers();
-  }, [currentUserId]);
+  }, [currentUserId, parentTaskCollaborators]);
 
   const handleCreateSubtask = async (e: React.FormEvent) => {
     e.preventDefault();
