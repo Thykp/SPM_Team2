@@ -85,6 +85,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, projectId
                                             key={subtask.id} 
                                             subtask={subtask}
                                             projectId={projectId}
+                                            currentUserId={userId}
                                             onClick={() => setSelectedSubtask(subtask)}
                                             onSubtaskDeleted={onTaskDeleted}
                                             onSubtaskUpdated={onTaskUpdated}

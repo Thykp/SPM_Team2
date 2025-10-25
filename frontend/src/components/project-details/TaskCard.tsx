@@ -194,16 +194,18 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Subtask
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowDeleteDialog(true);
-                                    }}
-                                    className="text-red-600 focus:text-red-600"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete Task
-                                </DropdownMenuItem>
+                                {userId && task.owner && userId === task.owner && (
+                                    <DropdownMenuItem 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowDeleteDialog(true);
+                                        }}
+                                        className="text-red-600 focus:text-red-600"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete Task
+                                    </DropdownMenuItem>
+                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

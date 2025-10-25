@@ -11,10 +11,12 @@ interface ProjectUIData {
     startDate: string | null;
     members: string[];
     owner?: string;
+    ownerId?: string;
 }
 
 interface ProjectGridProps {
     projects: ProjectUIData[];
+    currentUserId?: string;
     onCreateProject?: () => void;
     onProjectUpdate?: (updatedProject: ProjectUIData) => void;
     onProjectDelete?: (projectId: string) => void;
@@ -22,6 +24,7 @@ interface ProjectGridProps {
 
 const ProjectGrid: React.FC<ProjectGridProps> = ({ 
     projects, 
+    currentUserId,
     onCreateProject, 
     onProjectUpdate, 
     onProjectDelete 
@@ -47,6 +50,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
                 <ProjectCard 
                     key={project.id} 
                     project={project} 
+                    currentUserId={currentUserId}
                     onProjectUpdate={onProjectUpdate}
                     onProjectDelete={onProjectDelete}
                 />
