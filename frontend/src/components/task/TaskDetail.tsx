@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Edit, Trash2 } from "lucide-react";
 import EditTask from "./EditTask";
+import CreateSubtask from "./CreateSubtask";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 
@@ -29,6 +30,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
     const [loading, setLoading] = useState(false);
     const [userLoading, setUserLoading] = useState(false);
     const [userProfiles, setUserProfiles] = useState<{[key: string]: any}>({});
+    const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
     const [editingSubtask, setEditingSubtask] = useState<taskType | null>(null);
     const [deletingSubtask, setDeletingSubtask] = useState<taskType | null>(null);
 
@@ -269,10 +271,20 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
               {/* Subtasks Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between ">
+                  <div className="flex gap-2">
                   <h4 className="text-lg font-semibold">Subtasks</h4>
                   <Badge variant="outline" className="text-xs">
                     {subTasks.length} {subTasks.length === 1 ? 'task' : 'tasks'}
                   </Badge>
+                  </div>
+                  {/* Add Subtask Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddSubtaskDialog(true)} // Open the Add Subtask modal
+                  >
+                    + Add Subtask
+                  </Button>
                 </div>
                 
                 <div className="max-h-[40vh] overflow-y-auto">
@@ -361,6 +373,22 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                 <p className="text-sm text-muted-foreground">Failed to load task details</p>
               </div>
             </div>
+          )}
+
+          {/* Add Subtask Modal */}
+          {showAddSubtaskDialog && (
+            <CreateSubtask
+              parentTaskId={currentTask.id} // Pass the current task ID as the parentTaskId
+              projectId={currentTask.project_id || ""} // Pass the project ID
+              onSubtaskCreated={(newSubtask) => {
+                console.log("Subtask created:", newSubtask);
+                setShowAddSubtaskDialog(false); // Close the modal after creating the subtask
+                getSubTasks(); // Refresh the subtasks list
+              }}
+              open={showAddSubtaskDialog}
+              onOpenChange={setShowAddSubtaskDialog}
+              currentUserId={user?.id || ""}
+            />
           )}
 
           {/* Edit Subtask Modal */}
