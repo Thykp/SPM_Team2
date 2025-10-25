@@ -113,7 +113,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
       console.log("Filtered Collaborators:", filteredCollaborators);
 
         // Owners: Filter based on the current user's role
-        let filteredUsers = allUsers.filter((user) => {
+        let filteredUsers = filteredCollaborators.filter((user) => {
             switch (currentUserRole) {
             case "Senior Management":
                 return true; // Senior Management can assign anyone

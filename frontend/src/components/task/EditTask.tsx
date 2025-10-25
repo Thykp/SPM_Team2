@@ -151,7 +151,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
         console.log("Filtered Collaborators:", filteredCollaborators);
 
         // Filter assignable users based on the current user's role
-        let filteredUsers = allUsers.filter((user) => {
+        let filteredUsers = filteredCollaborators.filter((user) => {
           switch (currentUserRole) {
             case "Senior Management":
               return true; // Senior Management can assign anyone
