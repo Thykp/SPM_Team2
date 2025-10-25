@@ -118,6 +118,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
 
     const handleDelete = async () => {
         try {
+            if (task.owner !== userId) {
+                alert("You are not authorized to delete this task.");
+                setShowDeleteDialog(false);
+                return;
+            }
+
             setIsDeleting(true);
             await TaskApi.deleteTask(task.id);
             setShowDeleteDialog(false);
@@ -193,9 +199,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Subtask
-                                </DropdownMenuItem>
-                                {userId && task.owner && userId === task.owner && (
-                                    <DropdownMenuItem 
+                                </DropdownMenuItem>                                    
+                                <DropdownMenuItem 
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowDeleteDialog(true);
@@ -205,7 +210,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Delete Task
                                     </DropdownMenuItem>
-                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
