@@ -41,6 +41,13 @@ const STATUSES = [
 
 type StatusType = (typeof STATUSES)[number];
 
+const formatToLocalDatetime = (dateString: string) => {
+  const date = new Date(dateString);
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
+  return localDate.toISOString().slice(0, 16);
+};
+
 const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose }) => {
   const [newTask, setNewTask] = useState<{
     title: string;
@@ -55,7 +62,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
     description: "",
     status: "Unassigned",
     priority: 5,
-    deadline: new Date().toISOString().slice(0, 16),
+    deadline: formatToLocalDatetime(new Date().toISOString()),
     owner: userId,
     collaborators: [],
   });
@@ -177,13 +184,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
     }
   };
 
-  const formatToLocalDatetime = (dateString: string) => {
-    const date = new Date(dateString);
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
-    return localDate.toISOString().slice(0, 16);
-  };
-
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
@@ -268,23 +268,30 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
                 <Label htmlFor="priority" className="text-base font-medium">
                   Priority (1-10)
                 </Label>
-                <select
-                  id="priority"
-                  value={newTask.priority}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({
-                      ...prev,
-                      priority: parseInt(e.target.value, 10),
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => (
-                    <option key={priority} value={priority}>
-                      {priority}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    id="priority"
+                    value={newTask.priority}
+                    onChange={(e) =>
+                      setNewTask((prev) => ({
+                        ...prev,
+                        priority: parseInt(e.target.value, 10),
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => {
+                      let label = `${priority}`;
+                      if (priority <= 3) label += " (Low)";
+                      else if (priority <= 7) label += " (Medium)";
+                      else label += " (High)";
+
+                      return (
+                        <option key={priority} value={priority}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
               </div>
             </div>
 
