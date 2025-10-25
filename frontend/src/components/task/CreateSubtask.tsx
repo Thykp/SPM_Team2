@@ -31,6 +31,7 @@ type StatusType = (typeof STATUSES)[number];
 
 interface CreateSubtaskProps {
   parentTaskId: string; // Parent task ID for linking the subtask
+  parentTaskDeadline: string; // Parent task deadline for validation
   projectId: string;
   parentTaskCollaborators: string[]; // Collaborators from the parent task
   onSubtaskCreated: (subtask: TaskDTO) => void; // Callback when a subtask is created
@@ -48,6 +49,7 @@ interface CreateSubtaskProps {
 
 const CreateSubtask: React.FC<CreateSubtaskProps> = ({
   parentTaskId,
+  parentTaskDeadline,
   projectId, 
   parentTaskCollaborators,
   onSubtaskCreated,
@@ -79,6 +81,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
   const [loadingUsers, setLoadingUsers] = useState(false); // Loading state for fetching users
   const [assignableUsers, setAssignableUsers] = useState<any[]>([]); // Filtered list of assignable users
   const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]); // Owner dropdown options
+  const [deadlineError, setDeadlineError] = useState<string | null>(null); // Deadline validation error
 
   useEffect(() => {
     const fetchAssignableUsers = async () => {
@@ -317,16 +320,33 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
                 <Input
                   id="deadline"
                   type="datetime-local"
+                  min={new Date().toISOString().slice(0, 16)}
+                  max={formatToLocalDatetime(parentTaskDeadline)}
                   value={newSubtask.deadline}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const selectedDate = new Date(e.target.value);
+                    const parentDeadline = new Date(parentTaskDeadline);
+                    const now = new Date();
+                    
+                    if (selectedDate < now) {
+                      setDeadlineError("Deadline cannot be in the past");
+                    } else if (selectedDate > parentDeadline) {
+                      setDeadlineError("Subtask deadline cannot be after parent task deadline");
+                    } else {
+                      setDeadlineError(null);
+                    }
+                    
                     setNewSubtask((prev) => ({
                       ...prev,
                       deadline: e.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   className="h-11"
                   required
                 />
+                {deadlineError && (
+                  <p className="text-sm text-red-500">{deadlineError}</p>
+                )}
               </div>
 
               {/* Collaborators */}
@@ -418,7 +438,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
             <Button
               type="submit"
               className="flex-1 h-11"
-              disabled={!newSubtask.title.trim()}
+              disabled={!newSubtask.title.trim() || !!deadlineError}
               onClick={handleCreateSubtask}
             >
               {loading ? "Creating..." : "Create Subtask"}

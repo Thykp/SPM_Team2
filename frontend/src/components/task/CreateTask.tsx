@@ -27,7 +27,7 @@ type UserRow = {
 
 interface CreateTaskProps {
   userId: string;
-  onTaskCreated: (task: any) => void;
+  onTaskCreated: () => void;
   onClose: () => void;
 }
 
@@ -153,8 +153,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
         priority: newTask.priority,
       };
 
-      const createdTask = await TaskApi.createTask(taskData);
-      onTaskCreated(createdTask);
+      await TaskApi.createTask(taskData);
+      onTaskCreated();
       onClose();
     } catch (err: any) {
         console.error("Failed to create task:", err);
@@ -303,6 +303,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
               <Input
                 id="deadline"
                 type="datetime-local"
+                min={new Date().toISOString().slice(0, 16)}
                 value={formatToLocalDatetime(newTask.deadline)}
                 onChange={(e) =>
                   setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
