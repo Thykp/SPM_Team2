@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/layout/Loader";
 import { cn } from "@/lib/utils";
-import { Users, Building2, FileDown, Loader2 } from "lucide-react";
+import { Users, Building2, FileDown, Loader2, Globe2 } from "lucide-react";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
 
 type CacheEntry<T> = { ts: number; data: T };
@@ -82,8 +82,14 @@ function statusToProgress(status?: TaskType["status"]): number {
 
 /** MUTUALLY EXCLUSIVE role gates for the action buttons */
 const canSeeTeamButton = (role?: string | null) => role === "Manager";
-const canSeeDepartmentButton = (role?: string | null) =>
-  role === "Director" || role === "Senior Management";
+const canSeeDepartmentButton = (role?: string | null) => role === "Director";
+
+// HR department constant used across component
+const HR_DEPT_ID = "00000000-0000-0000-0000-000000000005";
+const isHRDepartment = (deptId?: string | null) => deptId === HR_DEPT_ID;
+/** Org button shown if Senior Management OR user belongs to HR */
+const canSeeOrganisationButton = (role?: string | null, deptId?: string | null) =>
+  role === "Senior Management" || isHRDepartment(deptId);
 
 // date helpers
 function toYMD(d: Date) {
@@ -101,8 +107,9 @@ function last30Days(): { start: string; end: string } {
 
 /**
  * Determine if user `u` should be visible under the current user's scope.
- * - Director/Senior Management: everyone except other Directors/Senior Management.
- * - Manager:  Staff in the SAME TEAM (ID-based check).
+ * - Director (not HR): staff inside same department, excluding Directors/Senior Management.
+ * - Senior Management or HR: everyone except Directors.
+ * - Manager: Staff in the SAME TEAM (ID-based check).
  * - Staff:    nobody.
  */
 function isReportForMe(
@@ -115,11 +122,11 @@ function isReportForMe(
   if (!u || !meId) return false;
   if (u.id === meId) return false;
 
-  const isHR = myDepartmentId === "00000000-0000-0000-0000-000000000005"; // HR department ID
+  const isHR = isHRDepartment(myDepartmentId);
 
   if (myRole === "Director" && !isHR) {
-    return u.role !== "Director" && u.role !== "Senior Management" 
-    && u.department_id === myDepartmentId;
+    return u.role !== "Director" && u.role !== "Senior Management"
+      && u.department_id === myDepartmentId;
   }
 
   if (myRole === "Senior Management" || isHR) {
@@ -164,7 +171,7 @@ export default function ManageUser() {
   const [myTeamId, setMyTeamId] = useState<string | null>(null);
   const [myDepartmentId, setMyDepartmentId] = useState<string | null>(null);
 
-  const [reportBusy, setReportBusy] = useState<"team" | "department" | null>(null);
+  const [reportBusy, setReportBusy] = useState<"team" | "department" | "organisation" | null>(null);
   const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string; href?: string } | null>(null);
 
   // Cache keys
@@ -292,7 +299,7 @@ export default function ManageUser() {
     }
   };
 
-  async function callReport(kind: "team" | "department") {
+  async function callReport(kind: "team" | "department" | "organisation") {
     if (reportBusy) return;
     setBanner(null);
     setReportBusy(kind);
@@ -313,7 +320,7 @@ export default function ManageUser() {
           msg: title || "Team report requested successfully.",
           href,
         });
-      } else {
+      } else if (kind === "department") {
         if (!canSeeDepartmentButton(myRole)) throw new Error("You are not allowed to generate a department report.");
         if (!myDepartmentId) throw new Error("Your department is not set.");
         const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate, userId: myUserId });
@@ -324,6 +331,21 @@ export default function ManageUser() {
         setBanner({
           type: href ? "success" : "info",
           msg: title || "Department report requested successfully.",
+          href,
+        });
+      } else {
+        // organisation
+        if (!canSeeOrganisationButton(myRole, myDepartmentId)) {
+          throw new Error("You are not allowed to generate an organisation report.");
+        }
+        const res = await Report.generateOrganisation({ startDate, endDate, userId: myUserId });
+
+        const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
+        const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
+
+        setBanner({
+          type: href ? "success" : "info",
+          msg: title || "Organisation report requested successfully.",
           href,
         });
       }
@@ -337,6 +359,7 @@ export default function ManageUser() {
   const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate);
   const disableTeamBtn = reportBusy !== null || !myTeamId || !myUserId || dateInvalid;
   const disableDeptBtn = reportBusy !== null || !myDepartmentId || !myUserId || dateInvalid;
+  const disableOrgBtn  = reportBusy !== null || !myUserId || dateInvalid;
 
   return (
     <div>
@@ -465,6 +488,39 @@ export default function ManageUser() {
                   </span>
                 </Button>
               )}
+
+              {canSeeOrganisationButton(myRole, myDepartmentId) && (
+                <Button
+                  onClick={() => callReport("organisation")}
+                  disabled={disableOrgBtn}
+                  aria-busy={reportBusy === "organisation"}
+                  title={
+                    !myUserId
+                      ? "Missing user id"
+                      : dateInvalid
+                      ? "Invalid date range"
+                      : "Generate organisation-wide report"
+                  }
+                  variant="outline"
+                  className={cn(
+                    "gap-2 rounded-none px-3 sm:px-4",
+                    "hover:bg-muted",
+                    "disabled:opacity-60 disabled:cursor-not-allowed"
+                  )}
+                >
+                  {reportBusy === "organisation" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Globe2 className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {reportBusy === "organisation" ? "Generating…" : "Organisation Report"}
+                  </span>
+                  <span className="sm:hidden">
+                    {reportBusy === "organisation" ? "…" : "Org"}
+                  </span>
+                </Button>
+              )}
             </div>
 
             {/* Quiet caption with chosen dates */}
@@ -478,6 +534,9 @@ export default function ManageUser() {
               )}
               {canSeeDepartmentButton(myRole) && (
                 <Badge variant="outline" className="h-5 text-xs">Department</Badge>
+              )}
+              {canSeeOrganisationButton(myRole, myDepartmentId) && (
+                <Badge variant="outline" className="h-5 text-xs">Org</Badge>
               )}
             </div>
           </div>
