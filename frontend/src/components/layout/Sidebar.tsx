@@ -9,6 +9,7 @@ const navigation = [
   { name: "Dashboard", href: "/app", icon: Home },
   { name: "Projects", href: "/app/projects", icon: FolderOpen },
   { name: "Manage Users", href: "/app/manage-users", icon: Users },
+  { name: "Team Tasks", href: "/app/team-task", icon: Users },
   { name: "Staff Tasks", href: "/app/staff-tasks", icon: Users },
   { name: "Reports", href: "/app/reports", icon: FileText },
 ]
@@ -36,9 +37,9 @@ export function Sidebar() {
       <div className="flex h-16 items-center px-6 border-b">
         <Link to="/app" className="flex items-center space-x-2">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">A</span>
+            <span className="text-primary-foreground font-bold text-sm">L</span>
           </div>
-          <span className="font-bold text-xl">AppName</span>
+          <span className="font-bold text-xl">Lira</span>
         </Link>
       </div>
 

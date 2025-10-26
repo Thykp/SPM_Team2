@@ -4,6 +4,7 @@ const { prepareReportData } = require('../factory/aggregatePersonalTask');
 const { prepareProjectReportData } = require('../factory/aggregateProjectTasks');
 const { prepareTeamReportData } = require('../factory/aggregateTeam');
 const { prepareDepartmentReportData } = require('../factory/aggregateDepartment');
+const { prepareOrganizationReportData } = require('../factory/aggregateOrganization');
 const { 
   fetchTasksForUser, 
   fetchProjectWithCollaborators,
@@ -50,6 +51,83 @@ function isValidDate(dateString) {
 // Health check endpoint
 router.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'reports' });
+});
+
+// Organisation Report Endpoint (MUST be before /:userId to avoid route collision)
+router.post('/organisation', async (req, res) => {
+  const { startDate, endDate, userId } = req.body;
+
+  try {
+    if (!startDate || !endDate) {
+      return sendError(res, 400, 'MISSING_DATES', 'Both startDate and endDate are required', {
+        providedStartDate: startDate,
+        providedEndDate: endDate
+      });
+    }
+    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+      return sendError(res, 400, 'INVALID_DATE_FORMAT', 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)', {
+        startDate, endDate
+      });
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start > end) {
+      return sendError(res, 400, 'INVALID_DATE_RANGE', 'Start date must be before or equal to end date', {
+        startDate, endDate
+      });
+    }
+
+    if (!userId) {
+      return sendError(res, 400, 'MISSING_USER_ID', 'User ID is required in request body');
+    }
+
+    // Prepare organization report data
+    console.log('Step 1: Preparing organization report data...');
+    const reportData = await prepareOrganizationReportData(startDate, endDate);
+    console.log('Step 1 complete. Departments:', reportData.departments?.length);
+
+    // Render HTML and generate PDF
+    console.log('Step 2: Rendering HTML...');
+    const html = await renderHtml({ ...reportData, template_file: 'organizationReport.njk' });
+    console.log('Step 2 complete. HTML length:', html?.length);
+    
+    console.log('Step 3: Generating PDF...');
+    const pdf = await gotenRenderPdf(html);
+    console.log('Step 3 complete. PDF size:', pdf?.length);
+    
+    // Upload to storage
+    console.log('Step 4: Uploading to storage...');
+    const ts = new Date().toISOString();
+    const fileName = `OrganizationReport-${ts}.pdf`;
+    const { publicUrl } = await createReportStorage(pdf, fileName);
+    console.log('Step 4 complete. URL:', publicUrl);
+    
+    // Save to database
+    console.log('Step 5: Saving to database...');
+    const formatDate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
+    const reportTitle = `Organization Report between ${formatDate(startDate)} and ${formatDate(endDate)}`;
+    await createReport({ profile_id: userId, title: reportTitle }, publicUrl);
+    console.log('Step 5 complete.');
+    
+    // Success response
+    res.json({
+      success: true,
+      data: {
+        reportUrl: publicUrl,
+        reportTitle,
+        departmentCount: reportData.orgKPIs.totalDepartments,
+        totalTasks: reportData.orgKPIs.totalTasks,
+        employeeCount: reportData.orgKPIs.activeEmployees
+      }
+    });
+  } catch (err) {
+    console.error('Organization report error:', err);
+    console.error('Error stack:', err.stack);
+    if (err instanceof AppError) {
+      return sendError(res, err.statusCode, err.code, err.message, err.details, err.stack);
+    }
+    return sendError(res, 500, 'UNEXPECTED_ERROR', 'An unexpected error occurred while generating the organization report', { error: err.message }, err.stack);
+  }
 });
 
 router.post('/:userId', async (req, res) => {

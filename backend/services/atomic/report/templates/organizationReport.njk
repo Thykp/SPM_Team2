@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 0.85rem; }
+        th { background-color: #f3f4f6; font-weight: 700; font-size: 0.85rem; }
+        tr:hover { background-color: #f9fafb; }
+        .chart-img { max-width: 100%; height: auto; display: block; }
+        .brand { font-size: 1.1rem; font-weight: 600; color: #6366f1; letter-spacing: 1px; }
+        .dept-row { background-color: #f8fafc; border-left: 3px solid #6366f1; }
+        .priority-high { background-color: #fee2e2; }
+        .priority-medium { background-color: #fef3c7; }
+        .priority-low { background-color: #d1fae5; }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Professional Header -->
+        <header class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-1">Organization Report</h1>
+                <p class="text-gray-500 text-lg">{{ reportPeriod }}</p>
+                <p class="text-gray-400 text-sm mt-1">Comprehensive overview across all departments</p>
+            </div>
+            <div class="brand">SPM Team 2</div>
+        </header>
+
+        <!-- Organization Summary Section -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Organization Overview</h2>
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-blue-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Total Tasks</p>
+                    <p class="text-3xl font-bold text-blue-600">{{ orgKPIs.totalTasks }}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Completed</p>
+                    <p class="text-3xl font-bold text-green-600">{{ orgKPIs.completedTasks }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ orgKPIs.completionRate }}% completion rate</p>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Overdue</p>
+                    <p class="text-3xl font-bold text-red-600">{{ orgKPIs.overdueTasks }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ orgKPIs.overduePercentage }}% of total</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-gray-600 text-sm mb-1">Active Employees</p>
+                    <p class="text-3xl font-bold text-purple-600">{{ orgKPIs.activeEmployees }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ orgKPIs.totalDepartments }} departments</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Department Performance Table -->
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Department Performance</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th>Total Tasks</th>
+                            <th>Completed</th>
+                            <th>Completion Rate</th>
+                            <th>Overdue</th>
+                            <th>Employees</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dept in departments %}
+                        <tr class="dept-row">
+                            <td class="font-semibold">{{ dept.name }}</td>
+                            <td>{{ dept.totalTasks }}</td>
+                            <td>{{ dept.completed }}</td>
+                            <td>
+                                <div class="flex items-center">
+                                    <span class="font-semibold">{{ dept.completionRate }}%</span>
+                                    <div class="ml-2 w-16 bg-gray-200 rounded-full h-2">
+                                        <div class="h-2 rounded-full {% if dept.completionRate >= 80 %}bg-green-500{% elif dept.completionRate >= 60 %}bg-yellow-500{% else %}bg-red-500{% endif %}" style="width: {{ dept.completionRate }}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="{% if dept.overdue > 0 %}text-red-600 font-semibold{% else %}text-green-600{% endif %}">
+                                    {{ dept.overdue }}
+                                </span>
+                            </td>
+                            <td>{{ dept.employeeCount }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="grid grid-cols-2 gap-8 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Status Distribution</h2>
+                <img src="{{ charts.statusBar }}" alt="Status Distribution Chart" class="chart-img">
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Department Task Distribution</h2>
+                <img src="{{ charts.departmentBar }}" alt="Department Distribution Chart" class="chart-img">
+            </div>
+        </section>
+
+        <!-- High Priority Tasks Across Organization -->
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">High Priority Tasks</h2>
+            {% if highPriorityTasks.length > 0 %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Deadline</th>
+                            <th>Assignees</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in highPriorityTasks %}
+                        <tr class="{% if task.priority >= 9 %}priority-high{% elif task.priority >= 7 %}priority-medium{% else %}priority-low{% endif %}">
+                            <td class="font-medium">{{ task.title }}</td>
+                            <td>{{ task.department }}</td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-semibold
+                                    {% if task.status == 'Completed' %}bg-green-100 text-green-800
+                                    {% elif task.status == 'Ongoing' %}bg-blue-100 text-blue-800
+                                    {% elif task.status == 'Under Review' %}bg-yellow-100 text-yellow-800
+                                    {% elif task.status == 'Overdue' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ task.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800">
+                                    {{ task.priority }}
+                                </span>
+                            </td>
+                            <td>{{ task.deadline }}</td>
+                            <td>{{ task.assignees }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-gray-400 text-sm text-center py-4">No high priority tasks</p>
+            {% endif %}
+        </section>
+
+        <!-- Detailed Department Breakdown -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Department Breakdown</h2>
+            
+            {% for dept in departments %}
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">{{ dept.name }}</h3>
+                        <p class="text-sm text-gray-500">{{ dept.description if dept.description else 'Department overview for the reporting period' }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-blue-600">{{ dept.totalTasks }}</p>
+                        <p class="text-xs text-gray-500">Total Tasks</p>
+                    </div>
+                </div>
+                
+                <!-- Mini KPIs -->
+                <div class="grid grid-cols-5 gap-2 mb-4">
+                    <div class="text-center bg-green-50 p-2 rounded">
+                        <p class="text-lg font-bold text-green-600">{{ dept.completed }}</p>
+                        <p class="text-xs text-gray-500">Completed</p>
+                    </div>
+                    <div class="text-center bg-blue-50 p-2 rounded">
+                        <p class="text-lg font-bold text-blue-600">{{ dept.ongoing }}</p>
+                        <p class="text-xs text-gray-500">Ongoing</p>
+                    </div>
+                    <div class="text-center bg-yellow-50 p-2 rounded">
+                        <p class="text-lg font-bold text-yellow-600">{{ dept.underReview }}</p>
+                        <p class="text-xs text-gray-500">Review</p>
+                    </div>
+                    <div class="text-center bg-red-50 p-2 rounded">
+                        <p class="text-lg font-bold text-red-600">{{ dept.overdue }}</p>
+                        <p class="text-xs text-gray-500">Overdue</p>
+                    </div>
+                    <div class="text-center bg-orange-50 p-2 rounded">
+                        <p class="text-lg font-bold text-orange-600">{{ dept.highPriority }}</p>
+                        <p class="text-xs text-gray-500">High Pri</p>
+                    </div>
+                </div>
+                
+                <!-- Top Contributors in Department -->
+                {% if dept.topContributors and dept.topContributors.length > 0 %}
+                <div class="border-t border-gray-200 pt-4">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Top Contributors</h4>
+                    <div class="flex flex-wrap gap-2">
+                        {% for contributor in dept.topContributors %}
+                        <span class="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">
+                            {{ contributor.name }} ({{ contributor.taskCount }} tasks)
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </section>
+
+        <!-- Key Insights -->
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Key Insights</h2>
+            <div class="space-y-3">
+                <div class="flex items-start p-3 bg-blue-50 rounded-lg">
+                    <div class="text-blue-600 mr-3">📊</div>
+                    <div>
+                        <p class="font-semibold text-gray-900">Overall Performance</p>
+                        <p class="text-sm text-gray-600">{{ insights.overallPerformance }}</p>
+                    </div>
+                </div>
+                <div class="flex items-start p-3 bg-green-50 rounded-lg">
+                    <div class="text-green-600 mr-3">✅</div>
+                    <div>
+                        <p class="font-semibold text-gray-900">Top Performer</p>
+                        <p class="text-sm text-gray-600">{{ insights.topPerformer }}</p>
+                    </div>
+                </div>
+                <div class="flex items-start p-3 bg-yellow-50 rounded-lg">
+                    <div class="text-yellow-600 mr-3">⚠️</div>
+                    <div>
+                        <p class="font-semibold text-gray-900">Attention Needed</p>
+                        <p class="text-sm text-gray-600">{{ insights.attentionNeeded }}</p>
+                    </div>
+                </div>
+                {% if insights.unassignedCount > 0 %}
+                <div class="flex items-start p-3 bg-red-50 rounded-lg">
+                    <div class="text-red-600 mr-3">🔴</div>
+                    <div>
+                        <p class="font-semibold text-gray-900">Unassigned Tasks</p>
+                        <p class="text-sm text-gray-600">{{ insights.unassignedCount }} tasks need assignment across the organization</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-gray-400 text-sm mt-8 pt-4 border-t border-gray-200">
+            <p>Generated by SPM Team 2 • {{ reportPeriod }}</p>
+        </footer>
+    </div>
+</body>
+</html>
+

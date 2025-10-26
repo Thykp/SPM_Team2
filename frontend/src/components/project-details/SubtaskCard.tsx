@@ -19,18 +19,19 @@ import {
 import { type TaskDTO, TaskApi } from '@/lib/api';
 import { Calendar, MoreVertical, Edit, Trash2, Gauge } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import EditProjectTask from './EditProjectTask';
 import { TaskReminder } from '../task/TaskReminder';
+import EditTask from '@/components/task/EditTask';
 
 interface SubtaskCardProps {
     subtask: TaskDTO;
     projectId: string;
+    currentUserId?: string;
     onClick?: () => void;
     onSubtaskDeleted?: (subtaskId: string) => void;
     onSubtaskUpdated?: () => void;
 }
 
-const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, onSubtaskDeleted, onSubtaskUpdated }) => {
+const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, currentUserId, onClick, onSubtaskDeleted, onSubtaskUpdated }) => {
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -109,16 +110,18 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, 
                                         <Edit className="h-4 w-4 mr-2" />
                                         Edit Subtask
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowDeleteDialog(true);
-                                        }}
-                                        className="text-red-600 focus:text-red-600"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete Subtask
-                                    </DropdownMenuItem>
+                                    {currentUserId && subtask.owner && currentUserId === subtask.owner && (
+                                        <DropdownMenuItem 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowDeleteDialog(true);
+                                            }}
+                                            className="text-red-600 focus:text-red-600"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete Subtask
+                                        </DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
@@ -172,9 +175,11 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, onClick, 
         {/* Edit Subtask Dialog */}
         {showEditDialog && (
             <div onClick={(e) => e.stopPropagation()}>
-                <EditProjectTask
+                <EditTask
                     taskId={subtask.id}
-                    projectId={projectId}
+                    currentUserId={currentUserId || ''}
+                    projectId={subtask.project_id || projectId}
+                    parentTaskCollaborators={subtask.collaborators || []}
                     onClose={() => setShowEditDialog(false)}
                     onTaskUpdated={() => {
                         setShowEditDialog(false);

@@ -649,6 +649,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                         subtasks={subtasks}
                                         statuses={statuses}
                                         projectId={projectId}
+                                        currentUserId={user?.id}
                                         onSubtaskClick={setSelectedSubtask}
                                         onSubtaskDeleted={handleRealtimeTaskDelete}
                                         onSubtaskUpdated={fetchAllTasks}

@@ -2,8 +2,6 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TaskDTO as ApiTask } from "@/lib/api"
 import { Task as TaskBody } from "@/components/task/Task"
@@ -12,7 +10,6 @@ type TaskBoardProps = {
   tasks: ApiTask[]
   onTaskUpdate?: (task: ApiTask) => void
   onTaskDelete?: (taskId: string) => void
-  onTaskCreate?: (status: ApiTask["status"]) => void
 }
 
 const statusColumns: Array<{
@@ -28,7 +25,7 @@ const statusColumns: Array<{
   { status: "Overdue",    title: "Overdue",     color: "bg-red-50 border-red-200",     headerColor: "text-red-700" },
 ]
 
-export function TaskBoard({ tasks, onTaskDelete, onTaskCreate }: TaskBoardProps) {
+export function TaskBoard({ tasks, onTaskDelete }: TaskBoardProps) {
   const getTasksByStatus = (status: ApiTask["status"]) => tasks.filter((t) => t.status === status)
 
   return (
@@ -41,22 +38,12 @@ export function TaskBoard({ tasks, onTaskDelete, onTaskCreate }: TaskBoardProps)
             <div key={column.status} className="flex-shrink-0 w-80">
               <Card className={cn("h-full", column.color)}>
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className={cn("text-sm font-semibold", column.headerColor)}>
-                      {column.title}
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {columnTasks.length}
-                      </Badge>
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => onTaskCreate?.(column.status)}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  <CardTitle className={cn("text-sm font-semibold", column.headerColor)}>
+                    {column.title}
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {columnTasks.length}
+                    </Badge>
+                  </CardTitle>
                 </CardHeader>
 
                 <CardContent className="pt-0">

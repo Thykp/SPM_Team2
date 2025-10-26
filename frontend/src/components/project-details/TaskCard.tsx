@@ -21,14 +21,15 @@ import { type TaskDTO, TaskApi } from '@/lib/api';
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
-import EditProjectTask from './EditProjectTask';
-import CreateProjectTask from './CreateProjectTask';
 import { TaskReminder } from '../task/TaskReminder';
+import { RecurTask } from '@/components/task/RecurTask';
+import EditTask from '@/components/task/EditTask';
+import CreateSubtask from '@/components/task/CreateSubtask';
 
 interface TaskCardProps {
     task: TaskDTO;
     projectId: string;
-    userId: string; // Add userId for creating subtasks
+    userId: string;
     isDragging?: boolean;
     onTaskDeleted?: (taskId: string) => void;
     onTaskUpdated?: () => void;
@@ -56,6 +57,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
+    const [showRecurDialog, setShowRecurDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     
     const {
@@ -84,15 +86,29 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
         if ((e.target as HTMLElement).closest('.drag-handle') || 
             (e.target as HTMLElement).closest('.task-menu') ||
             showEditDialog ||
-            showAddSubtaskDialog) {
+            showAddSubtaskDialog ||
+            showRecurDialog) {
             return;
         }
         setShowDetails(true);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        const target = e.target as HTMLElement;
+        if (target) {
+            const tagName = target.tagName.toLowerCase();
+            const isEditable =
+                target.isContentEditable ||
+                tagName === 'input' ||
+                tagName === 'textarea' ||
+                tagName === 'select';
+            if (isEditable) {
+                return;
+            }
+        }
+
         // Don't trigger if any dialog is open
-        if (showEditDialog || showAddSubtaskDialog) {
+        if (showEditDialog || showAddSubtaskDialog || showRecurDialog) {
             return;
         }
         if (e.key === 'Enter' || e.key === ' ') {
@@ -103,6 +119,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
 
     const handleDelete = async () => {
         try {
+            if (task.owner !== userId) {
+                alert("You are not authorized to delete this task.");
+                setShowDeleteDialog(false);
+                return;
+            }
+
             setIsDeleting(true);
             await TaskApi.deleteTask(task.id);
             setShowDeleteDialog(false);
@@ -167,22 +189,31 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                                 <DropdownMenuItem 
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        setShowRecurDialog(true);
+                                    }}
+                                >
+                                    <Gauge className="h-4 w-4 mr-2" />
+                                    Recur Task
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         setShowAddSubtaskDialog(true);
                                     }}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Subtask
-                                </DropdownMenuItem>
+                                </DropdownMenuItem>                                    
                                 <DropdownMenuItem 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowDeleteDialog(true);
-                                    }}
-                                    className="text-red-600 focus:text-red-600"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete Task
-                                </DropdownMenuItem>
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowDeleteDialog(true);
+                                        }}
+                                        className="text-red-600 focus:text-red-600"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete Task
+                                    </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -239,9 +270,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
             {/* Edit Task Dialog */}
             {showEditDialog && (
                 <div onClick={(e) => e.stopPropagation()}>
-                    <EditProjectTask
+                    <EditTask
                         taskId={task.id}
-                        projectId={projectId}
+                        currentUserId={userId}
+                        projectId={task.project_id ?? projectId}
+                        parentTaskCollaborators={task.collaborators || []}
                         onClose={() => setShowEditDialog(false)}
                         onTaskUpdated={() => {
                             setShowEditDialog(false);
@@ -251,19 +284,32 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                 </div>
             )}
 
+            {showRecurDialog && (
+                <RecurTask
+                    taskId={task.id}
+                    onClose={() => {
+                        setShowRecurDialog(false);
+                        onTaskUpdated?.();
+                    }}
+                />
+            )}
+
             {/* Add Subtask Dialog */}
-            <CreateProjectTask
-                userId={userId}
-                projectId={projectId}
-                parentTaskId={task.id}
-                open={showAddSubtaskDialog}
-                onOpenChange={setShowAddSubtaskDialog}
-                onTaskCreated={() => {
-                    setShowAddSubtaskDialog(false);
-                    onTaskUpdated?.();
-                }}
-                triggerButton={<div style={{ display: 'none' }} />}
-            />
+            {showAddSubtaskDialog && (
+                <CreateSubtask
+                    parentTaskId={task.id}
+                    projectId={projectId}
+                    currentUserId={userId}
+                    parentTaskDeadline={task.deadline || new Date().toISOString()}
+                    parentTaskCollaborators={task.collaborators || []}
+                    open={showAddSubtaskDialog}
+                    onOpenChange={setShowAddSubtaskDialog}
+                    onSubtaskCreated={(_newSubtask) => {
+                        setShowAddSubtaskDialog(false);
+                        onTaskUpdated?.();
+                    }}
+                />
+            )}
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

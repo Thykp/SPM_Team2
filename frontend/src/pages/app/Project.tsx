@@ -20,6 +20,7 @@ interface Project {
   startDate: string | null;
   members: string[];
   owner?: string;
+  ownerId?: string;
 }
 
 // User type for API response
@@ -110,7 +111,8 @@ const Projects: React.FC = () => {
                         description: apiProject.description || 'No description available',
                         startDate: apiProject.created_at || new Date().toISOString(),
                         members: collaboratorNames,
-                        owner: ownerName
+                        owner: ownerName,
+                        ownerId: apiProject.owner
                     };
                 });
                 
@@ -265,6 +267,7 @@ const Projects: React.FC = () => {
 
       <ProjectGrid
         projects={filteredProjects}
+        currentUserId={user?.id}
         onCreateProject={() => setShowModal(true)}
         onProjectUpdate={handleProjectUpdate}
         onProjectDelete={handleProjectDelete}

@@ -15,7 +15,7 @@ describe('ReportService Integration Tests', () => {
     let testReportId;
     let testFilePath;
     let testFileName;
-    const TEST_PROFILE_ID = '268daf6f-363d-4ca1-9a53-7fd6e3985746';
+    const TEST_PROFILE_ID = 'e9f9a36c-5d22-49c8-9493-30cbf2f3fc67';
 
     beforeAll(async () => {
         // Spy on console.error and suppress output

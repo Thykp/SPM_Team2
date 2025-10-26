@@ -168,6 +168,21 @@ export type UpdateProjectRequest = {
 };
 
 
+export interface RecurrenceDto {
+  id: string;
+  task_id: string;
+  frequency: "Day" | "Week" | "Month";
+  interval: number;
+  nextOccurrence?: string; // Optional, depending on backend
+  end_date?: string | null; // Null if no end date
+}
+
+export interface RecurrencePostRequestDto {
+  task_id?: string;
+  frequency: "Day" | "Week" | "Month";
+  interval: number;
+  end_date?: string | null; // Null if no end date
+}
 
 // ----- Services -----
 export const Profile = {
@@ -538,5 +553,31 @@ export const Notification = {
     await api.patch(url)
   },
 }
+export const Recurrence = {
+  // Fetch all recurrences for a specific task
+  getRecurrencesByTaskId: async (taskId: string): Promise<RecurrenceDto[]> => {
+    const url = `/manage-task/api/recurrence/task/${taskId}`;
+    const { data } = await api.get<RecurrenceDto[]>(url);
+    return data;
+  },
+
+  // Create a new recurrence
+  createRecurrence: async (recurrence: RecurrencePostRequestDto): Promise<void> => {
+    const url = `/manage-task/api/recurrence/`;
+    await api.post(url, recurrence);
+  },
+
+  // Update an existing recurrence
+  updateRecurrence: async (recurrenceId: string, recurrence: RecurrencePostRequestDto): Promise<void> => {
+    const url = `/manage-task/api/recurrence/${recurrenceId}`;
+    await api.put(url, recurrence);
+  },
+
+  // Delete a recurrence by ID
+  deleteRecurrence: async (recurrenceId: string): Promise<void> => {
+    const url = `/manage-task/api/recurrence/${recurrenceId}`;
+    await api.delete(url);
+  },
+};
 
 export default api;

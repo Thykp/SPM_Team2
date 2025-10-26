@@ -30,7 +30,7 @@ import { Notification as NotificationApi } from "@/lib/api";
 
 interface CreateTaskProps {
   userId: string;
-  onTaskCreated: (task: any) => void;
+  onTaskCreated: () => void;
   onClose: () => void;
 }
 
@@ -43,6 +43,13 @@ const STATUSES = [
 ] as const;
 
 type StatusType = (typeof STATUSES)[number];
+
+const formatToLocalDatetime = (dateString: string) => {
+  const date = new Date(dateString);
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
+  return localDate.toISOString().slice(0, 16);
+};
 
 const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose }) => {
   const { profile } = useAuth();
@@ -59,7 +66,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
     description: "",
     status: "Unassigned",
     priority: 5,
-    deadline: new Date().toISOString().slice(0, 16),
+    deadline: formatToLocalDatetime(new Date().toISOString()),
     owner: userId,
     collaborators: [],
   });
@@ -79,15 +86,21 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
 
         // Find the current user's profile
         const currentUserProfile = allUsers.find((user: UserRow) => user.id === userId);
+        console.log("Current User Profile:", currentUserProfile); // Debugging log
+
         if (!currentUserProfile) {
           console.error("Current user profile not found");
           return;
         }
 
-        const { role: currentUserRole, team_id: currentUserTeamId, department_id: currentUserDepartmentId } = currentUserProfile;
+        const { role: currentUserRole, team: currentUserTeamId, department: currentUserDepartmentId } = currentUserProfile;
+        console.log("Current User Role:", currentUserRole);
+        console.log("Current User Team ID:", currentUserTeamId);
+        console.log("Current User Department ID:", currentUserDepartmentId);
 
         // Filter assignable users based on the current user's role
         let filteredUsers = allUsers.filter((user: UserRow) => {
+          console.log("Checking User:", user); // Debugging log
           switch (currentUserRole) {
             case "Senior Management":
               return true; // Senior Management can assign anyone
@@ -102,6 +115,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
               return false; // Other roles cannot assign owners
           }
         });
+
+        console.log("Filtered Users:", filteredUsers); // Debugging log
 
         // Ensure the current user is included in the filtered users
         if (!filteredUsers.some((user: UserRow) => user.id === userId)) {
@@ -143,8 +158,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
         priority: newTask.priority,
       };
 
-      const createdTask = await TaskApi.createTask(taskData);
-      onTaskCreated(createdTask);
+      await TaskApi.createTask(taskData);
+      onTaskCreated();
 
       await NotificationApi.publishAddedToResource({
         resourceType: "task",
@@ -181,13 +196,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatToLocalDatetime = (dateString: string) => {
-    const date = new Date(dateString);
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
-    return localDate.toISOString().slice(0, 16);
   };
 
   return (
@@ -274,23 +282,30 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
                 <Label htmlFor="priority" className="text-base font-medium">
                   Priority (1-10)
                 </Label>
-                <select
-                  id="priority"
-                  value={newTask.priority}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({
-                      ...prev,
-                      priority: parseInt(e.target.value, 10),
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => (
-                    <option key={priority} value={priority}>
-                      {priority}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    id="priority"
+                    value={newTask.priority}
+                    onChange={(e) =>
+                      setNewTask((prev) => ({
+                        ...prev,
+                        priority: parseInt(e.target.value, 10),
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => {
+                      let label = `${priority}`;
+                      if (priority <= 3) label += " (Low)";
+                      else if (priority <= 7) label += " (Medium)";
+                      else label += " (High)";
+
+                      return (
+                        <option key={priority} value={priority}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
               </div>
             </div>
 
@@ -302,6 +317,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
               <Input
                 id="deadline"
                 type="datetime-local"
+                min={new Date().toISOString().slice(0, 16)}
                 value={formatToLocalDatetime(newTask.deadline)}
                 onChange={(e) =>
                   setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
