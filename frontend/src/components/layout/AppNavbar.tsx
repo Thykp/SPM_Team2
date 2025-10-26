@@ -28,8 +28,7 @@ export function AppNavbar() {
     { id: 2, name: "Projects", path: "/app/projects" },
     { id: 3, name: "Manage Users", path: "/app/manage-users" },
     { id: 4, name: "Team Tasks", path: "/app/team-task" },
-    { id: 5, name: "Staff Tasks", path: "/app/staff-tasks" },
-    { id: 6, name: "Reports", path: "/app/reports" },
+    { id: 5, name: "Reports", path: "/app/reports" },
   ];
 
   const [query, setQuery] = useState("");
