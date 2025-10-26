@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { type TaskDTO } from '@/lib/api';
+import { type TaskDTO, TaskApi } from '@/lib/api';
 
 interface UseRealtimeTasksProps {
   projectId: string;
@@ -100,6 +100,49 @@ export const useRealtimeTasks = ({
           if (oldRecord.project_id === projectId) {
             removeTaskFromState(oldRecord.id);
             callbacksRef.current.onTaskDelete?.(oldRecord.id);
+          }
+        }
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'revamped_task_participant',
+      }, async (payload) => {
+        const { new: newRecord, old: oldRecord } = payload;
+        
+        // Get task_id from either new or old record
+        const taskId = (newRecord as any)?.task_id || (oldRecord as any)?.task_id;
+        
+        if (taskId) {
+          try {
+            // Re-fetch the task with updated participants using the API client
+            const enrichedTask = await TaskApi.getTaskByIdWithOwner(taskId);
+            
+            // Update the task in state
+            setTasks(prev => {
+              const task = prev.find(t => t.id === taskId);
+              if (!task || task.project_id !== projectId) {
+                return prev;
+              }
+              
+              const index = prev.findIndex(t => t.id === taskId);
+              if (index === -1) {
+                return prev;
+              }
+              
+              const updated = [...prev];
+              updated[index] = {
+                ...enrichedTask,
+                parent: updated[index].parent,
+              };
+              
+              return updated;
+            });
+            
+            // Call the update callback
+            callbacksRef.current.onTaskUpdate?.(enrichedTask);
+          } catch (err) {
+            console.error('[useRealtimeTasks] Failed to re-fetch task after participant change:', err);
           }
         }
       })
