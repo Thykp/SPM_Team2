@@ -21,7 +21,8 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"  
+import { cn } from "@/lib/utils"
+import { useLocation } from 'react-router-dom';
 
 type ViewType = "board" | "timeline" | "cards"
 
@@ -41,6 +42,9 @@ function last30Days(): { start: string; end: string } {
 }
 
 export function Dashboard() {
+  const location  = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const taskName = queryParams.get('taskName');
   const { profile, authLoading } = useAuth()
   const [tasks, setTasks] = useState<TaskType[]>([])
   const [allTasksCache, setAllTasksCache] = useState<TaskType[] | null>(null)
@@ -100,6 +104,12 @@ export function Dashboard() {
     }
     loadAllIfNeeded()
   }, [ownerFilter, allTasksCache, profile?.id])
+  
+  useEffect(() => {
+    if (taskName && tasks.length > 0) {
+      setSearchTerm(taskName);
+    }
+  }, [taskName, tasks]);
 
   const handleTaskCreated = async () => {
     setIsCreateTaskOpen(false); // Close the modal
