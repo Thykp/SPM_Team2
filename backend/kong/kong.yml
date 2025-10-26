@@ -61,7 +61,8 @@ services:
 plugins:
   - name: rate-limiting
     config:
-      minute: 100
+      minute: 1000
+      hour: 10000
       policy: local
 
   - name: cors
