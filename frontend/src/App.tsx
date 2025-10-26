@@ -12,7 +12,6 @@ import ManageUser from './pages/app/ManageUser'
 import TeamTask from './pages/app/TeamTask'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import RoleGate from './components/auth/RoleGate'
-import StaffTasks from "@/pages/app/StaffTasks";
 
 function App() {
 
@@ -45,16 +44,8 @@ function App() {
           <Route
             path="team-task"
             element={
-              <RoleGate allow={["Staff"]}>
+              <RoleGate allow={["Staff", "Manager"]}>
                 <TeamTask />
-              </RoleGate>
-            }
-          />
-          <Route
-            path="staff-tasks"
-            element={
-              <RoleGate allow={["Manager", "Director", "Senior Management"]}>
-                <StaffTasks />
               </RoleGate>
             }
           />

@@ -10,7 +10,6 @@ const navigation = [
   { name: "Projects", href: "/app/projects", icon: FolderOpen },
   { name: "Manage Users", href: "/app/manage-users", icon: Users },
   { name: "Team Tasks", href: "/app/team-task", icon: Users },
-  { name: "Staff Tasks", href: "/app/staff-tasks", icon: Users },
   { name: "Reports", href: "/app/reports", icon: FileText },
 ]
 
@@ -31,6 +30,21 @@ function getInitials(input?: string) {
 export function Sidebar() {
   const { user, profile } = useAuth()
   const location = useLocation()
+  const userRole = profile?.role;
+
+  // Filter navigation based on user role
+  const visibleNavigation = navigation.filter(item => {
+    if (item.href === "/app/manage-users") {
+      // Only show to Manager, Director, Senior Management (NOT Staff)
+      return userRole && ["Manager", "Director", "Senior Management"].includes(userRole);
+    }
+    if (item.href === "/app/team-task") {
+      // Only show to Staff and Managers
+      return userRole === "Staff" || userRole === "Manager";
+    }
+    // Show dashboard, projects, reports to everyone
+    return true;
+  });
 
   return (
     <div className="flex h-full w-64 flex-col bg-background border-r">
@@ -44,7 +58,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-        {navigation.map((item) => {
+        {visibleNavigation.map((item) => {
           const isActive = location.pathname === item.href
           return (
             <Button

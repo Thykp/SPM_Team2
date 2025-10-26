@@ -28,8 +28,7 @@ export function AppNavbar() {
     { id: 2, name: "Projects", path: "/app/projects" },
     { id: 3, name: "Manage Users", path: "/app/manage-users" },
     { id: 4, name: "Team Tasks", path: "/app/team-task" },
-    { id: 5, name: "Staff Tasks", path: "/app/staff-tasks" },
-    { id: 6, name: "Reports", path: "/app/reports" },
+    { id: 5, name: "Reports", path: "/app/reports" },
   ];
 
   const [query, setQuery] = useState("");
@@ -63,9 +62,9 @@ export function AppNavbar() {
 
           <Link to="/app" className="flex items-center space-x-2 md:hidden">
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">A</span>
+              <span className="text-primary-foreground font-bold text-xs">L</span>
             </div>
-            <span className="font-semibold">AppName</span>
+            <span className="font-semibold">Lira</span>
           </Link>
         </div>
 
