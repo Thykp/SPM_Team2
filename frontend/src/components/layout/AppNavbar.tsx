@@ -63,9 +63,9 @@ export function AppNavbar() {
 
           <Link to="/app" className="flex items-center space-x-2 md:hidden">
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">A</span>
+              <span className="text-primary-foreground font-bold text-xs">L</span>
             </div>
-            <span className="font-semibold">AppName</span>
+            <span className="font-semibold">Lira</span>
           </Link>
         </div>
 
