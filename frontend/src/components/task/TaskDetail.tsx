@@ -42,6 +42,20 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
         return userProfiles[userId]?.display_name || userId;
     };
 
+    // Check if current user can add subtasks (owner or collaborator)
+    const canAddSubtask = user?.id && (
+        currentTask.owner === user.id || 
+        currentTask.collaborators?.includes(user.id)
+    );
+
+    // Check if current user can modify a specific subtask (owner or collaborator)
+    const canModifySubtask = (subtask: taskType) => {
+        return user?.id && (
+            subtask.owner === user.id || 
+            subtask.collaborators?.includes(user.id)
+        );
+    };
+
     const handleDeleteSubtask = async () => {
       if (!deletingSubtask) return;
 
@@ -290,8 +304,8 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                     {subTasks.length} {subTasks.length === 1 ? 'task' : 'tasks'}
                   </Badge>
                   </div>
-                  {/* Add Subtask Button */}
-                  {currentTask.status !== "Completed" && (
+                  {/* Add Subtask Button - only for owner and collaborators */}
+                  {currentTask.status !== "Completed" && canAddSubtask && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -320,33 +334,35 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                           {/* Title Row with Icons */}
                           <div className="flex items-center justify-between">
                             <h5 className="font-medium text-sm">{subTask.title}</h5>
-                            <div className="flex items-center gap-2">
-                              {/* Edit Button */}
-                              <button
-                                type="button"
-                                className="p-2 rounded-full hover:bg-primary/20 hover:scale-110 transition-transform transition-colors"
-                                aria-label="Edit Subtask"
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Prevent card click event
-                                  setEditingSubtask(subTask); // Open the edit modal
-                                }}
-                              >
-                                <Edit className="h-4 w-4 text-primary" />
-                              </button>
+                            {canModifySubtask(subTask) && (
+                              <div className="flex items-center gap-2">
+                                {/* Edit Button - only for owner and collaborators */}
+                                <button
+                                  type="button"
+                                  className="p-2 rounded-full hover:bg-primary/20 hover:scale-110 transition-transform transition-colors"
+                                  aria-label="Edit Subtask"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent card click event
+                                    setEditingSubtask(subTask); // Open the edit modal
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 text-primary" />
+                                </button>
 
-                              {/* Delete Button */}
-                              <button
-                                type="button"
-                                className="p-2 rounded-full hover:bg-destructive/20 hover:scale-110 transition-transform transition-colors"
-                                aria-label="Delete Subtask"
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Prevent card click event
-                                  setDeletingSubtask(subTask); // Open the delete confirmation dialog
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </button>
-                            </div>
+                                {/* Delete Button - only for owner and collaborators */}
+                                <button
+                                  type="button"
+                                  className="p-2 rounded-full hover:bg-destructive/20 hover:scale-110 transition-transform transition-colors"
+                                  aria-label="Delete Subtask"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent card click event
+                                    setDeletingSubtask(subTask); // Open the delete confirmation dialog
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           <p className="text-sm text-muted-foreground mt-1">{subTask.description}</p>
