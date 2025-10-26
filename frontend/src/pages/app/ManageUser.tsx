@@ -6,13 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/layout/Loader";
 import { cn } from "@/lib/utils";
 import { Users, Building2, FileDown, Loader2 } from "lucide-react";
-import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
+import { UserTaskDrawer } from "@/components/user/UserTaskDrawer";
 
 type CacheEntry<T> = { ts: number; data: T };
 const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
@@ -147,8 +146,6 @@ export default function ManageUser() {
   const [tasks, setTasks] = useState<TaskType[] | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
 
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailTask, setDetailTask] = useState<TaskType | null>(null);
 
   // progress % per user
   const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
@@ -290,35 +287,6 @@ export default function ManageUser() {
     } catch {
       setBanner(prev => prev ?? { type: "info", msg: "Some progress data is cached due to rate limits." });
     }
-  };
-
-  const sortTasksHierarchically = (taskList: TaskType[]) => {
-    const sorted: TaskType[] = [];
-    const taskMap = new Map<string, TaskType>();
-    const childrenMap = new Map<string, TaskType[]>();
-
-    taskList.forEach(task => {
-      taskMap.set(task.id, task);
-      if (task.parent) {
-        const children = childrenMap.get(task.parent) || [];
-        children.push(task);
-        childrenMap.set(task.parent, children);
-      }
-    });
-
-    const addTaskAndChildren = (task: TaskType) => {
-      sorted.push(task);
-      const children = childrenMap.get(task.id) || [];
-      children.forEach(child => addTaskAndChildren(child));
-    };
-
-    taskList.forEach(task => {
-      if (!task.parent) {
-        addTaskAndChildren(task);
-      }
-    });
-
-    return sorted;
   };
 
   async function callReport(kind: "team" | "department") {
@@ -570,113 +538,14 @@ export default function ManageUser() {
         </div>
       )}
 
-      {/* Drawer: shows ONLY the selected user's task list (and aggregate), not task details */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>
-              {selected ? `Tasks · ${selected.display_name}` : "Tasks"}
-            </SheetTitle>
-            <p className="text-xs text-muted-foreground mt-1">Click a task to view details</p>
-          </SheetHeader>
-
-          {!selected ? (
-            <div className="py-6 text-muted-foreground">Select a user to see tasks.</div>
-          ) : tasksLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader />
-            </div>
-          ) : tasks == null ? (
-            <div className="py-6 text-muted-foreground">Loading…</div>
-          ) : tasks.length === 0 ? (
-            <div className="py-6 text-muted-foreground">No tasks found for this user.</div>
-          ) : (
-            <div className="py-4 space-y-5 overflow-y-auto">
-              <Aggregate tasks={tasks} />
-
-              {/* Task list: clicking opens TaskDetailNavigator */}
-              <ul className="space-y-3">
-                {sortTasksHierarchically(tasks).map((t) => (
-                  <li
-                    key={t.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      setDetailTask(t);
-                      setDetailOpen(true);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        setDetailTask(t);
-                        setDetailOpen(true);
-                      }
-                    }}
-                    className={cn(
-                      "rounded-md border p-3 cursor-pointer transition-colors",
-                      "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring",
-                      t.status === "Completed"
-                        ? "bg-emerald-50/40 dark:bg-emerald-950/20"
-                        : "bg-card",
-                      t.parent && "ml-6"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium flex items-center gap-2">
-                          {t.parent && <span className="text-muted-foreground">└─</span>}
-                          <span>{t.title}</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {t.status ?? "—"}
-                        </div>
-                      </div>
-                      {t.deadline ? (
-                        <div className="text-xs text-muted-foreground">
-                          Due {new Date(t.deadline).toLocaleDateString()}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="mt-3">
-                      <ProgressBar value={statusToProgress(t.status)} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Task detail navigator opens in its own sheet */}
-      {detailTask && (
-        <TaskDetailNavigator
-          initialTask={detailTask}
-          isOpen={detailOpen}
-          onClose={() => {
-            setDetailOpen(false);
-            setDetailTask(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function Aggregate({ tasks }: { tasks: TaskType[] }) {
-  const total = tasks.length;
-  const done = tasks.filter(t => statusToProgress(t.status) >= 100).length;
-  const pct = total ? (done / total) * 100 : 0;
-  return (
-    <div className="rounded-md border p-3">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">Overall progress</span>
-        <span className="text-muted-foreground">
-          {done}/{total} ({Math.round(pct)}%)
-        </span>
-      </div>
-      <div className="mt-2">
-        <ProgressBar value={pct} />
-      </div>
+      {/* User task drawer */}
+      <UserTaskDrawer
+        isOpen={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        user={selected}
+        tasks={tasks}
+        tasksLoading={tasksLoading}
+      />
     </div>
   );
 }
