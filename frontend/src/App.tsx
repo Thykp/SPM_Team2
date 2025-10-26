@@ -44,7 +44,7 @@ function App() {
           <Route
             path="team-task"
             element={
-              <RoleGate allow={["Staff"]}>
+              <RoleGate allow={["Staff", "Manager"]}>
                 <TeamTask />
               </RoleGate>
             }
