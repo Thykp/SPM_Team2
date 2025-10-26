@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import EditTask from "./EditTask"; // Import the EditTask component
 import { TaskApi, type TaskDTO as apiTask } from "@/lib/api";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
+import { TaskReminder } from "./TaskReminder";
 import { useAuth } from "@/contexts/AuthContext";
 import { RecurTask } from "./RecurTask";
 import { cn } from "@/lib/utils";
@@ -103,9 +104,12 @@ export const Task: React.FC<TaskProps> = ({
           </Badge>
         </div>
       </div>
+      
 
-      <div className="absolute top-2 right-2">
-        <div className="absolute top-2 right-2">
+      <div className="absolute top-2 right-2 flex items-center space-x-2">
+        <TaskReminder taskId={taskContent.id} status={taskContent.status} deadline={taskContent.deadline} />
+
+        <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -116,47 +120,38 @@ export const Task: React.FC<TaskProps> = ({
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="z-[1000]">
               {taskContent.status !== "Completed" && (
                 <>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setEditing(true); // Open the EditTask modal
-                    }}
-                  >
+                  <DropdownMenuItem onClick={() => setEditing(true)}>
                     <Edit className="h-4 w-4 mr-2 text-gray-500" />
                     Edit Task
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setRecurring(true); // Open the RecurTask modal
-                    }}
-                  >
+
+                  <DropdownMenuItem onClick={() => setRecurring(true)}>
                     <Gauge className="h-4 w-4 mr-2 text-gray-500" />
                     Recur Task
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setShowAddSubtaskDialog(true); // Open the Add Subtask dialog
-                    }}
-                  >
+
+                  <DropdownMenuItem onClick={() => setShowAddSubtaskDialog(true)}>
                     <Plus className="h-4 w-4 mr-2 text-gray-500" />
                     Add Subtask
                   </DropdownMenuItem>
                 </>
               )}
-              
+
               <DropdownMenuItem
-                  onClick={() => setShowDeleteConfirmation(true)} 
+                onClick={() => setShowDeleteConfirmation(true)}
                 className="text-destructive"
               >
-              <Trash2 className="h-4 w-4 mr-2 text-red-500" />
-              Delete Task
+                <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+                Delete Task
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+
 
       {editing && (
         <EditTask

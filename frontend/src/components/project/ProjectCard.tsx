@@ -21,6 +21,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
 import { Project, Profile, type UpdateProjectRequest } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Notification as NotificationAPI } from '@/lib/api';
 
 // Define LiteUser type based on the API response structure
 type LiteUser = {
@@ -66,6 +68,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onPro
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [currentProjectData, setCurrentProjectData] = useState<any>(null);
 
+    // State for notification
+    const {profile} = useAuth();
+    const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
+
     // Update local project when the prop changes
     useEffect(() => {
         setLocalProject(project);
@@ -107,6 +113,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onPro
                 description: project.description,
                 collaborators: currentProject.collaborators || [],
             });
+            setOriginalCollaborators(currentProject.collaborators || []);
+            console.log("Original collaborators:", currentProject.collaborators);
             setUserSearchTerm(''); // Reset search term
             setIsEditDialogOpen(true);
         } catch (error) {
@@ -148,7 +156,15 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onPro
             );
             console.log("Collaborators update result:", collaboratorsResult);
             }
-            
+
+
+            // checking and notifying collaborators
+            const updatedCollaborators = editForm.collaborators || [];
+            const newlyAdded = updatedCollaborators.filter((id) => !originalCollaborators.includes(id));
+
+            console.log("New collaborators detected:", newlyAdded);
+
+
             // Build update payload with current values + changes
             const updateData: UpdateProjectRequest = {
                 title: editForm.title,
@@ -181,8 +197,70 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onPro
                 if (onProjectUpdate) {
                     onProjectUpdate(updatedProjectData);
                 }
+                const hasNonOwnerChanges =
+                    (updatedProject.title !== currentProject.title ||
+                    updatedProject.description !== currentProject.description);
+
+                const collaboratorsToNotify = updatedProjectData.members.filter(id => id !== profile?.id) || [];
+
+                if (hasNonOwnerChanges && collaboratorsToNotify.length != 0) {
+                    await NotificationAPI.publishUpdate({
+                        updateType: "Edited",
+                        resourceType: "project",
+                        resourceId:updatedProject.id,
+                        resourceContent: { 
+                            updated: {...updatedProject},
+                            original: {...currentProject}
+                        },
+                        collaboratorIds: collaboratorsToNotify,
+                        updatedBy: profile?.display_name || "Unknown User",
+                    });
+                }
+
+                if (updatedProject.owner != currentProject.owner){
+                    await NotificationAPI.publishUpdate({
+                        updateType: "Assigned",
+                        resourceType: "project",
+                        resourceId:updatedProject.id,
+                        resourceContent: { 
+                            updated: {...updatedProject},
+                            original: {...currentProject}
+                        },
+                        collaboratorIds: [updatedProject.owner],
+                        updatedBy: profile?.display_name || "Unknown User",
+                    });
+                }
                 
                 setIsEditDialogOpen(false);
+
+                if (newlyAdded.length > 0) {
+                    try {
+                        console.log("Publishing notification for new collaborators...");
+
+                        await NotificationAPI.publishAddedToResource({
+                            resourceId: project.id,
+                            resourceType: "project",
+                            collaboratorIds: newlyAdded,
+                            resourceContent:{ 
+                                updated: {...updatedProjectData},
+                                original: {...currentProjectData}
+                            },
+                            addedBy: profile?.display_name || "unknown",
+                        }); 
+                        console.log(JSON.stringify({
+                            resourceId: project.id,
+                            resourceType: "project",
+                            resourceContent:{ ...updatedProjectData },
+                            collaboratorIds: newlyAdded,
+                            addedBy: profile?.display_name || "unknown",
+                        }))
+
+                        console.log("Notification published for new collaborators:", newlyAdded);
+                    } catch (notifyError) {
+                        console.error("Failed to publish notification:", notifyError);
+                    }
+
+                }
             } else {
                 console.error('Update failed:', result);
             }

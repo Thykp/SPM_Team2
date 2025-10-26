@@ -1,3 +1,5 @@
+// add code such that it stores orignialcollaborators, then sees newly added collaborators. if have, send a notification to them with the correct payload.
+
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +9,9 @@ import { TaskApi, Profile } from "@/lib/api";
 import { X, ChevronsUpDown, Check } from "lucide-react";
 // import { CollaboratorPicker } from "@/components/CollaboratorPicker";
 import CollaboratorPicker from "@/components/project/CollaboratorPickerNewProj";
+import { useAuth } from "@/contexts/AuthContext";
+import { Notification as NotificationAPI } from "@/lib/api";
+
 import { Project } from "@/lib/api";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -53,6 +58,9 @@ interface EditTaskProps {
 }
 
 const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, projectId, onClose, onTaskUpdated }) => {
+  const { profile } = useAuth();
+  const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
+  const [originalTask, setOriginalTask] = useState<LocalTask>();
   const [task, setTask] = useState<LocalTask | null>(null); // State to store the fetched task
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]); // Add state for users
@@ -72,6 +80,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
         const data = await TaskApi.getTaskByIdWithOwner(taskId); // Fetch the task
         console.log("Fetched task data:", data);
         setTask(data); // Set the fetched task
+        setOriginalTask(data)
+        setOriginalCollaborators(data.collaborators || []); // store original collaborators
 
         // Find and store the original owner in `currentUser`
         if (data.owner) {
@@ -219,8 +229,87 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
 
       console.log("Task successfully updated:", updatedTask);
 
+      const updatedTaskDetails = {
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        deadline: utcDeadline,
+        collaborators: task.collaborators,
+        owner: task.owner,
+        parent: task.parent,
+        priority: task.priority || 5, // Default priority if not set
+        project_id: task.project_id || null, // Preserve the original project_id
+      }
+
       // Close the modal after updating
       onClose();
+
+      // --- Notify collaborators when newly added ---
+      const newlyAdded = updatedTaskDetails.collaborators.filter((id) => !originalCollaborators.includes(id));
+      if (newlyAdded.length > 0) {
+        try {
+          await NotificationAPI.publishAddedToResource({
+            resourceType: "task",
+            resourceId: taskId,
+            collaboratorIds: newlyAdded,
+            resourceContent: {...updatedTaskDetails},
+            addedBy: profile?.display_name || "Unknown User",
+          });
+          console.log("Notifications published for new collaborators when project edited:", newlyAdded);
+        } catch (notifyErr) {
+          console.error("Failed to publish notification on project edited:", notifyErr);
+        }
+      }
+
+        // --- Notify collaborators about edits ---
+    let  collaboratorsToNotify = [...updatedTaskDetails.collaborators].filter(id => id !== null && id !== profile?.id);
+    if(updatedTaskDetails.owner && updatedTaskDetails.owner !== profile?.id) collaboratorsToNotify.push(updatedTaskDetails.owner);
+    if (collaboratorsToNotify.length > 0 && originalTask) {
+      const hasNonOwnerChanges = (
+        originalTask.title !== updatedTaskDetails.title ||
+        originalTask.description !== updatedTaskDetails.description ||
+        originalTask.status !== updatedTaskDetails.status ||
+        originalTask.priority !== updatedTaskDetails.priority ||
+        originalTask.deadline !== updatedTaskDetails.deadline.replace(".000Z", "+00:00"))
+
+      if (hasNonOwnerChanges) {
+        await NotificationAPI.publishUpdate({
+          updateType: "Edited",
+          resourceType: "task",
+          resourceId:taskId,
+          resourceContent: { 
+            updated: {...updatedTaskDetails},
+            original: {...originalTask}
+          },
+          collaboratorIds: collaboratorsToNotify,
+          updatedBy: profile?.display_name || "Unknown User",
+        });
+        console.log(JSON.stringify({updateType: "Edited",
+          resourceType: "task",
+          resourceId:taskId,
+          resourceContent: { 
+            updated: {...updatedTaskDetails},
+            original: {...originalTask}
+          },
+          collaboratorIds: collaboratorsToNotify,
+          updatedBy: profile?.display_name || "Unknown User",}))
+      }  
+    }
+      // --- Notify new owner of assignment---
+      if (originalTask?.owner !== updatedTaskDetails.owner && updatedTaskDetails.owner) {
+        await NotificationAPI.publishUpdate({
+          updateType: "Assigned",
+          resourceType: "task",
+            resourceId:taskId,
+            resourceContent: {
+              updated: {...updatedTaskDetails},
+              original: {...originalTask}
+            },
+            collaboratorIds: [updatedTaskDetails.owner],
+            updatedBy: profile?.display_name || "Unknown User",
+        });
+      }
+
       if (typeof onTaskUpdated === "function") onTaskUpdated();
     } catch (err: any) {
       console.error("Failed to update task:", err);

@@ -14,7 +14,7 @@ const navigation = [
 ]
 
 const secondaryNavigation = [
-  { name: "Settings", href: "/app/settings", icon: Settings },
+  { name: "Notification Settings", href: "/app/settings", icon: Settings },
   { name: "Help", href: "/app/help", icon: HelpCircle },
 ]
 
