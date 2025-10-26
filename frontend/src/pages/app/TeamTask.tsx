@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Profile, TaskApi as TaskAPI, Report } from "@/lib/api";
+import { Profile, TaskApi as TaskAPI } from "@/lib/api";
 import type { TaskDTO as TaskType } from "@/lib/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -8,15 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/layout/Loader";
 import { cn } from "@/lib/utils";
-import { Users, Building2, FileDown, Loader2 } from "lucide-react";
 import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
 
 type CacheEntry<T> = { ts: number; data: T };
-const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
-const CACHE_TTL_PCT_MS   = 2 * 60 * 1000;   // 2 minutes
+const CACHE_TTL_USERS_MS = 5 * 60 * 1000;
+const CACHE_TTL_PCT_MS   = 2 * 60 * 1000;
 
 function setCache<T>(key: string, data: T) {
   try {
@@ -80,61 +78,13 @@ function statusToProgress(status?: TaskType["status"]): number {
   }
 }
 
-/** MUTUALLY EXCLUSIVE role gates for the action buttons */
-const canSeeTeamButton = (role?: string | null) => role === "Manager";
-const canSeeDepartmentButton = (role?: string | null) =>
-  role === "Director" || role === "Senior Management";
-
-// date helpers
-function toYMD(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function last30Days(): { start: string; end: string } {
-  const end = new Date();
-  const start = new Date(end.getTime() - 29 * 24 * 3600 * 1000);
-  return { start: toYMD(start), end: toYMD(end) };
-}
-
-/**
- * Determine if user `u` should be visible under the current user's scope.
- * - Director/Senior Management: everyone except other Directors/Senior Management.
- * - Manager:  Staff in the SAME TEAM (ID-based check).
- * - Staff:    nobody.
- */
-function isReportForMe(
-  myRole?: string | null,
-  myTeamId?: string | null,
-  myDepartmentId?: string | null,
-  meId?: string,
-  u?: UserRow
-) {
-  if (!u || !meId) return false;
+function isTeammate(myTeamId?: string | null, meId?: string, u?: UserRow) {
+  if (!u || !meId || !myTeamId) return false;
   if (u.id === meId) return false;
-
-  const isHR = myDepartmentId === "00000000-0000-0000-0000-000000000005"; // HR department ID
-
-  if (myRole === "Director" && !isHR) {
-    return u.role !== "Director" && u.role !== "Senior Management" 
-    && u.department_id === myDepartmentId;
-  }
-
-  if (myRole === "Senior Management" || isHR) {
-    return u.role !== "Director"; // No department restriction
-  }
-
-  if (myRole === "Manager") {
-    if (!myTeamId) return false;
-    return u.role === "Staff" && u.team_id === myTeamId;
-  }
-
-  return false;
+  return u.team_id === myTeamId;
 }
 
-export default function ManageUser() {
+export default function TeamTask() {
   const { profile } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -150,29 +100,16 @@ export default function ManageUser() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTask, setDetailTask] = useState<TaskType | null>(null);
 
-  // progress % per user
   const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
 
-  // report date range (default last 30 days)
-  const defaultRange = last30Days();
-  const [startDate, setStartDate] = useState<string>(defaultRange.start);
-  const [endDate, setEndDate] = useState<string>(defaultRange.end);
-
   const myUserId = (profile as any)?.id as string | undefined;
-  const myRole = (profile?.role as string | undefined) ?? undefined;
 
-  const [myTeamId, setMyTeamId] = useState<string | null>(null);
-  const [myDepartmentId, setMyDepartmentId] = useState<string | null>(null);
+  const [banner, setBanner] = useState<{ type: "info" | "error"; msg: string } | null>(null);
 
-  const [reportBusy, setReportBusy] = useState<"team" | "department" | null>(null);
-  const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string; href?: string } | null>(null);
-
-  // Cache keys
-  const USERS_CACHE_KEY = "manageUser:users:all";
-  const PCT_CACHE_KEY   = myUserId ? `manageUser:pct:${myUserId}` : "manageUser:pct:anon";
+  const USERS_CACHE_KEY = "teamTask:users:all";
+  const PCT_CACHE_KEY   = myUserId ? `teamTask:pct:${myUserId}` : "teamTask:pct:anon";
 
   useEffect(() => {
-    // load users (SWR: render from cache then revalidate)
     const loadUsers = async () => {
       setLoading(true);
       setError(null);
@@ -186,28 +123,22 @@ export default function ManageUser() {
 
       if (all) {
         const me = myUserId ? all.find(u => u.id === myUserId) : undefined;
-        setMyTeamId(me?.team_id ?? null);
-        setMyDepartmentId(me?.department_id ?? null);
 
-        const mine = all.filter(u => isReportForMe(myRole, me?.team_id ?? null, me?.department_id ?? null, myUserId, u));
-        setUsers(mine);
+        const teammates = all.filter(u => isTeammate(me?.team_id ?? null, myUserId, u));
+        setUsers(teammates);
         setLoading(false);
       }
 
       try {
         const freshAll = await Profile.getAllUsers() as unknown as UserRow[];
-        if (freshAll.length > 0) {
-          setCache(USERS_CACHE_KEY, freshAll);
+        setCache(USERS_CACHE_KEY, freshAll);
 
-          const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
-          setMyTeamId(meFresh?.team_id ?? null);
-          setMyDepartmentId(meFresh?.department_id ?? null);
+        const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
 
-          const mineFresh = freshAll.filter(u => isReportForMe(myRole, meFresh?.team_id ?? null, meFresh?.department_id ?? null, myUserId, u));
-          setUsers(mineFresh);
+        const teammatesFresh = freshAll.filter(u => isTeammate(meFresh?.team_id ?? null, myUserId, u));
+        setUsers(teammatesFresh);
 
-          void prefetchPct(mineFresh);
-        }
+        void prefetchPct(teammatesFresh);
       } catch (e: any) {
         if (!all) {
           setError("Failed to load your team. Please try again.");
@@ -227,7 +158,7 @@ export default function ManageUser() {
     loadPct();
     loadUsers();
 
-  }, [myUserId, myRole]);
+  }, [myUserId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -292,199 +223,61 @@ export default function ManageUser() {
     }
   };
 
-  async function callReport(kind: "team" | "department") {
-    if (reportBusy) return;
-    setBanner(null);
-    setReportBusy(kind);
+  const sortTasksHierarchically = (taskList: TaskType[]) => {
+    const sorted: TaskType[] = [];
+    const taskMap = new Map<string, TaskType>();
+    const childrenMap = new Map<string, TaskType[]>();
 
-    try {
-      if (!myUserId) throw new Error("Your user ID is missing from the session.");
-
-      if (kind === "team") {
-        if (!canSeeTeamButton(myRole)) throw new Error("You are not allowed to generate a team report.");
-        if (!myTeamId) throw new Error("Your team is not set.");
-        const res = await Report.generateTeam(myTeamId, { startDate, endDate, userId: myUserId });
-
-        const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
-        const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
-
-        setBanner({
-          type: href ? "success" : "info",
-          msg: title || "Team report requested successfully.",
-          href,
-        });
-      } else {
-        if (!canSeeDepartmentButton(myRole)) throw new Error("You are not allowed to generate a department report.");
-        if (!myDepartmentId) throw new Error("Your department is not set.");
-        const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate, userId: myUserId });
-
-        const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
-        const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
-
-        setBanner({
-          type: href ? "success" : "info",
-          msg: title || "Department report requested successfully.",
-          href,
-        });
+    taskList.forEach(task => {
+      taskMap.set(task.id, task);
+      if (task.parent) {
+        const children = childrenMap.get(task.parent) || [];
+        children.push(task);
+        childrenMap.set(task.parent, children);
       }
-    } catch (e: any) {
-      setBanner({ type: "error", msg: e?.message || "Failed to generate report." });
-    } finally {
-      setReportBusy(null);
-    }
-  }
+    });
 
-  const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate);
-  const disableTeamBtn = reportBusy !== null || !myTeamId || !myUserId || dateInvalid;
-  const disableDeptBtn = reportBusy !== null || !myDepartmentId || !myUserId || dateInvalid;
+    const addTaskAndChildren = (task: TaskType) => {
+      sorted.push(task);
+      const children = childrenMap.get(task.id) || [];
+      children.forEach(child => addTaskAndChildren(child));
+    };
+
+    taskList.forEach(task => {
+      if (!task.parent) {
+        addTaskAndChildren(task);
+      }
+    });
+
+    return sorted;
+  };
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-2">Manage Users</h1>
+      <h1 className="text-3xl font-bold mb-2">Team Tasks</h1>
       <p className="text-muted-foreground mb-6">
-        View your reports, their workloads, and task progress.
+        View your teammates, their workloads, and task progress.
       </p>
 
-      {/* Top actions */}
       <div className="mb-4 space-y-3">
         {banner && (
           <div
             className={cn(
               "rounded-md border p-3 text-sm",
-              banner.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/20"
-                : banner.type === "error"
+              banner.type === "error"
                 ? "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/20"
                 : "border-border bg-muted/30 text-foreground"
             )}
             role="status"
             aria-live="polite"
           >
-            <div className="flex items-center justify-between gap-3">
-              <span>{banner.msg}</span>
-              {banner.href && (
-                <a
-                  href={banner.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 font-medium"
-                >
-                  Open report
-                </a>
-              )}
-            </div>
+            <span>{banner.msg}</span>
           </div>
         )}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {/* Date range */}
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              aria-label="Start date"
-            />
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              aria-label="End date"
-            />
-          </div>
-
-          {/* Subtle, outlined button group */}
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
-            <div className="inline-flex overflow-hidden rounded-lg border border-border shadow-sm bg-card">
-              {canSeeTeamButton(myRole) && (
-                <Button
-                  onClick={() => callReport("team")}
-                  disabled={disableTeamBtn}
-                  aria-busy={reportBusy === "team"}
-                  title={
-                    !myUserId
-                      ? "Missing user id"
-                      : !myTeamId
-                      ? "No team associated with your profile"
-                      : dateInvalid
-                      ? "Invalid date range"
-                      : "Generate team-level report"
-                  }
-                  variant="outline"
-                  className={cn(
-                    "gap-2 rounded-none px-3 sm:px-4",
-                    "hover:bg-muted",
-                    "disabled:opacity-60 disabled:cursor-not-allowed"
-                  )}
-                >
-                  {reportBusy === "team" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Users className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  <span className="hidden sm:inline">
-                    {reportBusy === "team" ? "Generating…" : "Team Report"}
-                  </span>
-                  <span className="sm:hidden">
-                    {reportBusy === "team" ? "…" : "Team"}
-                  </span>
-                </Button>
-              )}
-
-              {canSeeDepartmentButton(myRole) && (
-                <Button
-                  onClick={() => callReport("department")}
-                  disabled={disableDeptBtn}
-                  aria-busy={reportBusy === "department"}
-                  title={
-                    !myUserId
-                      ? "Missing user id"
-                      : !myDepartmentId
-                      ? "No department associated with your profile"
-                      : dateInvalid
-                      ? "Invalid date range"
-                      : "Generate department-level report"
-                  }
-                  variant="outline"
-                  className={cn(
-                    "gap-2 rounded-none px-3 sm:px-4",
-                    "hover:bg-muted",
-                    "disabled:opacity-60 disabled:cursor-not-allowed"
-                  )}
-                >
-                  {reportBusy === "department" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Building2 className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  <span className="hidden sm:inline">
-                    {reportBusy === "department" ? "Generating…" : "Department Report"}
-                  </span>
-                  <span className="sm:hidden">
-                    {reportBusy === "department" ? "…" : "Dept"}
-                  </span>
-                </Button>
-              )}
-            </div>
-
-            {/* Quiet caption with chosen dates */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <FileDown className="h-3.5 w-3.5" />
-              <span>
-                Range: <span className="font-medium">{startDate}</span> → <span className="font-medium">{endDate}</span>
-              </span>
-              {canSeeTeamButton(myRole) && (
-                <Badge variant="outline" className="h-5 text-xs">Team</Badge>
-              )}
-              {canSeeDepartmentButton(myRole) && (
-                <Badge variant="outline" className="h-5 text-xs">Department</Badge>
-              )}
-            </div>
-          </div>
-
           <div className="flex-1" />
 
-          {/* Search */}
           <div className="w-full sm:w-72">
             <Input
               placeholder="Search by name, role, department/team…"
@@ -504,7 +297,7 @@ export default function ManageUser() {
       ) : error ? (
         <p className="text-red-500">{error}</p>
       ) : filtered.length === 0 ? (
-        <p className="text-muted-foreground">No reports found.</p>
+        <p className="text-muted-foreground">No teammates found.</p>
       ) : (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((u) => {
@@ -541,7 +334,6 @@ export default function ManageUser() {
         </div>
       )}
 
-      {/* Drawer: shows ONLY the selected user's task list (and aggregate), not task details */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent className="w-full sm:max-w-xl">
           <SheetHeader>
@@ -565,9 +357,8 @@ export default function ManageUser() {
             <div className="py-4 space-y-5 overflow-y-auto">
               <Aggregate tasks={tasks} />
 
-              {/* Task list: clicking opens TaskDetailNavigator */}
               <ul className="space-y-3">
-                {tasks.map((t) => (
+                {sortTasksHierarchically(tasks).map((t) => (
                   <li
                     key={t.id}
                     role="button"
@@ -587,15 +378,18 @@ export default function ManageUser() {
                       "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring",
                       t.status === "Completed"
                         ? "bg-emerald-50/40 dark:bg-emerald-950/20"
-                        : "bg-card"
+                        : "bg-card",
+                      t.parent && "ml-6"
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium">{t.title}</div>
+                        <div className="font-medium flex items-center gap-2">
+                          {t.parent && <span className="text-muted-foreground">└─</span>}
+                          <span>{t.title}</span>
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {t.status ?? "—"}
-                          {t.parent ? ` · Subtask of ${t.parent}` : null}
                         </div>
                       </div>
                       {t.deadline ? (
@@ -615,7 +409,6 @@ export default function ManageUser() {
         </SheetContent>
       </Sheet>
 
-      {/* Task detail navigator opens in its own sheet */}
       {detailTask && (
         <TaskDetailNavigator
           initialTask={detailTask}
@@ -648,3 +441,4 @@ function Aggregate({ tasks }: { tasks: TaskType[] }) {
     </div>
   );
 }
+

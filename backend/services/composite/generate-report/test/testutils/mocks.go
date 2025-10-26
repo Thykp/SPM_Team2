@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+
 	"generate-report/models"
 )
 
@@ -19,6 +20,10 @@ func (m *MockProducer) Produce(ctx context.Context, key string, event any) error
 	m.Key = key
 	m.Event = event
 	return m.Err
+}
+
+func (m *MockProducer) Close() error {
+	return nil
 }
 
 // --- Mock Report Client ---
@@ -50,16 +55,27 @@ func (m *MockReportClient) GenerateDepartment(ctx context.Context, deptID, start
 	return m.Resp, m.Status, m.Err
 }
 
+// NEW: satisfy expanded interface
+func (m *MockReportClient) GenerateOrganisation(ctx context.Context, start, end, userID, corr string) (models.ReportServiceResponse, int, error) {
+	m.CalledMethod = "GenerateOrganisation"
+	return m.Resp, m.Status, m.Err
+}
+
 func (m *MockReportClient) GetByUser(ctx context.Context, userID, corr string) ([]models.ReportRecord, int, error) {
 	m.CalledMethod = "GetByUser"
-	return nil, 200, nil
+	// Return empty slice by default; propagate Status/Err if set.
+	status := m.Status
+	if status == 0 {
+		status = 200
+	}
+	return []models.ReportRecord{}, status, m.Err
 }
 
 func (m *MockReportClient) DeleteReport(ctx context.Context, reportID, corr string) (map[string]any, int, error) {
 	m.CalledMethod = "DeleteReport"
-	return map[string]any{"deleted": true}, 200, nil
-}
-
-func (m *MockProducer) Close() error {
-	return nil
+	status := m.Status
+	if status == 0 {
+		status = 200
+	}
+	return map[string]any{"deleted": m.Err == nil}, status, m.Err
 }

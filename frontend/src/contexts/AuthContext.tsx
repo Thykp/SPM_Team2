@@ -3,7 +3,7 @@ import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 
 export type Role = 'Staff' | 'Manager' | 'Director' | 'Senior Management';
-export type Profile = { id: string; role: Role; display_name?: string | null }
+export type Profile = { id: string; role: Role; display_name?: string | null; department_id?: string | null;}
 
 type AuthContextType = {
   session: Session | null
@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     setProfileLoading(true)
     const { data, error } = await supabase
       .from("revamped_profiles")
-      .select("id, role, display_name")
+      .select("id, role, display_name, department_id")
       .eq("id", u.id)
       .maybeSingle()
     if (error) console.error("[Auth] profile fetch error", error)

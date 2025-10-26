@@ -25,6 +25,7 @@ func RegisterRoutes(r *gin.Engine, producer kafkaSvc.Producer, httpClient *http.
 		grp.POST("/project/:projectId", ctrl.GenerateProjectReport)
 		grp.POST("/team/:teamId", ctrl.GenerateTeam)
 		grp.POST("/department/:departmentId", ctrl.GenerateDepartment)
+		grp.POST("/organisation", ctrl.GenerateOrganisation)
 	}
 }
 
