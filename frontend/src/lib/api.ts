@@ -522,7 +522,7 @@ export const Notification = {
   },
 
   publishUpdate: async ({ updateType, resourceId, resourceType, resourceContent, collaboratorIds, updatedBy
-  }: {updateType: "Assigned" | "Edited"; resourceId: string; resourceType: "project" | "task"; resourceContent: Record<string, any>; collaboratorIds: string[]; updatedBy: string;}): Promise<void> => {
+  }: {updateType: "Assigned" | "Edited"; resourceId: string; resourceType: "project" | "task"; resourceContent: Record<string, any>; collaboratorIds: string[] | []; updatedBy: string;}): Promise<void> => {
     const url = `${KONG_BASE_URL}/manage-notifications/publish/update`;
     const payload = {updateType, resourceId, resourceType, resourceContent, collaboratorIds, updatedBy };
     

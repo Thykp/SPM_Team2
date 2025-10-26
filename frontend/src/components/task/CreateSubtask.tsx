@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import { TaskApi as TaskAPI, type TaskPostRequestDto, type TaskDTO, Profile } from "@/lib/api";
 import { Check, ChevronsUpDown } from "lucide-react";
 
+import { useAuth } from "@/contexts/AuthContext"; 
+import { Notification as NotificationApi } from "@/lib/api";
+
 const STATUSES = [
   "Unassigned",
   "Ongoing",
@@ -74,7 +77,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
     collaborators: [currentUserId], // Pre-fill with the current user
     owner: currentUserId, // Set the current user as the default owner
   });
-
+  const { profile } = useAuth()
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]); // List of users for collaborators and owner
   const [userSearchTerm, setUserSearchTerm] = useState(""); // Search term for filtering users
@@ -188,6 +191,14 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
         collaborators: [currentUserId], // Reset to the current user
         owner: currentUserId, // Reset to the current user
+      });
+
+      await NotificationApi.publishAddedToResource({
+        resourceType: "task",
+        resourceId: subtaskData.title,
+        collaboratorIds: subtaskData.collaborators.filter(id => id !== profile?.id),
+        resourceContent: { ...subtaskData },
+        addedBy: profile?.display_name || "Unknown User",
       });
     } catch (err) {
       console.error("Failed to create subtask:", err);

@@ -42,29 +42,36 @@ export function NotificationItem({ notif, onDelete, onToggleUserSetRead }: Props
     </div>
   );
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Prevent the click on the delete or toggle buttons from opening the link
+    e.stopPropagation();
+  };
+
   return (
-    <div className="px-3 py-2 text-sm border-b hover:bg-gray-100 flex items-start">
+    <div
+      className="px-3 py-2 text-sm border-b flex items-start cursor-pointer hover:bg-gray-200 transition-colors duration-200 rounded-sm"
+      onClick={() => link && (window.location.href = link)}
+
+    >
       {/* Red dot / toggle */}
-      <div className="flex items-center">
-        <button
-          onClick={() => onToggleUserSetRead(id)}
-          className={`mr-2 h-3 w-3 rounded-full ${redDotClass} cursor-pointer flex-shrink-0`}
-          aria-label="Toggle read/unread"
-        />
-      </div>
+      <button
+        onClick={(e) => {
+          handleClick(e);
+          onToggleUserSetRead(id);
+        }}
+        className={`mr-2 h-3 w-3 rounded-full ${redDotClass} flex-shrink-0`}
+        aria-label="Toggle read/unread"
+      />
 
       {/* Notification content */}
-      {link ? (
-        <a href={link} className="flex-1 no-underline hover:underline">
-          {content}
-        </a>
-      ) : (
-        content
-      )}
+      <div className="flex-1 no-underline">{content}</div>
 
       {/* Delete button */}
       <Button
-        onClick={() => onDelete(id)}
+        onClick={(e) => {
+          handleClick(e);
+          onDelete(id);
+        }}
         className="bg-white text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 px-2 py-1 rounded flex-shrink-0"
         aria-label="Delete notification"
       >

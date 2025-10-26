@@ -67,7 +67,8 @@ function initWebSocketServer(server) {
 
 function formatWsAdded(payload) {
   let resourceLabel = '';
-  if (payload.isTask) resourceLabel = 'Task';
+  if (payload.isSubtask) resourceLabel = 'Sub Task';
+  else if (payload.isTask) resourceLabel = 'Task';
   else if (payload.isProject) resourceLabel = 'Project';
   else if (payload.isProjectTask) resourceLabel = 'Project Task';
   else if (payload.isProjectSubtask) resourceLabel = 'Project Subtask';
@@ -75,15 +76,16 @@ function formatWsAdded(payload) {
 
   let priority = '';
   if (payload.isTask || payload.isProjectTask || payload.isProjectSubtask) {
-    if (payload.isHighPriority) priority = 'High';
-    else if (payload.isMediumPriority) priority = 'Medium';
-    else if (payload.isLowPriority) priority = 'Low';
+    if (payload.isHighPriority) priority = '[High]';
+    else if (payload.isMediumPriority) priority = '[Medium]';
+    else if (payload.isLowPriority) priority = '[Low]';
   }
 
-  let description = `Added by ${payload.addedBy}`;
-  if (payload.isTask || payload.isProjectTask || payload.isProjectSubtask) {
-    if (payload.resource_content.status) description += ` (${payload.resource_content.status})`;
-  }
+  let description = ""
+  if (payload.resource_content.status) description += ` (${payload.resource_content.status})`
+  
+  description += `${payload.addedBy} has added you to ${payload.resource_content.title || payload.resource_content.id} to collaborate.`;
+
 
   const notificationId = crypto.randomUUID();; 
 
@@ -93,7 +95,7 @@ function formatWsAdded(payload) {
 
   return {
     id: notificationId,
-    title: `[${priority}] Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
+    title: `${priority} Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
     description,
     link: payload.link,
   };
@@ -107,45 +109,58 @@ function formatWsUpdate(batchedResources) {
   const wsNotifications = [];
 
   // Process Projects
-  (batchedResources.batched_resources.project || []).forEach((proj) => {
-    const updated = proj.resource_content.updated;
-    const notificationId = crypto.randomUUID();
+  if (batchedResources.batched_resources.project){
+    (batchedResources.batched_resources.project).forEach((proj) => {
+      const updated = proj.resource_content.updated;
+      const notificationId = crypto.randomUUID();
+      let title = ""
+      let link = ""
 
-    wsNotifications.push({
-      id: notificationId,
-      title: `Updated Project: ${updated.title}`,
-      link: `/app/project/${proj.resource_id}`,
-      description: `Project updated by ${proj.updated_by || 'Unknown'}. Description: "${updated.description || ''}".`
+      if (updated.deadline == "Invalid Date"){
+        title = `Project ${updated.title} ${proj.update_type} by ${proj.updated_by}`
+        link = `/app/project/${updated.id}`
+      } else if (updated.parent == null){
+        title = `Project Task ${updated.title} ${proj.update_type} by ${proj.updated_by}`
+        link = `/app/project/${updated.project_id}`
+      } else if (updated.parent){
+        title = `Project Subtask ${updated.title} ${proj.update_type} by ${proj.updated_by}`
+        link = `/app/project/${updated.project_id}`
+      }
+
+      wsNotifications.push({
+        id: notificationId,
+        title: title,
+        link: link,
+        description: `Description: "${updated.description || ''}".`
+      });
     });
-  });
+  }
 
   // Process Tasks
-  (batchedResources.batched_resources.task || []).forEach(( task) => {
-    const updated = task.resource_content.updated;
-    const notificationId = crypto.randomUUID();
+  if(batchedResources.batched_resources.task){
+    batchedResources.batched_resources.task.forEach((task) => {
+      const updated = task.resource_content.updated;
+      const notificationId = crypto.randomUUID();
 
-    let titlePrefix;
-    if (updated.parent) {
-      titlePrefix = `Updated Project Subtask: ${updated.title}`;
-    } else if (updated.project_id) {
-      titlePrefix = `Updated Project Task: ${updated.title}`;
-    } else {
-      titlePrefix = `Updated Task: ${updated.title}`;
-    }
+      let titlePrefix;
+      if (updated.parent == null) {
+        titlePrefix = `Task ${updated.title} ${task.update_type} by: ${task.updated_by}`;
+      } else {
+        titlePrefix = `Subtask ${updated.title} ${task.update_type} by: ${task.updated_by}`;  
+      }
 
-    const link = updated.project_id
-      ? `/app/project/${updated.project_id}`
-      : `/app?taskName=${task.title}`;
+      const link = `/app?taskName=${updated.title}`;
 
-    const description = `Updated by ${task.updated_by || 'Unknown'}. Status: ${updated.status || 'N/A'}, Priority: ${updated.priority || 'N/A'}.`;
+      const description = `(${updated.status || 'N/A'})`;
 
-    wsNotifications.push({
-      id: notificationId,
-      title: titlePrefix,
-      link,
-      description
+      wsNotifications.push({
+        id: notificationId,
+        title: titlePrefix,
+        link,
+        description
+      });
     });
-  });
+  }
 
   console.log(`[FormatWsUpdate]: ${JSON.stringify(wsNotifications)}`);
 

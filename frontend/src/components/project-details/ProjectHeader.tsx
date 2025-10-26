@@ -13,251 +13,260 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CollaboratorPicker from '@/components/project/CollaboratorPickerNewProj';
-import { Project, type ProjectDto, type TaskDTO, type UpdateProjectRequest, Profile } from '@/lib/api';
+import {
+  Project,
+  type ProjectDto,
+  type TaskDTO,
+  type UpdateProjectRequest,
+  Profile,
+} from '@/lib/api';
 import CreateProjectTask from './CreateProjectTask';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notification as NotificationAPI } from '@/lib/api';
 
 interface ProjectHeaderProps {
-    project: ProjectDto;
-    userId?: string;
-    onTaskCreated: (task: TaskDTO) => void;
-    onProjectUpdate?: (updatedProject: ProjectDto) => void;
+  project: ProjectDto;
+  userId?: string;
+  onTaskCreated: (task: TaskDTO) => void;
+  onProjectUpdate?: (updatedProject: ProjectDto) => void;
 }
 
-const ProjectHeader: React.FC<ProjectHeaderProps> = ({ 
-    project, 
-    userId, 
-    onTaskCreated,
-    onProjectUpdate
+const ProjectHeader: React.FC<ProjectHeaderProps> = ({
+  project,
+  userId,
+  onTaskCreated,
+  onProjectUpdate,
 }) => {
-    const { profile } = useAuth();
-    const [oldCollaborators, setOldCollaborators] = useState<string[]>(project.collaborators || []);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isLoadingEdit, setIsLoadingEdit] = useState(false);
-    const [editForm, setEditForm] = useState({
+  const { profile } = useAuth();
+  const [oldCollaborators, setOldCollaborators] = useState<string[]>(project.collaborators || []);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: project.title,
+    description: project.description,
+    collaborators: project.collaborators || [],
+  });
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  React.useEffect(() => {
+    if (isEditDialogOpen && users.length === 0) {
+      setLoadingUsers(true);
+      Profile.getAllUsers()
+        .then((data) => setUsers(data))
+        .catch(() => {})
+        .finally(() => setLoadingUsers(false));
+    }
+  }, [isEditDialogOpen, users.length]);
+
+  const handleToggleCollaborator = (userId: string) => {
+    setEditForm((prev) => {
+      const newCollaborators = prev.collaborators.includes(userId)
+        ? prev.collaborators.filter((id) => id !== userId)
+        : [...prev.collaborators, userId];
+      return { ...prev, collaborators: newCollaborators };
+    });
+  };
+
+  const handleEditProject = async () => {
+    try {
+      setIsLoadingEdit(true);
+      const currentProject = await Project.getById(project.id);
+
+      setEditForm({
+        title: currentProject.title,
+        description: currentProject.description,
+        collaborators: currentProject.collaborators || [],
+      });
+      setUserSearchTerm('');
+      setIsEditDialogOpen(true);
+    } catch (error) {
+      console.error('❌ Error fetching project:', error);
+      setEditForm({
         title: project.title,
         description: project.description,
         collaborators: project.collaborators || [],
-    });
-    
-    // State for collaborator picker
-    const [users, setUsers] = useState<any[]>([]);
-    const [userSearchTerm, setUserSearchTerm] = useState('');
-    const [loadingUsers, setLoadingUsers] = useState(false);
+      });
+      setOldCollaborators(project.collaborators?.slice() || []);
+      setIsEditDialogOpen(true);
+    } finally {
+      setIsLoadingEdit(false);
+    }
+  };
 
-    // Load users when edit dialog opens
-    React.useEffect(() => {
-        if (isEditDialogOpen && users.length === 0) {
-            setLoadingUsers(true);
-            Profile.getAllUsers()
-                .then((data) => {
-                    setUsers(data);
-                })
-                .catch(() => {
-                    // Silent error handling
-                })
-                .finally(() => {
-                    setLoadingUsers(false);
-                });
-        }
-    }, [isEditDialogOpen, users.length]);
+  const handleSaveProject = async () => {
+    try {
+      setIsLoading(true);
 
-    // Helper function to toggle collaborator selection
-    const handleToggleCollaborator = (userId: string) => {
-        setEditForm(prev => {
-            const newCollaborators = prev.collaborators.includes(userId)
-                ? prev.collaborators.filter(id => id !== userId)
-                : [...prev.collaborators, userId];
-            return {
-                ...prev,
-                collaborators: newCollaborators
-            };
-        });
-    };
+      const updateData: UpdateProjectRequest = {
+        title: editForm.title,
+        description: editForm.description,
+      };
 
-    const handleEditProject = async () => {
-        try {
-            setIsLoadingEdit(true);
-            // Fetch current project data to get proper collaborator UUIDs
-            const currentProject = await Project.getById(project.id);
+      const result = await Project.updateProject(project.id, updateData);
+      await Project.updateCollaborators(project.id, editForm.collaborators);
 
-            setEditForm({
-                title: project.title,
-                description: project.description,
-                collaborators: currentProject.collaborators || [],
+      if (result.success) {
+        const updatedProjectData: ProjectDto = {
+          ...project,
+          title: result.project?.title || editForm.title,
+          description: result.project?.description || editForm.description,
+          collaborators: editForm.collaborators,
+        };
+
+        if (onProjectUpdate) onProjectUpdate(updatedProjectData);
+        setIsEditDialogOpen(false);
+
+        const newCollaborators = editForm.collaborators || [];
+        const addedCollaborators = newCollaborators.filter(
+          (id) => !oldCollaborators.includes(id)
+        );
+
+        if (addedCollaborators.length > 0) {
+          try {
+            await NotificationAPI.publishAddedToResource({
+              resourceType: 'project',
+              resourceId: String(project.id),
+              collaboratorIds: addedCollaborators,
+              resourceContent: updatedProjectData,
+              addedBy: profile?.display_name || 'Unknown User',
             });
-            setUserSearchTerm(''); // Reset search term
-            setIsEditDialogOpen(true);
-        } catch (error) {
-            console.error('❌ Error fetching project:', error);
-            // Fallback to local data
-            setEditForm({
-                title: project.title,
-                description: project.description,
-                collaborators: project.collaborators || [],
+            console.log('📢 Notified newly added collaborators:', addedCollaborators);
+          } catch (err) {
+            console.error('❌ Failed to notify new collaborators:', err);
+          }
+        }
+
+        const collaboratorsToNotify = newCollaborators.filter(
+          (id) => id !== profile?.id && id !== null
+        );
+
+        const hasChanges =
+          project.title !== updatedProjectData.title ||
+          project.description !== updatedProjectData.description;
+
+        if (hasChanges && collaboratorsToNotify.length > 0) {
+          try {
+            await NotificationAPI.publishUpdate({
+              updateType: 'Edited',
+              resourceType: 'project',
+              resourceId: String(project.id),
+              resourceContent: {
+                updated: { ...updatedProjectData },
+                original: { ...project },
+              },
+              collaboratorIds: collaboratorsToNotify,
+              updatedBy: profile?.display_name || 'Unknown User',
             });
-            setOldCollaborators(project.collaborators?.slice() || []);
-            // setUserSearchTerm('');
-            setUserSearchTerm('');
-            setIsEditDialogOpen(true);
-        } finally {
-            setIsLoadingEdit(false);
+            console.log('📢 Notified collaborators of project edits.');
+          } catch (err) {
+            console.error('❌ Failed to send edit notifications:', err);
+          }
         }
-    };
 
-    const handleSaveProject = async () => {
-        try {
-            setIsLoading(true);
-            
-            const updateData: UpdateProjectRequest = {
-                title: editForm.title,
-                description: editForm.description,
-            };
+        setOldCollaborators(newCollaborators);
+      }
+    } catch (error) {
+      console.error('❌ Error saving project:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            const result = await Project.updateProject(project.id, updateData);
-            
-            await Project.updateCollaborators(project.id, editForm.collaborators);
-            
-            if (result.success) {
-                // Create updated project data
-                const updatedProjectData: ProjectDto = {
-                    ...project,
-                    title: result.project?.title || editForm.title,
-                    description: result.project?.description || editForm.description,
-                    collaborators: editForm.collaborators,
-                };
-                
-                // Update parent component if callback is provided
-                if (onProjectUpdate) {
-                    onProjectUpdate(updatedProjectData);
-                }
-                
-                setIsEditDialogOpen(false);
-
-            const newCollaborators = editForm.collaborators || [];
-            const addedCollaborators = newCollaborators.filter((id) => !oldCollaborators.includes(id));
-
-            if (addedCollaborators.length > 0) {
-                const notificationPayload = {
-                    resourceType: "project",
-                    resourceId: String(project.id),
-                    collaboratorIds: addedCollaborators,
-                    resourceName: editForm.title,
-                    resourceDescription: editForm.description || "",
-                    resourceContent: updatedProjectData,
-                    addedBy: profile?.display_name || "Unknown User",
-                    priority: 10
-                };
-
-                console.log("Notifying collaborator (edit project collaborators):", notificationPayload);
-
-                try {
-                    const notifResponse = await NotificationAPI.publishAddedToResource(notificationPayload);
-                    console.log("(edit project collaborators) Notified", notifResponse);
-                } catch (notifErr) {
-                    console.error("(edit project collaborators) Failed", notifErr);
-                }
-            }
-        }
-        } catch (error) {
-            console.error('❌ Error saving project:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <div className="space-y-4">
-            {/* Top row with back button and action buttons */}
-            <div className="flex items-center justify-between">
-                <Link to="/app/projects">
-                    <Button variant="outline" size="sm">
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to Projects
-                    </Button>
-                </Link>
-                <div className="flex gap-2">
-                    <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleEditProject}
-                        disabled={isLoadingEdit}
-                    >
-                        <Edit className="h-4 w-4 mr-2" />
-                        {isLoadingEdit ? 'Loading...' : 'Edit Project'}
-                    </Button>
-                    {userId && (
-                        <CreateProjectTask 
-                            userId={userId} 
-                            projectId={project.id}
-                            onTaskCreated={onTaskCreated} 
-                        />
-                    )}
-                </div>
-            </div>
-            
-            {/* Project title in its own row */}
-            <div>
-                <h1 className="text-3xl font-bold">{project.title}</h1>
-            </div>
-
-            {/* Edit Project Dialog */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Edit Project</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="title">Project Title</Label>
-                            <Input
-                                id="title"
-                                value={editForm.title}
-                                onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                                placeholder="Enter project title"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="description">Description</Label>
-                            <Textarea
-                                id="description"
-                                value={editForm.description}
-                                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                                placeholder="Enter project description"
-                                className="min-h-[100px]"
-                            />
-                        </div>
-                        <CollaboratorPicker
-                            users={users}
-                            userSearchTerm={userSearchTerm}
-                            onUserSearchChange={setUserSearchTerm}
-                            selectedCollaborators={editForm.collaborators}
-                            onToggleCollaborator={handleToggleCollaborator}
-                            loadingUsers={loadingUsers}
-                            currentUserId={project.owner}
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button 
-                            variant="outline" 
-                            onClick={() => setIsEditDialogOpen(false)}
-                            disabled={isLoading}
-                        >
-                            Cancel
-                        </Button>
-                        <Button 
-                            onClick={handleSaveProject}
-                            disabled={isLoading || !editForm.title.trim()}
-                        >
-                            {isLoading ? 'Saving...' : 'Save Changes'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Link to="/app/projects">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Projects
+          </Button>
+        </Link>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEditProject}
+            disabled={isLoadingEdit}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            {isLoadingEdit ? 'Loading...' : 'Edit Project'}
+          </Button>
+          {userId && (
+            <CreateProjectTask
+              userId={userId}
+              projectId={project.id}
+              onTaskCreated={onTaskCreated}
+            />
+          )}
         </div>
-    );
+      </div>
+
+      <div>
+        <h1 className="text-3xl font-bold">{project.title}</h1>
+      </div>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Project Title</Label>
+              <Input
+                id="title"
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, title: e.target.value }))
+                }
+                placeholder="Enter project title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+                placeholder="Enter project description"
+                className="min-h-[100px]"
+              />
+            </div>
+            <CollaboratorPicker
+              users={users}
+              userSearchTerm={userSearchTerm}
+              onUserSearchChange={setUserSearchTerm}
+              selectedCollaborators={editForm.collaborators}
+              onToggleCollaborator={handleToggleCollaborator}
+              loadingUsers={loadingUsers}
+              currentUserId={project.owner}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProject}
+              disabled={isLoading || !editForm.title.trim()}
+            >
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 export default ProjectHeader;

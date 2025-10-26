@@ -156,7 +156,7 @@ export function NotificationsPanel({ userId }: { userId: string }) {
       </Button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
+        <div className="absolute right-0 mt-2 w-100 bg-white rounded-lg shadow-lg border z-50">
           <div className="p-2 font-semibold border-b flex justify-between items-center">
             Notifications
             {notifications.length > 0 && (

@@ -262,7 +262,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
       }
 
         // --- Notify collaborators about edits ---
-    const collaboratorsToNotify = updatedTaskDetails.collaborators.filter(id => id !== profile?.id);
+    let  collaboratorsToNotify = [...updatedTaskDetails.collaborators].filter(id => id !== null && id !== profile?.id);
+    if(updatedTaskDetails.owner && updatedTaskDetails.owner !== profile?.id) collaboratorsToNotify.push(updatedTaskDetails.owner);
     if (collaboratorsToNotify.length > 0 && originalTask) {
       const hasNonOwnerChanges = (
         originalTask.title !== updatedTaskDetails.title ||

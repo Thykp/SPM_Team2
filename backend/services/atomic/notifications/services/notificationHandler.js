@@ -236,7 +236,7 @@ async function handleAddedToResource(payload) {
   } 
   else if (resource_type === 'task' && resource_id !== 'task') {
     isSubtask = true;
-    link = `http://localhost:5173/app?taskName=${resource_id}`;
+    link = `http://localhost:5173/app`;
   } 
   else if (resource_type === 'project' && !resource_content.project_id && !resource_content.parent) {
     isProject = true;
