@@ -6,7 +6,7 @@ describe('Recurrence API - Integration Tests', () => {
     let testTaskId;
     let testRecurrenceId;
     let testProjectId;
-    const testOwnerId = '2787f4d7-db48-41d4-a055-eb9376bfd443';
+    const testOwnerId = 'e9f9a36c-5d22-49c8-9493-30cbf2f3fc67';
 
     const TABLES = {
         PROJECT: 'revamped_project',

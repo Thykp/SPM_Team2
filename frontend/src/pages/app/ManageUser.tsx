@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/layout/Loader";
 import { cn } from "@/lib/utils";
 import { Users, Building2, FileDown, Loader2 } from "lucide-react";
+import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
 
 type CacheEntry<T> = { ts: number; data: T };
 const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
@@ -52,7 +53,6 @@ type UserRow = {
   team?: string | null;
 };
 
-// --- helpers ---
 function getInitials(name?: string) {
   if (!name) return "U";
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -69,7 +69,6 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-// Map task statuses to a progress %
 function statusToProgress(status?: TaskType["status"]): number {
   switch (status) {
     case "Completed": return 100;
@@ -102,7 +101,7 @@ function last30Days(): { start: string; end: string } {
 
 /**
  * Determine if user `u` should be visible under the current user's scope.
- * - Director: everyone except other Directors.
+ * - Director/Senior Management: everyone except other Directors/Senior Management.
  * - Manager:  Staff in the SAME TEAM (ID-based check).
  * - Staff:    nobody.
  */
@@ -147,6 +146,9 @@ export default function ManageUser() {
   const [selected, setSelected] = useState<UserRow | null>(null);
   const [tasks, setTasks] = useState<TaskType[] | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTask, setDetailTask] = useState<TaskType | null>(null);
 
   // progress % per user
   const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
@@ -303,8 +305,6 @@ export default function ManageUser() {
         if (!myTeamId) throw new Error("Your team is not set.");
         const res = await Report.generateTeam(myTeamId, { startDate, endDate, userId: myUserId });
 
-        // Support both shapes: {data: {reportUrl, reportTitle}} from atomic
-        // and a simpler {url, message} shape if used elsewhere.
         const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
         const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
 
@@ -541,13 +541,14 @@ export default function ManageUser() {
         </div>
       )}
 
-      {/* Drawer */}
+      {/* Drawer: shows ONLY the selected user's task list (and aggregate), not task details */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent className="w-full sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>
               {selected ? `Tasks · ${selected.display_name}` : "Tasks"}
             </SheetTitle>
+            <p className="text-xs text-muted-foreground mt-1">Click a task to view details</p>
           </SheetHeader>
 
           {!selected ? (
@@ -564,13 +565,29 @@ export default function ManageUser() {
             <div className="py-4 space-y-5 overflow-y-auto">
               <Aggregate tasks={tasks} />
 
+              {/* Task list: clicking opens TaskDetailNavigator */}
               <ul className="space-y-3">
                 {tasks.map((t) => (
                   <li
                     key={t.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      setDetailTask(t);
+                      setDetailOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        setDetailTask(t);
+                        setDetailOpen(true);
+                      }
+                    }}
                     className={cn(
-                      "rounded-md border p-3",
-                      t.status === "Completed" ? "bg-emerald-50/40 dark:bg-emerald-950/20" : "bg-card"
+                      "rounded-md border p-3 cursor-pointer transition-colors",
+                      "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring",
+                      t.status === "Completed"
+                        ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+                        : "bg-card"
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -597,6 +614,18 @@ export default function ManageUser() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Task detail navigator opens in its own sheet */}
+      {detailTask && (
+        <TaskDetailNavigator
+          initialTask={detailTask}
+          isOpen={detailOpen}
+          onClose={() => {
+            setDetailOpen(false);
+            setDetailTask(null);
+          }}
+        />
+      )}
     </div>
   );
 }
