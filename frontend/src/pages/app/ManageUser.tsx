@@ -109,14 +109,22 @@ function last30Days(): { start: string; end: string } {
 function isReportForMe(
   myRole?: string | null,
   myTeamId?: string | null,
+  myDepartmentId?: string | null,
   meId?: string,
   u?: UserRow
 ) {
   if (!u || !meId) return false;
   if (u.id === meId) return false;
 
-  if (myRole === "Director" || myRole === "Senior Management") {
-    return u.role !== "Director" && u.role !== "Senior Management";
+  const isHR = myDepartmentId === "00000000-0000-0000-0000-000000000005"; // HR department ID
+
+  if (myRole === "Director" && !isHR) {
+    return u.role !== "Director" && u.role !== "Senior Management" 
+    && u.department_id === myDepartmentId;
+  }
+
+  if (myRole === "Senior Management" || isHR) {
+    return u.role !== "Director"; // No department restriction
   }
 
   if (myRole === "Manager") {
@@ -179,23 +187,25 @@ export default function ManageUser() {
         setMyTeamId(me?.team_id ?? null);
         setMyDepartmentId(me?.department_id ?? null);
 
-        const mine = all.filter(u => isReportForMe(myRole, me?.team_id ?? null, myUserId, u));
+        const mine = all.filter(u => isReportForMe(myRole, me?.team_id ?? null, me?.department_id ?? null, myUserId, u));
         setUsers(mine);
         setLoading(false);
       }
 
       try {
         const freshAll = await Profile.getAllUsers() as unknown as UserRow[];
-        setCache(USERS_CACHE_KEY, freshAll);
+        if (freshAll.length > 0) {
+          setCache(USERS_CACHE_KEY, freshAll);
 
-        const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
-        setMyTeamId(meFresh?.team_id ?? null);
-        setMyDepartmentId(meFresh?.department_id ?? null);
+          const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
+          setMyTeamId(meFresh?.team_id ?? null);
+          setMyDepartmentId(meFresh?.department_id ?? null);
 
-        const mineFresh = freshAll.filter(u => isReportForMe(myRole, meFresh?.team_id ?? null, myUserId, u));
-        setUsers(mineFresh);
+          const mineFresh = freshAll.filter(u => isReportForMe(myRole, meFresh?.team_id ?? null, meFresh?.department_id ?? null, myUserId, u));
+          setUsers(mineFresh);
 
-        void prefetchPct(mineFresh);
+          void prefetchPct(mineFresh);
+        }
       } catch (e: any) {
         if (!all) {
           setError("Failed to load your team. Please try again.");
