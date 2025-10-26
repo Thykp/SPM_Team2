@@ -42,6 +42,12 @@ type DepartmentGenerateEvent struct {
 	UserID       string `json:"userId"`
 }
 
+type OrganisationGenerateEvent struct {
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	UserID    string `json:"userId"`
+}
+
 type ReportRecord struct {
 	ID        string `json:"id"`
 	ProfileID string `json:"profile_id"`

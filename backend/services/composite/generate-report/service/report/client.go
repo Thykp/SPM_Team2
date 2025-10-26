@@ -21,6 +21,8 @@ type Client interface {
 	GenerateTeam(ctx context.Context, teamID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 	// Department
 	GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
+	// Organisation
+	GenerateOrganisation(ctx context.Context, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error)
 
 	GetByUser(ctx context.Context, userID, correlationID string) ([]models.ReportRecord, int, error)
 	DeleteReport(ctx context.Context, reportID, correlationID string) (map[string]any, int, error)
@@ -112,6 +114,19 @@ func (c *client) GenerateTeam(ctx context.Context, teamID, startDate, endDate, u
 func (c *client) GenerateDepartment(ctx context.Context, departmentID, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
 	departmentID = strings.TrimSpace(departmentID)
 	url := fmt.Sprintf("%s/report/department/%s", c.base, departmentID)
+	body := map[string]string{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"userId":    userID,
+	}
+	return c.doJSON(ctx, http.MethodPost, url, correlationID, body)
+}
+
+// ----- organisation -----
+
+func (c *client) GenerateOrganisation(ctx context.Context, startDate, endDate, userID, correlationID string) (models.ReportServiceResponse, int, error) {
+	userID = strings.TrimSpace(userID)
+	url := fmt.Sprintf("%s/report/organisation", c.base)
 	body := map[string]string{
 		"startDate": startDate,
 		"endDate":   endDate,
