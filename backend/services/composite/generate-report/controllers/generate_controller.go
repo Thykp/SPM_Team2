@@ -330,3 +330,75 @@ func (g *GenerateController) DeleteReport(c *gin.Context) {
 	c.Header("X-Request-ID", reqID)
 	c.JSON(status, out)
 }
+
+// ===== Organisation =====
+
+func (g *GenerateController) GenerateOrganisation(c *gin.Context) {
+	reqID := c.GetString("request_id")
+
+	var req models.GenerateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INVALID_BODY", "message": err.Error()},
+		})
+		return
+	}
+
+	if req.StartDate == "" || req.EndDate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "MISSING_DATES",
+				"message": "Both startDate and endDate are required",
+			},
+		})
+		return
+	}
+
+	if strings.TrimSpace(req.UserID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "MISSING_USER_ID", "message": "userId is required in body for organisation report"},
+		})
+		return
+	}
+
+	// 1) Publish Kafka event (best-effort; fail => return 502)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	orgEvent := models.OrganisationGenerateEvent{
+		StartDate: req.StartDate,
+		EndDate:   req.EndDate,
+		UserID:    req.UserID,
+	}
+	env := models.KafkaEnvelope{
+		Event:         "ORGANISATION_REPORT_REQUESTED",
+		CorrelationID: reqID,
+		Payload:       orgEvent,
+	}
+	// Use userId as the partitioning key
+	if err := g.producer.Produce(ctx, req.UserID, env); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "KAFKA_PUBLISH_FAILED", "message": err.Error()},
+		})
+		return
+	}
+
+	// 2) Call atomic/report synchronously
+	callCtx, cancel2 := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel2()
+	resp, status, err := g.reportClient.GenerateOrganisation(callCtx, req.StartDate, req.EndDate, req.UserID, reqID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "REPORT_SERVICE_ERROR", "message": err.Error()},
+		})
+		return
+	}
+
+	c.Header("X-Request-ID", reqID)
+	c.JSON(status, resp)
+}

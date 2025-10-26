@@ -6,13 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/layout/Loader";
 import { cn } from "@/lib/utils";
-import { Users, Building2, FileDown, Loader2 } from "lucide-react";
-import { TaskDetailNavigator } from "@/components/task/TaskDetailNavigator";
+import { Users, Building2, FileDown, Loader2, Globe2 } from "lucide-react";
+import { UserTaskDrawer } from "@/components/user/UserTaskDrawer";
 
 type CacheEntry<T> = { ts: number; data: T };
 const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
@@ -82,8 +81,14 @@ function statusToProgress(status?: TaskType["status"]): number {
 
 /** MUTUALLY EXCLUSIVE role gates for the action buttons */
 const canSeeTeamButton = (role?: string | null) => role === "Manager";
-const canSeeDepartmentButton = (role?: string | null) =>
-  role === "Director" || role === "Senior Management";
+const canSeeDepartmentButton = (role?: string | null) => role === "Director";
+
+// HR department constant used across component
+const HR_DEPT_ID = "00000000-0000-0000-0000-000000000005";
+const isHRDepartment = (deptId?: string | null) => deptId === HR_DEPT_ID;
+/** Org button shown if Senior Management OR user belongs to HR */
+const canSeeOrganisationButton = (role?: string | null, deptId?: string | null) =>
+  role === "Senior Management" || isHRDepartment(deptId);
 
 // date helpers
 function toYMD(d: Date) {
@@ -101,8 +106,9 @@ function last30Days(): { start: string; end: string } {
 
 /**
  * Determine if user `u` should be visible under the current user's scope.
- * - Director/Senior Management: everyone except other Directors/Senior Management.
- * - Manager:  Staff in the SAME TEAM (ID-based check).
+ * - Director (not HR): staff inside same department, excluding Directors/Senior Management.
+ * - Senior Management or HR: everyone except Directors.
+ * - Manager: Staff in the SAME TEAM (ID-based check).
  * - Staff:    nobody.
  */
 function isReportForMe(
@@ -115,11 +121,11 @@ function isReportForMe(
   if (!u || !meId) return false;
   if (u.id === meId) return false;
 
-  const isHR = myDepartmentId === "00000000-0000-0000-0000-000000000005"; // HR department ID
+  const isHR = isHRDepartment(myDepartmentId);
 
   if (myRole === "Director" && !isHR) {
-    return u.role !== "Director" && u.role !== "Senior Management" 
-    && u.department_id === myDepartmentId;
+    return u.role !== "Director" && u.role !== "Senior Management"
+      && u.department_id === myDepartmentId;
   }
 
   if (myRole === "Senior Management" || isHR) {
@@ -147,8 +153,6 @@ export default function ManageUser() {
   const [tasks, setTasks] = useState<TaskType[] | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
 
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailTask, setDetailTask] = useState<TaskType | null>(null);
 
   // progress % per user
   const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
@@ -164,7 +168,7 @@ export default function ManageUser() {
   const [myTeamId, setMyTeamId] = useState<string | null>(null);
   const [myDepartmentId, setMyDepartmentId] = useState<string | null>(null);
 
-  const [reportBusy, setReportBusy] = useState<"team" | "department" | null>(null);
+  const [reportBusy, setReportBusy] = useState<"team" | "department" | "organisation" | null>(null);
   const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string; href?: string } | null>(null);
 
   // Cache keys
@@ -292,7 +296,7 @@ export default function ManageUser() {
     }
   };
 
-  async function callReport(kind: "team" | "department") {
+  async function callReport(kind: "team" | "department" | "organisation") {
     if (reportBusy) return;
     setBanner(null);
     setReportBusy(kind);
@@ -313,7 +317,7 @@ export default function ManageUser() {
           msg: title || "Team report requested successfully.",
           href,
         });
-      } else {
+      } else if (kind === "department") {
         if (!canSeeDepartmentButton(myRole)) throw new Error("You are not allowed to generate a department report.");
         if (!myDepartmentId) throw new Error("Your department is not set.");
         const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate, userId: myUserId });
@@ -324,6 +328,21 @@ export default function ManageUser() {
         setBanner({
           type: href ? "success" : "info",
           msg: title || "Department report requested successfully.",
+          href,
+        });
+      } else {
+        // organisation
+        if (!canSeeOrganisationButton(myRole, myDepartmentId)) {
+          throw new Error("You are not allowed to generate an organisation report.");
+        }
+        const res = await Report.generateOrganisation({ startDate, endDate, userId: myUserId });
+
+        const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
+        const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
+
+        setBanner({
+          type: href ? "success" : "info",
+          msg: title || "Organisation report requested successfully.",
           href,
         });
       }
@@ -337,6 +356,7 @@ export default function ManageUser() {
   const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate);
   const disableTeamBtn = reportBusy !== null || !myTeamId || !myUserId || dateInvalid;
   const disableDeptBtn = reportBusy !== null || !myDepartmentId || !myUserId || dateInvalid;
+  const disableOrgBtn  = reportBusy !== null || !myUserId || dateInvalid;
 
   return (
     <div>
@@ -465,6 +485,39 @@ export default function ManageUser() {
                   </span>
                 </Button>
               )}
+
+              {canSeeOrganisationButton(myRole, myDepartmentId) && (
+                <Button
+                  onClick={() => callReport("organisation")}
+                  disabled={disableOrgBtn}
+                  aria-busy={reportBusy === "organisation"}
+                  title={
+                    !myUserId
+                      ? "Missing user id"
+                      : dateInvalid
+                      ? "Invalid date range"
+                      : "Generate organisation-wide report"
+                  }
+                  variant="outline"
+                  className={cn(
+                    "gap-2 rounded-none px-3 sm:px-4",
+                    "hover:bg-muted",
+                    "disabled:opacity-60 disabled:cursor-not-allowed"
+                  )}
+                >
+                  {reportBusy === "organisation" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Globe2 className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {reportBusy === "organisation" ? "Generating…" : "Organisation Report"}
+                  </span>
+                  <span className="sm:hidden">
+                    {reportBusy === "organisation" ? "…" : "Org"}
+                  </span>
+                </Button>
+              )}
             </div>
 
             {/* Quiet caption with chosen dates */}
@@ -478,6 +531,9 @@ export default function ManageUser() {
               )}
               {canSeeDepartmentButton(myRole) && (
                 <Badge variant="outline" className="h-5 text-xs">Department</Badge>
+              )}
+              {canSeeOrganisationButton(myRole, myDepartmentId) && (
+                <Badge variant="outline" className="h-5 text-xs">Org</Badge>
               )}
             </div>
           </div>
@@ -541,110 +597,14 @@ export default function ManageUser() {
         </div>
       )}
 
-      {/* Drawer: shows ONLY the selected user's task list (and aggregate), not task details */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>
-              {selected ? `Tasks · ${selected.display_name}` : "Tasks"}
-            </SheetTitle>
-            <p className="text-xs text-muted-foreground mt-1">Click a task to view details</p>
-          </SheetHeader>
-
-          {!selected ? (
-            <div className="py-6 text-muted-foreground">Select a user to see tasks.</div>
-          ) : tasksLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader />
-            </div>
-          ) : tasks == null ? (
-            <div className="py-6 text-muted-foreground">Loading…</div>
-          ) : tasks.length === 0 ? (
-            <div className="py-6 text-muted-foreground">No tasks found for this user.</div>
-          ) : (
-            <div className="py-4 space-y-5 overflow-y-auto">
-              <Aggregate tasks={tasks} />
-
-              {/* Task list: clicking opens TaskDetailNavigator */}
-              <ul className="space-y-3">
-                {tasks.map((t) => (
-                  <li
-                    key={t.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      setDetailTask(t);
-                      setDetailOpen(true);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        setDetailTask(t);
-                        setDetailOpen(true);
-                      }
-                    }}
-                    className={cn(
-                      "rounded-md border p-3 cursor-pointer transition-colors",
-                      "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring",
-                      t.status === "Completed"
-                        ? "bg-emerald-50/40 dark:bg-emerald-950/20"
-                        : "bg-card"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium">{t.title}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {t.status ?? "—"}
-                          {t.parent ? ` · Subtask of ${t.parent}` : null}
-                        </div>
-                      </div>
-                      {t.deadline ? (
-                        <div className="text-xs text-muted-foreground">
-                          Due {new Date(t.deadline).toLocaleDateString()}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="mt-3">
-                      <ProgressBar value={statusToProgress(t.status)} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Task detail navigator opens in its own sheet */}
-      {detailTask && (
-        <TaskDetailNavigator
-          initialTask={detailTask}
-          isOpen={detailOpen}
-          onClose={() => {
-            setDetailOpen(false);
-            setDetailTask(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function Aggregate({ tasks }: { tasks: TaskType[] }) {
-  const total = tasks.length;
-  const done = tasks.filter(t => statusToProgress(t.status) >= 100).length;
-  const pct = total ? (done / total) * 100 : 0;
-  return (
-    <div className="rounded-md border p-3">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">Overall progress</span>
-        <span className="text-muted-foreground">
-          {done}/{total} ({Math.round(pct)}%)
-        </span>
-      </div>
-      <div className="mt-2">
-        <ProgressBar value={pct} />
-      </div>
+      {/* User task drawer */}
+      <UserTaskDrawer
+        isOpen={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        user={selected}
+        tasks={tasks}
+        tasksLoading={tasksLoading}
+      />
     </div>
   );
 }

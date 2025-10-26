@@ -1,4 +1,13 @@
-const { fetchTasksForUser, getProjectDetails, fetchProjectWithCollaborators, fetchTasksForProject, fetchProfileDetails } = require('../../../services/callingService');
+const { 
+  fetchTasksForUser, 
+  getProjectDetails, 
+  fetchProjectWithCollaborators, 
+  fetchTasksForProject, 
+  fetchProfileDetails,
+  fetchAllDepartments,
+  fetchAllUsers,
+  fetchTasksForOrganization
+} = require('../../../services/callingService');
 const axios = require('axios');
 const { ServiceUnavailableError, NotFoundError } = require('../../../model/AppError');
 
@@ -689,6 +698,179 @@ describe('CallingService', () => {
                 'Failed to fetch profile for user-123:',
                 'Network error'
             );
+        });
+    });
+
+    describe('fetchAllDepartments', () => {
+        const profileBase = process.env.PROFILE_PATH || 'http://localhost:3030';
+
+        test('Should fetch all departments successfully', async () => {
+            const mockDepartments = [
+                { id: 'dept-1', name: 'Engineering' },
+                { id: 'dept-2', name: 'Marketing' }
+            ];
+
+            axios.get.mockResolvedValueOnce({ data: mockDepartments });
+
+            const result = await fetchAllDepartments();
+
+            expect(result).toEqual(mockDepartments);
+            expect(axios.get).toHaveBeenCalledWith(`${profileBase}/user/departments`);
+        });
+
+        test('Should throw ServiceUnavailableError when API fails', async () => {
+            const error = new Error('API Error');
+            axios.get.mockRejectedValueOnce(error);
+
+            await expect(fetchAllDepartments()).rejects.toThrow(ServiceUnavailableError);
+        });
+
+        test('Should return empty array when data is undefined', async () => {
+            axios.get.mockResolvedValueOnce({ data: undefined });
+
+            const result = await fetchAllDepartments();
+
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('fetchAllUsers', () => {
+        const profileBase = process.env.PROFILE_PATH || 'http://localhost:3030';
+
+        test('Should fetch all users successfully', async () => {
+            const mockUsers = [
+                { id: 'user-1', display_name: 'John Doe', department_id: 'dept-1' },
+                { id: 'user-2', display_name: 'Jane Smith', department_id: 'dept-2' }
+            ];
+
+            axios.get.mockResolvedValueOnce({ data: mockUsers });
+
+            const result = await fetchAllUsers();
+
+            expect(result).toEqual(mockUsers);
+            expect(axios.get).toHaveBeenCalledWith(`${profileBase}/user/all`);
+        });
+
+        test('Should throw ServiceUnavailableError when API fails', async () => {
+            const error = new Error('API Error');
+            axios.get.mockRejectedValueOnce(error);
+
+            await expect(fetchAllUsers()).rejects.toThrow(ServiceUnavailableError);
+        });
+
+        test('Should return empty array when data is undefined', async () => {
+            axios.get.mockResolvedValueOnce({ data: undefined });
+
+            const result = await fetchAllUsers();
+
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('fetchTasksForOrganization', () => {
+        const profileBase = process.env.PROFILE_PATH || 'http://localhost:3030';
+        const taskBase = process.env.TASK_PATH || 'http://localhost:3031';
+
+        test('Should aggregate tasks for all users in organization', async () => {
+            const mockUsers = [
+                { id: 'user-1' },
+                { id: 'user-2' }
+            ];
+
+            const mockTasks1 = [
+                { id: 'task-1', title: 'Task 1', participants: [{ profile_id: 'user-1', is_owner: true }] }
+            ];
+            const mockTasks2 = [
+                { id: 'task-2', title: 'Task 2', participants: [{ profile_id: 'user-2', is_owner: false }] }
+            ];
+
+            axios.get
+                .mockResolvedValueOnce({ data: mockUsers }) // fetchAllUsers
+                .mockResolvedValueOnce({ data: mockTasks1 }) // user-1 tasks
+                .mockResolvedValueOnce({ data: mockTasks2 }); // user-2 tasks
+
+            const result = await fetchTasksForOrganization('2024-01-01', '2024-01-31');
+
+            expect(result).toHaveLength(2);
+            expect(result).toEqual(expect.arrayContaining([
+                expect.objectContaining({ id: 'task-1', title: 'Task 1' }),
+                expect.objectContaining({ id: 'task-2', title: 'Task 2' })
+            ]));
+            expect(axios.get).toHaveBeenCalledTimes(3);
+            expect(axios.get).toHaveBeenCalledWith(`${taskBase}/task/users/user-1`, {
+                params: { startDate: '2024-01-01', endDate: '2024-01-31' }
+            });
+            expect(axios.get).toHaveBeenCalledWith(`${taskBase}/task/users/user-2`, {
+                params: { startDate: '2024-01-01', endDate: '2024-01-31' }
+            });
+        });
+
+        test('Should merge duplicate tasks across users', async () => {
+            const mockUsers = [{ id: 'user-1' }, { id: 'user-2' }];
+
+            const sharedTask = {
+                id: 'task-shared',
+                title: 'Shared Task',
+                participants: [
+                    { profile_id: 'user-1', is_owner: true },
+                    { profile_id: 'user-2', is_owner: false }
+                ]
+            };
+
+            axios.get
+                .mockResolvedValueOnce({ data: mockUsers })
+                .mockResolvedValueOnce({ data: [sharedTask] })
+                .mockResolvedValueOnce({ data: [sharedTask] });
+
+            const result = await fetchTasksForOrganization('2024-01-01', '2024-01-31');
+
+            expect(result).toHaveLength(1);
+            expect(result[0].participants).toHaveLength(2);
+            expect(result[0].id).toBe('task-shared');
+        });
+
+        test('Should handle user task fetch failures gracefully', async () => {
+            const mockUsers = [{ id: 'user-1' }, { id: 'user-2' }];
+
+            axios.get
+                .mockResolvedValueOnce({ data: mockUsers })
+                .mockResolvedValueOnce({ data: [{ id: 'task-1', title: 'Task 1', participants: [] }] })
+                .mockRejectedValueOnce(new Error('User not found'));
+
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            const result = await fetchTasksForOrganization('2024-01-01', '2024-01-31');
+
+            expect(result).toHaveLength(1);
+            expect(result[0].id).toBe('task-1');
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                'fetchTasksForOrganization: failed for user user-2:',
+                'User not found'
+            );
+
+            consoleErrorSpy.mockRestore();
+        });
+
+        test('Should throw NotFoundError when no users found', async () => {
+            axios.get.mockResolvedValueOnce({ data: [] });
+
+            await expect(fetchTasksForOrganization('2024-01-01', '2024-01-31')).rejects.toThrow(NotFoundError);
+        });
+
+        test('Should throw NotFoundError when no tasks found', async () => {
+            const mockUsers = [{ id: 'user-1' }];
+
+            axios.get
+                .mockResolvedValueOnce({ data: mockUsers })
+                .mockResolvedValueOnce({ data: [] });
+
+            await expect(fetchTasksForOrganization('2024-01-01', '2024-01-31')).rejects.toThrow(NotFoundError);
+        });
+
+        test('Should throw ServiceUnavailableError when fetchAllUsers fails', async () => {
+            axios.get.mockRejectedValueOnce(new Error('API Error'));
+
+            await expect(fetchTasksForOrganization('2024-01-01', '2024-01-31')).rejects.toThrow(ServiceUnavailableError);
         });
     });
     

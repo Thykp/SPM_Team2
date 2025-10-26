@@ -9,9 +9,9 @@ import { Reports } from "./pages/app/Reports"
 import Project from './pages/app/Project'
 import ProjectDetail from './pages/app/ProjectDetail'
 import ManageUser from './pages/app/ManageUser'
+import TeamTask from './pages/app/TeamTask'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import RoleGate from './components/auth/RoleGate'
-import StaffTasks from "@/pages/app/StaffTasks";
 
 function App() {
 
@@ -42,10 +42,10 @@ function App() {
             }
           />
           <Route
-            path="staff-tasks"
+            path="team-task"
             element={
-              <RoleGate allow={["Manager", "Director", "Senior Management"]}>
-                <StaffTasks />
+              <RoleGate allow={["Staff", "Manager"]}>
+                <TeamTask />
               </RoleGate>
             }
           />

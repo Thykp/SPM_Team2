@@ -16,14 +16,14 @@ describe('callingService team/department helpers', () => {
   beforeEach(() => jest.clearAllMocks());
 
   describe('fetchTeamWithMembers', () => {
-    test('gets members via /user/staff and name via /teams', async () => {
+    test('gets members via /user/staff and name via /user/teams', async () => {
       axios.get
         .mockResolvedValueOnce({ data: [{ id: 'u1' }, { id: 'u2' }] }) // staff
         .mockResolvedValueOnce({ data: [{ id: 'team-1', name: 'Alpha', department_id: 'dept-9' }] }); // teams
 
       const out = await fetchTeamWithMembers('team-1');
       expect(axios.get).toHaveBeenNthCalledWith(1, `${profileBase}/user/staff`, { params: { team_id: 'team-1', role: 'Staff' } });
-      expect(axios.get).toHaveBeenNthCalledWith(2, `${profileBase}/teams`);
+      expect(axios.get).toHaveBeenNthCalledWith(2, `${profileBase}/user/teams`);
       expect(out).toEqual({ id: 'team-1', name: 'Alpha', members: ['u1', 'u2'], department_id: 'dept-9' });
     });
 
@@ -34,14 +34,14 @@ describe('callingService team/department helpers', () => {
   });
 
   describe('fetchDepartmentWithMembers', () => {
-    test('gets members via /user/staff and name via /departments', async () => {
+    test('gets members via /user/staff and name via /user/departments', async () => {
       axios.get
         .mockResolvedValueOnce({ data: [{ id: 'u9' }] }) // staff
         .mockResolvedValueOnce({ data: [{ id: 'd1', name: 'Engineering' }] }); // departments
 
       const out = await fetchDepartmentWithMembers('d1');
       expect(axios.get).toHaveBeenNthCalledWith(1, `${profileBase}/user/staff`, { params: { department_id: 'd1', role: 'Staff' } });
-      expect(axios.get).toHaveBeenNthCalledWith(2, `${profileBase}/departments`);
+      expect(axios.get).toHaveBeenNthCalledWith(2, `${profileBase}/user/departments`);
       expect(out).toEqual({ id: 'd1', name: 'Engineering', members: ['u9'] });
     });
 
