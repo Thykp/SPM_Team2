@@ -187,7 +187,7 @@ jobs:
 
       - name: Build and analyze
         run: |
-          mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          ./mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=thykp \
             -Dsonar.projectKey=thykp_SPM_Team2.composite.manage-task \
