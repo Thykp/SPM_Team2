@@ -9,6 +9,7 @@ const navigation = [
   { name: "Dashboard", href: "/app", icon: Home },
   { name: "Projects", href: "/app/projects", icon: FolderOpen },
   { name: "Manage Users", href: "/app/manage-users", icon: Users },
+  { name: "Team Task", href: "/app/team-task", icon: Users },
   { name: "Staff Tasks", href: "/app/staff-tasks", icon: Users },
   { name: "Reports", href: "/app/reports", icon: FileText },
 ]
