@@ -45,3 +45,52 @@ func TestErrorMiddleware(t *testing.T) {
 	assert.Equal(t, 500, resp.Code)
 	assert.Contains(t, resp.Body.String(), "boom")
 }
+
+func TestRequestIDMiddleware_WithExistingHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.RequestID())
+	r.GET("/ping", func(c *gin.Context) {
+		c.String(200, c.GetString("request_id"))
+	})
+
+	req := httptest.NewRequest("GET", "/ping", nil)
+	req.Header.Set("X-Request-ID", "custom-id-123")
+	resp := httptest.NewRecorder()
+	r.ServeHTTP(resp, req)
+
+	assert.Equal(t, 200, resp.Code)
+	assert.Equal(t, "custom-id-123", resp.Body.String())
+}
+
+func TestRecoveryMiddleware_StringPanic(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.Recovery())
+	r.GET("/panic", func(c *gin.Context) {
+		panic("string panic message")
+	})
+
+	req := httptest.NewRequest("GET", "/panic", nil)
+	resp := httptest.NewRecorder()
+	r.ServeHTTP(resp, req)
+
+	assert.Equal(t, 500, resp.Code)
+	assert.Contains(t, resp.Body.String(), "string panic message")
+}
+
+func TestRecoveryMiddleware_IntPanic(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.Recovery())
+	r.GET("/panic", func(c *gin.Context) {
+		panic(42)
+	})
+
+	req := httptest.NewRequest("GET", "/panic", nil)
+	resp := httptest.NewRecorder()
+	r.ServeHTTP(resp, req)
+
+	assert.Equal(t, 500, resp.Code)
+	assert.Contains(t, resp.Body.String(), "42")
+}

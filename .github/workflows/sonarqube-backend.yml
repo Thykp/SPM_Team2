@@ -133,29 +133,53 @@ jobs:
   #           -Dsonar.qualitygate.wait=false
 
 
-  # go_manage_account:
-  #   name: composite/manage-account – test & sonar
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: backend/services/composite/manage-account
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: actions/setup-go@v5
-  #       with:
-  #         go-version: '1.22'
-  #     - run: go test ./... -covermode=atomic -coverprofile=coverage.out
-  #     - name: Sonar scan (Cloud)
-  #       uses: SonarSource/sonarqube-scan-action@v5
-  #       continue-on-error: true
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #       with:
-  #         projectBaseDir: backend/services/composite/manage-account
-  #         args: >
-  #           -Dsonar.qualitygate.wait=false
+  go_manage_account:
+    name: composite/manage-account – test & sonar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/composite/manage-account
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go test ./... -covermode=atomic -coverprofile=coverage.out
+      - name: Sonar scan (Cloud)
+        uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: backend/services/composite/manage-account
+          args: >
+            -Dsonar.qualitygate.wait=false
+
+  go_generate_report:
+    name: composite/generate-report – test & sonar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/composite/generate-report
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go test -v -coverpkg=./... -coverprofile=coverage.out ./test/...
+      - name: Sonar scan (Cloud)
+        uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: backend/services/composite/generate-report
+          args: >
+            -Dsonar.qualitygate.wait=false
   
   java_manage_task:
     name: composite/manage-task - sonar

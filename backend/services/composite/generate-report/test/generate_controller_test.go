@@ -24,6 +24,8 @@ func setupRouter(ctrl *controllers.GenerateController) *gin.Engine {
 	})
 
 	r.GET("/health", ctrl.Health)
+	r.GET("/:userId", ctrl.GetReportsByUser)
+	r.DELETE("/:reportId", ctrl.DeleteReport)
 	r.POST("/report/:userId", ctrl.GeneratePersonal)
 	r.POST("/report/team/:teamId", ctrl.GenerateTeam)
 	r.POST("/report/department/:departmentId", ctrl.GenerateDepartment)
@@ -421,6 +423,60 @@ func TestGenerateProjectReport_InvalidBody(t *testing.T) {
 	router := setupRouter(ctrl)
 
 	req := httptest.NewRequest("POST", "/report/project/proj-1", bytes.NewReader([]byte(`{invalid`)))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGetReportsByUser_Success(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Status: 200,
+		Err:    nil,
+	}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	req := httptest.NewRequest("GET", "/user-123", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 200, resp.Code)
+	assert.Equal(t, "GetByUser", mockClient.CalledMethod)
+}
+
+func TestDeleteReport_Success(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Status: 200,
+		Err:    nil,
+	}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	req := httptest.NewRequest("DELETE", "/report-123", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 200, resp.Code)
+	assert.Equal(t, "DeleteReport", mockClient.CalledMethod)
+}
+
+func TestGenerateTeam_InvalidBody(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	req := httptest.NewRequest("POST", "/report/team/team-123", bytes.NewReader([]byte(`{invalid`)))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 

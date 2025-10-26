@@ -19,6 +19,8 @@ func setupErrorRouter(ctrl *controllers.GenerateController) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("request_id", "req-err"); c.Next() })
+	r.GET("/:userId", ctrl.GetReportsByUser)
+	r.DELETE("/:reportId", ctrl.DeleteReport)
 	r.POST("/report/:userId", ctrl.GeneratePersonal)
 	r.POST("/report/team/:teamId", ctrl.GenerateTeam)
 	r.POST("/report/department/:departmentId", ctrl.GenerateDepartment)
@@ -197,4 +199,55 @@ func TestGenerateOrganisation_ReportServiceError(t *testing.T) {
 
 	router.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusBadGateway, resp.Code)
+}
+
+func TestGeneratePersonal_ReportServiceError(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Err: errors.New("report service down"),
+	}
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupErrorRouter(ctrl)
+
+	body := map[string]string{"startDate": "2024-01-01", "endDate": "2024-01-31"}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/u123", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+	assert.Equal(t, http.StatusBadGateway, resp.Code)
+}
+
+func TestGetReportsByUser_Error(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Err: errors.New("report service down"),
+	}
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupErrorRouter(ctrl)
+
+	req := httptest.NewRequest("GET", "/user-123", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+	assert.Equal(t, http.StatusBadGateway, resp.Code)
+	assert.Equal(t, "GetByUser", mockClient.CalledMethod)
+}
+
+func TestDeleteReport_Error(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Err: errors.New("report service down"),
+	}
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupErrorRouter(ctrl)
+
+	req := httptest.NewRequest("DELETE", "/report-123", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+	assert.Equal(t, http.StatusBadGateway, resp.Code)
+	assert.Equal(t, "DeleteReport", mockClient.CalledMethod)
 }

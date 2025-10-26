@@ -133,6 +133,38 @@ jobs:
         - name: Run unit tests
           run: ./mvnw clean test
 
+  organise_project_tests:
+    name: Springboot — composite/organise-project tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/composite/organise-project
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+        
+        - name: Setup JDK
+          uses: actions/setup-java@v4
+          with:
+            java-version: '17'
+            distribution: 'temurin'
+
+        - name: Cache Maven packages
+          uses: actions/cache@v4
+          with:
+            path: ~/.m2/repository
+            key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+            restore-keys: |
+              ${{ runner.os }}-maven-
+
+        - name: Give execute permission to mvnw
+          run: chmod +x mvnw
+
+        - name: Run unit tests
+          run: ./mvnw clean test
+
   generate_report_tests:
     name: Go — composite/generate-report tests
     runs-on: ubuntu-latest
