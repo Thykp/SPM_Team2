@@ -5,9 +5,8 @@ on:
     branches: [main]
     paths: ['backend/**']
   push:
-    # branches: [main]
-    branches: [yh/testing-sonar-coverage]
-    # paths: ['backend/**']
+    branches: [main]
+    paths: ['backend/**']
   workflow_dispatch: 
 
 concurrency:
@@ -15,122 +14,122 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # node_profile:
-  #   name: atomic/profile – test & sonar
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: backend/services/atomic/profile
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #         cache: npm
-  #         cache-dependency-path: backend/services/atomic/profile/package-lock.json
-  #     - run: npm ci
-  #     - run: npm test --if-present -- --coverage --coverageReporters=lcov
-  #     - name: Sonar scan (Cloud)
-  #       uses: SonarSource/sonarqube-scan-action@v5
-  #       continue-on-error: true
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #       with:
-  #         projectBaseDir: backend/services/atomic/profile
-  #         args: >
-  #           -Dsonar.qualitygate.wait=false
+  node_profile:
+    name: atomic/profile – test & sonar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/profile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/profile/package-lock.json
+      - run: npm ci
+      - run: npm test --if-present -- --coverage --coverageReporters=lcov
+      - name: Sonar scan (Cloud)
+        uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: backend/services/atomic/profile
+          args: >
+            -Dsonar.qualitygate.wait=false
 
-  # node_report:
-  #   name: atomic/report – test & sonar
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: backend/services/atomic/report
-  #   env:
-  #     SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  #     SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #         cache: npm
-  #         cache-dependency-path: backend/services/atomic/report/package-lock.json
-  #     - run: npm ci
-  #     - run: npm test --if-present -- --coverage --coverageReporters=lcov
-  #     - name: Sonar scan (Cloud)
-  #       uses: SonarSource/sonarqube-scan-action@v5
-  #       continue-on-error: true
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #       with:
-  #         projectBaseDir: backend/services/atomic/report
-  #         args: >
-  #           -Dsonar.qualitygate.wait=false
+  node_report:
+    name: atomic/report – test & sonar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/report
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/report/package-lock.json
+      - run: npm ci
+      - run: npm test --if-present -- --coverage --coverageReporters=lcov
+      - name: Sonar scan (Cloud)
+        uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: backend/services/atomic/report
+          args: >
+            -Dsonar.qualitygate.wait=false
 
-  # node_task:
-  #   name: atomic/task – test & sonar
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: backend/services/atomic/task
-  #   env:
-  #     SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  #     SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #         cache: npm
-  #         cache-dependency-path: backend/services/atomic/task/package-lock.json
-  #     - run: npm ci
-  #     - run: npm test --if-present -- --coverage --coverageReporters=lcov
-  #     - name: Sonar scan (Cloud)
-  #       uses: SonarSource/sonarqube-scan-action@v5
-  #       continue-on-error: true
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #       with:
-  #         projectBaseDir: backend/services/atomic/task
-  #         args: >
-  #           -Dsonar.qualitygate.wait=false
+  node_task:
+    name: atomic/task – test & sonar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/task
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/task/package-lock.json
+      - run: npm ci
+      - run: npm test --if-present -- --coverage --coverageReporters=lcov
+      - name: Sonar scan (Cloud)
+        uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: backend/services/atomic/task
+          args: >
+            -Dsonar.qualitygate.wait=false
 
-  # node_project:
-  #   name: atomic/project – test & sonar
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: backend/services/atomic/project
-  #   env:
-  #     SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  #     SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #         cache: npm
-  #         cache-dependency-path: backend/services/atomic/project/package-lock.json
-  #     - run: npm ci
-  #     - run: npm test --if-present -- --coverage --coverageReporters=lcov
-  #     - name: Sonar scan (Cloud)
-  #       uses: SonarSource/sonarqube-scan-action@v5
-  #       continue-on-error: true
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #       with:
-  #         projectBaseDir: backend/services/atomic/task
-  #         args: >
-  #           -Dsonar.qualitygate.wait=false
+  node_project:
+    name: atomic/project – test & sonar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/project
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/project/package-lock.json
+      - run: npm ci
+      - run: npm test --if-present -- --coverage --coverageReporters=lcov
+      - name: Sonar scan (Cloud)
+        uses: SonarSource/sonarqube-scan-action@v5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: backend/services/atomic/task
+          args: >
+            -Dsonar.qualitygate.wait=false
 
 
   go_manage_account:
