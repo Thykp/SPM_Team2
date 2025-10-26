@@ -196,7 +196,7 @@ jobs:
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
   java_organize_project:
-    name: composite/manage-task - sonar
+    name: composite/organize-project - sonar
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -211,7 +211,7 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven packages
