@@ -196,7 +196,7 @@ jobs:
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
   java_organize_project:
-    name: composite/organize-project - sonar
+    name: composite/organise-project - sonar
     runs-on: ubuntu-latest
     defaults:
       run:
