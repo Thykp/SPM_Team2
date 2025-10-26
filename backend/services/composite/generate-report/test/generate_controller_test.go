@@ -23,12 +23,28 @@ func setupRouter(ctrl *controllers.GenerateController) *gin.Engine {
 		c.Next()
 	})
 
+	r.GET("/health", ctrl.Health)
 	r.POST("/report/:userId", ctrl.GeneratePersonal)
 	r.POST("/report/team/:teamId", ctrl.GenerateTeam)
 	r.POST("/report/department/:departmentId", ctrl.GenerateDepartment)
 	r.POST("/report/project/:projectId", ctrl.GenerateProjectReport)
 	r.POST("/report/organisation", ctrl.GenerateOrganisation)
 	return r
+}
+
+func TestHealth(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	req := httptest.NewRequest("GET", "/health", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 200, resp.Code)
 }
 
 func TestGeneratePersonal_Success(t *testing.T) {
@@ -230,6 +246,181 @@ func TestGenerateOrganisation_InvalidBody(t *testing.T) {
 	router := setupRouter(ctrl)
 
 	req := httptest.NewRequest("POST", "/report/organisation", bytes.NewReader([]byte(`{invalid`)))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGenerateDepartment_Success(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Resp: models.ReportServiceResponse{
+			Success: true,
+			Data: struct {
+				ReportURL   string `json:"reportUrl"`
+				ReportTitle string `json:"reportTitle"`
+				TaskCount   int    `json:"taskCount"`
+			}{
+				ReportURL:   "https://cdn.example.com/dept.pdf",
+				ReportTitle: "Department Report",
+				TaskCount:   25,
+			},
+		},
+		Status: 200,
+	}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"startDate": "2024-01-01",
+		"endDate":   "2024-01-31",
+		"userId":    "admin-123",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/department/dept-1", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 200, resp.Code)
+	assert.Equal(t, "GenerateDepartment", mockClient.CalledMethod)
+	assert.True(t, mockProducer.Called)
+}
+
+func TestGenerateDepartment_MissingUserID(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"startDate": "2024-01-01",
+		"endDate":   "2024-01-31",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/department/dept-1", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGenerateDepartment_InvalidBody(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	req := httptest.NewRequest("POST", "/report/department/dept-1", bytes.NewReader([]byte(`{invalid`)))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGenerateProjectReport_Success(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Resp: models.ReportServiceResponse{
+			Success: true,
+			Data: struct {
+				ReportURL   string `json:"reportUrl"`
+				ReportTitle string `json:"reportTitle"`
+				TaskCount   int    `json:"taskCount"`
+			}{
+				ReportURL:   "https://cdn.example.com/project.pdf",
+				ReportTitle: "Project Report",
+				TaskCount:   30,
+			},
+		},
+		Status: 200,
+	}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"startDate": "2024-01-01",
+		"endDate":   "2024-01-31",
+		"userId":    "user-123",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/project/proj-1", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 200, resp.Code)
+	assert.Equal(t, "GenerateProjectReport", mockClient.CalledMethod)
+	assert.True(t, mockProducer.Called)
+}
+
+func TestGenerateProjectReport_MissingDates(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"userId": "user-123",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/project/proj-1", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGenerateProjectReport_MissingUserID(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"startDate": "2024-01-01",
+		"endDate":   "2024-01-31",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/project/proj-1", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGenerateProjectReport_InvalidBody(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	req := httptest.NewRequest("POST", "/report/project/proj-1", bytes.NewReader([]byte(`{invalid`)))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
