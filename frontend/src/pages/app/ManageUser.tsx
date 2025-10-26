@@ -124,8 +124,8 @@ function isReportForMe(
   const isHR = isHRDepartment(myDepartmentId);
 
   if (myRole === "Director" && !isHR) {
-    return u.role !== "Director" && u.role !== "Senior Management"
-      && u.department_id === myDepartmentId;
+    return u.role !== "Director" && u.role !== "Senior Management" 
+    && u.department_id === myDepartmentId;
   }
 
   if (myRole === "Senior Management" || isHR) {
