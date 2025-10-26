@@ -181,11 +181,14 @@ async function fetchTeamWithMembers(teamId) {
 // Department metadata + members
 async function fetchDepartmentWithMembers(departmentId) {
   try {
-    // members
-    const staffResp = await axios.get(`${profileAddress}/user/staff`, {
-      params: { department_id: departmentId, role: 'Staff' }
-    });
-    const members = (staffResp.data || []).map(r => r.id);
+    // Fetch all users and filter by department (no role filter)
+    const allUsersResp = await axios.get(`${profileAddress}/user/all`);
+    const allUsers = allUsersResp.data || [];
+    
+    // Filter users belonging to this department (all roles)
+    const deptMembers = allUsers.filter(user => user.department_id === departmentId);
+    const members = deptMembers.map(user => user.id);
+    
     if (!members.length) throw new NotFoundError('No members found for department', { departmentId });
 
     // name from /departments
