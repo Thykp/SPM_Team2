@@ -163,7 +163,7 @@ async function fetchTeamWithMembers(teamId) {
     let name = 'Team';
     let department_id = null;
     try {
-      const teamsResp = await axios.get(`${profileAddress}/teams`);
+      const teamsResp = await axios.get(`${profileAddress}/user/teams`);
       const hit = (teamsResp.data || []).find(t => t.id === teamId);
       if (hit) {
         name = hit.name || name;
@@ -191,7 +191,7 @@ async function fetchDepartmentWithMembers(departmentId) {
     // name from /departments
     let name = 'Department';
     try {
-      const deptResp = await axios.get(`${profileAddress}/departments`);
+      const deptResp = await axios.get(`${profileAddress}/user/departments`);
       const hit = (deptResp.data || []).find(d => d.id === departmentId);
       if (hit?.name) name = hit.name;
     } catch (_) { }
@@ -255,6 +255,63 @@ async function fetchTasksForDepartment(departmentId, startDate, endDate) {
   }
 }
 
+// Fetch all departments
+async function fetchAllDepartments() {
+  try {
+    const response = await axios.get(`${profileAddress}/user/departments`);
+    return response.data || [];
+  } catch (error) {
+    throw new ServiceUnavailableError('Profile Service (all departments)', error);
+  }
+}
+
+// Fetch organization-wide tasks (all users)
+async function fetchAllUsers() {
+  try {
+    const response = await axios.get(`${profileAddress}/user/all`);
+    return response.data || [];
+  } catch (error) {
+    throw new ServiceUnavailableError('Profile Service (all users)', error);
+  }
+}
+
+// Aggregate tasks for the entire organization (all departments)
+async function fetchTasksForOrganization(startDate, endDate) {
+  try {
+    // Get all users in the organization
+    const allUsers = await fetchAllUsers();
+    const allUserIds = allUsers.map(u => u.id);
+    
+    if (!allUserIds.length) {
+      throw new NotFoundError('No users found in organization', { startDate, endDate });
+    }
+
+    // Fetch tasks for all users
+    const perUser = await Promise.all(allUserIds.map(async (uid) => {
+      try {
+        const r = await axios.get(`${taskAddress}/task/users/${uid}`, {
+          params: { startDate, endDate }
+        });
+        return r.data || [];
+      } catch (e) {
+        console.error(`fetchTasksForOrganization: failed for user ${uid}:`, e.message);
+        return [];
+      }
+    }));
+    
+    const merged = mergeTaskListsById(perUser);
+    
+    if (!merged.length) {
+      throw new NotFoundError('No tasks found for organization in date range', { startDate, endDate });
+    }
+    
+    return merged;
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+    throw new ServiceUnavailableError('Task Service (organization aggregate)', error);
+  }
+}
+
 
 module.exports = {
   fetchTasksForUser, 
@@ -265,5 +322,8 @@ module.exports = {
   fetchTeamWithMembers,
   fetchTasksForTeam,
   fetchDepartmentWithMembers,
-  fetchTasksForDepartment
+  fetchTasksForDepartment,
+  fetchAllDepartments,
+  fetchAllUsers,
+  fetchTasksForOrganization
 };
