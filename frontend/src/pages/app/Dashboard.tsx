@@ -21,8 +21,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
-import { useLocation } from 'react-router-dom';
+import { cn } from "@/lib/utils"  
 
 type ViewType = "board" | "timeline" | "cards"
 
@@ -42,9 +41,6 @@ function last30Days(): { start: string; end: string } {
 }
 
 export function Dashboard() {
-  const location  = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const taskName = queryParams.get('taskName');
   const { profile, authLoading } = useAuth()
   const [tasks, setTasks] = useState<TaskType[]>([])
   const [allTasksCache, setAllTasksCache] = useState<TaskType[] | null>(null)
