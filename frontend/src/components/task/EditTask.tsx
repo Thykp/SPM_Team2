@@ -539,6 +539,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
         role="combobox"
         aria-expanded="false"
         className="w-full justify-between h-11"
+        disabled={!isOwner} 
         ref={(el) => {
           if (el) {
             const triggerWidth = el.offsetWidth; // Get the width of the trigger
@@ -594,6 +595,11 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
       </Command>
     </PopoverContent>
   </Popover>
+    {!isOwner && (
+    <p className="text-sm text-gray-500">
+      Only the task owner can modify the owner.
+    </p>
+  )}
 </div>
 
             {/* Buttons */}

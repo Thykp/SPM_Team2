@@ -411,6 +411,30 @@ export const Report = {
     return data;
   },
 
+  generateOrganisation: async (
+    body: GenerateScopedReportBody
+  ): Promise<{ 
+    success: boolean; 
+    data?: { 
+      reportUrl: string; 
+      reportTitle: string; 
+      taskCount: number;
+      collaboratorCount?: number;
+    }; 
+    error?: { 
+      code: string; 
+      message: string; 
+      details?: any;
+    };
+    jobId?: string; 
+    message?: string; 
+    url?: string;
+  }> => {
+    const url = `${GENERATE_REPORT_API}/organisation`;
+    const { data } = await api.post(url, body);
+    return data;
+  },
+
   generateTeam: async (
     teamId: string,
     body: GenerateScopedReportBody
