@@ -26,5 +26,3 @@ dist-ssr
 *.sw?
 
 archive
-
-dockerfile
