@@ -230,5 +230,5 @@ jobs:
           ./mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=thykp \
-            -Dsonar.projectKey=thykp_SPM_Team2.composite.organize-project \
+            -Dsonar.projectKey=thykp_SPM_Team2.composite.organise-project \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
