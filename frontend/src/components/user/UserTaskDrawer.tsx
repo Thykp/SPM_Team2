@@ -41,7 +41,7 @@ function Aggregate({ tasks }: { tasks: TaskType[] }) {
   const done = tasks.filter(t => statusToProgress(t.status) >= 100).length;
   const pct = total ? (done / total) * 100 : 0;
   return (
-    <div className="rounded-md border p-3">
+    <div className="rounded-md border p-3 m-2">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">Overall progress</span>
         <span className="text-muted-foreground">
@@ -172,13 +172,13 @@ export function UserTaskDrawer({
               <Aggregate tasks={tasks} />
 
               {/* Sort and Filter Controls */}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 m-2">
                 <div className="inline-flex rounded-lg border border-border shadow-sm bg-card">
                   <Button
                     variant={activeTab === "active" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setActiveTab("active")}
-                    className="rounded-none"
+                    className="rounded-md"
                   >
                     Active
                     {activeCount > 0 && (
@@ -191,7 +191,7 @@ export function UserTaskDrawer({
                     variant={activeTab === "completed" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setActiveTab("completed")}
-                    className="rounded-none"
+                    className="rounded-md"
                   >
                     Completed
                     {completedCount > 0 && (
@@ -214,7 +214,7 @@ export function UserTaskDrawer({
               </div>
 
               {/* Task list */}
-              <ul className="space-y-3">
+              <ul className="space-y-3 m-2">
                 {filteredAndSortedTasks.map((t) => (
                   <li
                     key={t.id}
