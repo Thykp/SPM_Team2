@@ -163,6 +163,8 @@ jobs:
     defaults:
       run:
         working-directory: backend/services/composite/manage-task
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
