@@ -292,6 +292,35 @@ export default function ManageUser() {
     }
   };
 
+  const sortTasksHierarchically = (taskList: TaskType[]) => {
+    const sorted: TaskType[] = [];
+    const taskMap = new Map<string, TaskType>();
+    const childrenMap = new Map<string, TaskType[]>();
+
+    taskList.forEach(task => {
+      taskMap.set(task.id, task);
+      if (task.parent) {
+        const children = childrenMap.get(task.parent) || [];
+        children.push(task);
+        childrenMap.set(task.parent, children);
+      }
+    });
+
+    const addTaskAndChildren = (task: TaskType) => {
+      sorted.push(task);
+      const children = childrenMap.get(task.id) || [];
+      children.forEach(child => addTaskAndChildren(child));
+    };
+
+    taskList.forEach(task => {
+      if (!task.parent) {
+        addTaskAndChildren(task);
+      }
+    });
+
+    return sorted;
+  };
+
   async function callReport(kind: "team" | "department") {
     if (reportBusy) return;
     setBanner(null);
@@ -567,7 +596,7 @@ export default function ManageUser() {
 
               {/* Task list: clicking opens TaskDetailNavigator */}
               <ul className="space-y-3">
-                {tasks.map((t) => (
+                {sortTasksHierarchically(tasks).map((t) => (
                   <li
                     key={t.id}
                     role="button"
@@ -587,15 +616,18 @@ export default function ManageUser() {
                       "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring",
                       t.status === "Completed"
                         ? "bg-emerald-50/40 dark:bg-emerald-950/20"
-                        : "bg-card"
+                        : "bg-card",
+                      t.parent && "ml-6"
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium">{t.title}</div>
+                        <div className="font-medium flex items-center gap-2">
+                          {t.parent && <span className="text-muted-foreground">└─</span>}
+                          <span>{t.title}</span>
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {t.status ?? "—"}
-                          {t.parent ? ` · Subtask of ${t.parent}` : null}
                         </div>
                       </div>
                       {t.deadline ? (
