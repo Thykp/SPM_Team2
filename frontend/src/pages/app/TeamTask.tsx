@@ -103,7 +103,6 @@ export default function TeamTask() {
   const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
 
   const myUserId = (profile as any)?.id as string | undefined;
-  const [myTeamId, setMyTeamId] = useState<string | null>(null);
 
   const [banner, setBanner] = useState<{ type: "info" | "error"; msg: string } | null>(null);
 
@@ -124,7 +123,6 @@ export default function TeamTask() {
 
       if (all) {
         const me = myUserId ? all.find(u => u.id === myUserId) : undefined;
-        setMyTeamId(me?.team_id ?? null);
 
         const teammates = all.filter(u => isTeammate(me?.team_id ?? null, myUserId, u));
         setUsers(teammates);
@@ -136,7 +134,6 @@ export default function TeamTask() {
         setCache(USERS_CACHE_KEY, freshAll);
 
         const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
-        setMyTeamId(meFresh?.team_id ?? null);
 
         const teammatesFresh = freshAll.filter(u => isTeammate(meFresh?.team_id ?? null, myUserId, u));
         setUsers(teammatesFresh);
