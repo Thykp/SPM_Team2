@@ -15,7 +15,7 @@ type ToastProps = ToastData & {
 };
 
 
-export function Toast({ id, title, link, description, onClose, duration = 5000, bgColor = "#fff", textColor = "#000" }: ToastProps) {
+export function Toast({ id, title, description, onClose, duration = 5000, bgColor = "#fff", textColor = "#000" }: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(() => onClose(id), duration);
     return () => clearTimeout(timer);

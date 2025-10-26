@@ -178,13 +178,22 @@ function formatWsReminder(wsPayload) {
 
   const link = task.project_id
     ? `/app/project/${task.project_id}`
-    : `/app?taskName=${wsPayload.resource_content.title}`;
+    : `/app?taskName=${task.title}`;
 
   // Construct title
   const title = `Upcoming Deadline: ${task.title}`;
 
+  let priority = ""
+  if (task.priority > 7){
+    priority = "[HIGH]"
+  } else if (task.priority > 4){
+    priority = "[MEDIUM]"
+  } else {
+    priority = "[LOW]"
+  }
+
   const description = `Reminder set for ${wsPayload.day} day(s) before deadline. ` +
-    `Status: ${task.status || 'N/A'}, Priority: ${task.priority || 'N/A'}. ` +
+    `${priority} Status: ${task.status || 'N/A'}. ` +
     `${task.description ? `Description: "${task.description}"` : ''}`;
 
   console.info(`[FormatWsReminder]: ${JSON.stringify({ title, link, description })}`);
