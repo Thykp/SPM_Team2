@@ -53,8 +53,8 @@ router.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'reports' });
 });
 
-// Organization Report Endpoint (MUST be before /:userId to avoid route collision)
-router.post('/organization', async (req, res) => {
+// Organisation Report Endpoint (MUST be before /:userId to avoid route collision)
+router.post('/organisation', async (req, res) => {
   const { startDate, endDate, userId } = req.body;
 
   try {

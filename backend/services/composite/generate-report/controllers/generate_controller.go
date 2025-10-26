@@ -344,6 +344,18 @@ func (g *GenerateController) GenerateOrganisation(c *gin.Context) {
 		})
 		return
 	}
+
+	if req.StartDate == "" || req.EndDate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "MISSING_DATES",
+				"message": "Both startDate and endDate are required",
+			},
+		})
+		return
+	}
+
 	if strings.TrimSpace(req.UserID) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -356,16 +368,17 @@ func (g *GenerateController) GenerateOrganisation(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
+	orgEvent := models.OrganisationGenerateEvent{
+		StartDate: req.StartDate,
+		EndDate:   req.EndDate,
+		UserID:    req.UserID,
+	}
 	env := models.KafkaEnvelope{
 		Event:         "ORGANISATION_REPORT_REQUESTED",
 		CorrelationID: reqID,
-		Payload: models.OrganisationGenerateEvent{
-			StartDate: req.StartDate,
-			EndDate:   req.EndDate,
-			UserID:    req.UserID,
-		},
+		Payload:       orgEvent,
 	}
-	// Use userId as the partitioning key (no org ID provided for this scope)
+	// Use userId as the partitioning key
 	if err := g.producer.Produce(ctx, req.UserID, env); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,

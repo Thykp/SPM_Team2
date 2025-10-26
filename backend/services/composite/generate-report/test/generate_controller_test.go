@@ -27,6 +27,7 @@ func setupRouter(ctrl *controllers.GenerateController) *gin.Engine {
 	r.POST("/report/team/:teamId", ctrl.GenerateTeam)
 	r.POST("/report/department/:departmentId", ctrl.GenerateDepartment)
 	r.POST("/report/project/:projectId", ctrl.GenerateProjectReport)
+	r.POST("/report/organisation", ctrl.GenerateOrganisation)
 	return r
 }
 
@@ -137,4 +138,102 @@ func TestGenerateTeam_Success(t *testing.T) {
 	assert.Equal(t, 200, resp.Code)
 	assert.Equal(t, "GenerateTeam", mockClient.CalledMethod)
 	assert.True(t, mockProducer.Called)
+}
+
+func TestGenerateOrganisation_Success(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{
+		Resp: models.ReportServiceResponse{
+			Success: true,
+			Data: struct {
+				ReportURL   string `json:"reportUrl"`
+				ReportTitle string `json:"reportTitle"`
+				TaskCount   int    `json:"taskCount"`
+			}{
+				ReportURL:   "https://cdn.example.com/organisation.pdf",
+				ReportTitle: "Organisation Report",
+				TaskCount:   100,
+			},
+		},
+		Status: 200,
+	}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"startDate": "2024-01-01",
+		"endDate":   "2024-01-31",
+		"userId":    "admin-123",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/organisation", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 200, resp.Code)
+	assert.Equal(t, "GenerateOrganisation", mockClient.CalledMethod)
+	assert.True(t, mockProducer.Called)
+}
+
+func TestGenerateOrganisation_MissingDates(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"userId": "admin-123",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/organisation", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGenerateOrganisation_MissingUserID(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	body := map[string]string{
+		"startDate": "2024-01-01",
+		"endDate":   "2024-01-31",
+	}
+	data, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/report/organisation", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
+}
+
+func TestGenerateOrganisation_InvalidBody(t *testing.T) {
+	mockProducer := &testutils.MockProducer{}
+	mockClient := &testutils.MockReportClient{}
+
+	ctrl := controllers.NewGenerateController(mockProducer, mockClient)
+	router := setupRouter(ctrl)
+
+	req := httptest.NewRequest("POST", "/report/organisation", bytes.NewReader([]byte(`{invalid`)))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, 400, resp.Code)
 }
