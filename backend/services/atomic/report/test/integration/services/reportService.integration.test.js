@@ -135,12 +135,11 @@ describe('ReportService Integration Tests', () => {
             const reportResult = await createReport(reportData, storageResult.publicUrl);
             expect(reportResult).toBeDefined();
 
-            // Step 3: Verify the report was created in database
+            // Step 3: Verify the report was created in database by matching filepath
             const { data: reports, error } = await supabase
                 .from('revamped_report')
                 .select('*')
-                .eq('profile_id', TEST_PROFILE_ID)
-                .order('created_at', { ascending: false })
+                .eq('filepath', storageResult.publicUrl)
                 .limit(1);
 
             expect(error).toBeNull();
