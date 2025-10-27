@@ -21,6 +21,7 @@ import { type TaskDTO, TaskApi } from '@/lib/api';
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { TaskDetailNavigator } from '@/components/task/TaskDetailNavigator';
+import { TaskReminder } from '../task/TaskReminder';
 import { RecurTask } from '@/components/task/RecurTask';
 import EditTask from '@/components/task/EditTask';
 import CreateSubtask from '@/components/task/CreateSubtask';
@@ -160,6 +161,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                         </div>
                         <div className="flex-1 min-w-0">
                             <h4 className="font-medium line-clamp-2">{task.title}</h4>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <TaskReminder taskId={task.id} status={task.status} deadline={task.deadline}/>
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

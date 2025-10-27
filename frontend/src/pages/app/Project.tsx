@@ -11,6 +11,7 @@ import ProjectHeader from "@/components/project/ProjectHeader";
 import ProjectSearch from "@/components/project/ProjectSearch";
 import ProjectModal from "@/components/project/ProjectModal";
 import ProjectGrid from "@/components/project/ProjectGrid";
+import { Notification as NotificationApi } from "@/lib/api";
 
 interface Project {
   id: string;
@@ -56,7 +57,7 @@ const getCollaboratorNames = (collaboratorUUIDs: string[], users: UserRow[]): st
 };
 
 const Projects: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,60 +139,78 @@ const Projects: React.FC = () => {
   }, [projects, searchTerm]);
 
   const handleCreateProject = async (projectData: NewProjectRequest) => {
-    setIsCreating(true);
-    setError(null);
+  setIsCreating(true);
+  setError(null);
 
-        try {
-            const createdProject = await ProjectAPI.create(projectData);
-            
-            // Load users to map collaborator UUIDs to names
-            let collaboratorNames: string[] = [];
-            const collaborators = projectData.collaborators || [];
-            
-            if (collaborators.length > 0) {
-                try {
-                    const allUsers = await Profile.getAllUsers();
-                    collaboratorNames = getCollaboratorNames(collaborators, allUsers);
-                } catch (userErr) {
-                    console.error('Error loading users for collaborator names:', userErr);
-                    // Fallback to just showing UUIDs
-                    collaboratorNames = collaborators.map(uuid => `User ${uuid.slice(0, 8)}...`);
-                }
-            }
-            
-            // Get owner display name
-            let ownerName = `User ${createdProject.owner.slice(0, 8)}...`;
-            try {
-                const allUsers = await Profile.getAllUsers();
-                ownerName = getUserDisplayName(createdProject.owner, allUsers);
-            } catch (userErr) {
-                console.error('Error loading owner info:', userErr);
-            }
+  try {
+    const createdProject = await ProjectAPI.create(projectData);
 
-            // Transform API response to component format and add to local state
-            const newProjectForState: Project = {
-                id: createdProject.id,
-                title: createdProject.title || projectData.title,
-                description: createdProject.description || projectData.description,
-                startDate: createdProject.created_at || new Date().toISOString(),
-                members: collaboratorNames,
-                owner: ownerName,
-                ownerId: createdProject.owner
-            };
+    // Load users to map collaborator UUIDs to names
+    let collaboratorNames: string[] = [];
+    const collaborators = projectData.collaborators || [];
 
-      setProjects((prev) => [newProjectForState, ...prev]);
-
-      // Success toast
-      setSuccessMessage("Project created successfully!");
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      console.error("Failed to create project:", err);
-      setError(err instanceof Error ? err.message : "Failed to create project");
-      throw err; // let modal handle it too
-    } finally {
-      setIsCreating(false);
+    if (collaborators.length > 0) {
+      try {
+        const allUsers = await Profile.getAllUsers();
+        collaboratorNames = getCollaboratorNames(collaborators, allUsers);
+      } catch (userErr) {
+        console.error('Error loading users for collaborator names:', userErr);
+        collaboratorNames = collaborators.map(uuid => `User ${uuid.slice(0, 8)}...`);
+      }
     }
-  };
+
+    // Get owner display name
+    let ownerName = `User ${createdProject.owner.slice(0, 8)}...`;
+    try {
+      const allUsers = await Profile.getAllUsers();
+      ownerName = getUserDisplayName(createdProject.owner, allUsers);
+    } catch (userErr) {
+      console.error('Error loading owner info:', userErr);
+    }
+
+    // Transform API response to component format and add to local state
+    const newProjectForState: Project = {
+      id: createdProject.id,
+      title: createdProject.title || projectData.title,
+      description: createdProject.description || projectData.description,
+      startDate: createdProject.created_at || new Date().toISOString(),
+      members: collaboratorNames,
+      owner: ownerName
+    };
+
+    setProjects((prev) => [newProjectForState, ...prev]);
+
+    // Success toast
+    setSuccessMessage("Project created successfully!");
+    setTimeout(() => setSuccessMessage(null), 3000);
+
+    // --- Notify collaborators using publishAddedToResource ---
+    if (createdProject.collaborators.length > 0) {
+      const addedBy = profile?.display_name || "Unknown User"; // from useAuth context
+
+      await NotificationApi.publishAddedToResource({
+        resourceType: "project",
+        resourceId: createdProject.id,
+        collaboratorIds: createdProject.collaborators,
+        resourceContent: { ...createdProject },
+        addedBy: addedBy,
+      });
+      console.log(JSON.stringify({resourceType: "project",
+        resourceId: createdProject.id,
+        collaboratorIds: createdProject.collaborators,
+        resourceContent: { ...createdProject },
+        addedBy: addedBy,}))
+    }
+
+  } catch (err) {
+    console.error("Failed to create project:", err);
+    setError(err instanceof Error ? err.message : "Failed to create project");
+    throw err; // let modal handle it too
+  } finally {
+    setIsCreating(false);
+  }
+};
+
 
   const handleModalClose = () => {
     setShowModal(false);

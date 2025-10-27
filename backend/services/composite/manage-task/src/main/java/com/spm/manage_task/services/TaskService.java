@@ -2,6 +2,7 @@ package com.spm.manage_task.services;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -18,8 +19,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.spm.manage_task.components.TaskDTOWrapperComponent;
 import com.spm.manage_task.dto.TaskDto;
 import com.spm.manage_task.dto.TaskPostRequestDto;
+import com.spm.manage_task.dto.TaskReminderDto;
 import com.spm.manage_task.factory.TaskMicroserviceResponse;
 import com.spm.manage_task.factory.TaskMicroserviceUpsertRequest;
+
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClientException;
 
 @Service
 public class TaskService {
@@ -138,6 +144,41 @@ public class TaskService {
         return taskDtos == null ? List.of() : taskDtos;
     }
 
+    public TaskReminderDto getTaskDeadlineReminder(String taskId, String userId) {
+        ResponseEntity<TaskReminderDto> responseEntity = restTemplate.getForEntity(taskUrl + "/" + taskId + "/deadline-reminder/" + userId, TaskReminderDto.class);
+        
+        TaskReminderDto reminder = responseEntity.getBody();
+        if (reminder == null) {
+            throw new RuntimeException("Deadline reminder not found for task ID: " + taskId);
+        }
+        return reminder;
+    }
+
+    public TaskReminderDto setTaskDeadlineReminder(String taskId, String userId, List<Integer> reminders) {
+        Map<String, List<Integer>> payload = Map.of("deadline_reminder", reminders);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, List<Integer>>> entity = new HttpEntity<>(payload, headers);
+
+        try {
+            TaskReminderDto updated = restTemplate.exchange(
+                    taskUrl + "/" + taskId + "/deadline-reminder/" + userId,
+                    HttpMethod.POST, // changed from PATCH to POST
+                    entity,
+                    TaskReminderDto.class
+            ).getBody();
+
+            if (updated == null) {
+                throw new RuntimeException("Atomic service returned null when updating deadline reminder");
+            }
+
+            return updated;
+
+        } catch (RestClientException e) {
+            throw new RuntimeException("Error updating deadline reminder via atomic service", e);
+        }
+    }
     public void deleteTask(String taskId) {
         ResponseEntity<Void> responseEntity = restTemplate.exchange(
             taskUrl + "/" + taskId, 

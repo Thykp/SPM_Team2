@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { TaskReminder } from "./TaskReminder";
 import { Edit, Trash2 } from "lucide-react";
 import EditTask from "./EditTask";
 import CreateSubtask from "./CreateSubtask";
@@ -368,6 +369,9 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
                           <p className="text-sm text-muted-foreground mt-1">{subTask.description}</p>
                           
                           <div className="flex items-center justify-between">
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <TaskReminder taskId={subTask.id} status={subTask.status} deadline={subTask.deadline}/>
+                            </div>
                             <Badge variant={getStatusBadgeVariant(subTask.status)} className="text-xs">
                               {subTask.status}
                             </Badge>

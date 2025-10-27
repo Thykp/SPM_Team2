@@ -39,6 +39,7 @@ import {
   rectIntersection,
 } from '@dnd-kit/core';
 import TaskCard from './TaskCard';
+import { Notification as NotificationAPI } from "@/lib/api";
 
 interface TaskWithSubtasks {
     task: TaskDTO;
@@ -70,7 +71,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     refreshTrigger 
 }) => {
     const [activeTask, setActiveTask] = useState<TaskDTO | null>(null);
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const [initialTasks, setInitialTasks] = useState<TaskDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -450,6 +451,23 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             // Call the callback for any additional handling
             if (onTaskUpdate) {
                 onTaskUpdate({ ...task, status: newStatus });
+            }
+
+            let  collaboratorsToNotify = [...taskUpdateData.collaborators].filter(id => id !== null && id !== profile?.id);  
+            if(taskUpdateData.owner !== profile?.id) collaboratorsToNotify.push(taskUpdateData.owner);
+            console.log(collaboratorsToNotify, taskUpdateData.collaborators)
+            if (taskUpdateData.collaborators.length > 0) {
+                await NotificationAPI.publishUpdate({
+                updateType: "Edited",
+                resourceType: "project",
+                resourceId:taskId,
+                resourceContent: { 
+                    updated: {...taskUpdateData},
+                    original: {...taskUpdateData}
+                },
+                collaboratorIds: collaboratorsToNotify,
+                updatedBy: profile?.display_name || "Unknown User",
+                });
             }
         } catch (error) {
             // Log additional debug information
