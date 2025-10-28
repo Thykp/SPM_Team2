@@ -107,16 +107,16 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl shadow-2xl">
+      <Card className="w-full max-w-xs sm:max-w-sm md:max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader className="pb-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl">Create New Project</CardTitle>
-              <p className="text-muted-foreground mt-1">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-xl sm:text-2xl">Create New Project</CardTitle>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
                 Start a new project and invite your team to collaborate
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
+            <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 shrink-0">
               <X className="h-4 w-4" />
             </Button>
           </div>
