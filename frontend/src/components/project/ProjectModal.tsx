@@ -107,22 +107,22 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl shadow-2xl">
+      <Card className="w-full max-w-xs sm:max-w-sm md:max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden">
         <CardHeader className="pb-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-start gap-3">
             <div>
-              <CardTitle className="text-2xl">Create New Project</CardTitle>
-              <p className="text-muted-foreground mt-1">
+              <CardTitle className="text-xl sm:text-2xl">Create New Project</CardTitle>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
                 Start a new project and invite your team to collaborate
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
+            <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 shrink-0">
               <X className="h-4 w-4" />
             </Button>
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="overflow-y-auto max-h-[calc(90vh-200px)]">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
               <p className="text-red-800 text-sm">{error}</p>
