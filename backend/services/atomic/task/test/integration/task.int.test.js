@@ -309,9 +309,10 @@ describe('Task API - Integration Tests', () => {
         });
 
         test('should create a new task with owner and collaborator', async () => {
+            const timestamp = Date.now();
             const newTask = {
                 project_id: testProjectId,
-                title: 'New Integration Test Task',
+                title: `New Integration Test Task ${timestamp}`,
                 deadline: '2026-01-15',
                 description: 'Task created by integration test',
                 status: 'Ongoing',
@@ -333,7 +334,7 @@ describe('Task API - Integration Tests', () => {
             const { data: tasks } = await supabase
                 .from(TABLES.TASK)
                 .select('*')
-                .eq('title', 'New Integration Test Task')
+                .eq('title', `New Integration Test Task ${timestamp}`)
                 .eq('project_id', testProjectId);
 
             expect(tasks.length).toBe(1);
@@ -369,9 +370,10 @@ describe('Task API - Integration Tests', () => {
         });
 
         test('should return 400 for task without participants', async () => {
+            const timestamp = Date.now();
             const taskNoParticipants = {
                 project_id: testProjectId,
-                title: 'Task Without Participants',
+                title: `Task Without Participants ${timestamp}`,
                 deadline: '2026-03-01',
                 description: 'This should fail',
                 status: 'Ongoing',
@@ -387,9 +389,10 @@ describe('Task API - Integration Tests', () => {
         });
 
         test('should return 400 for task without owner', async () => {
+            const timestamp = Date.now();
             const taskNoOwner = {
                 project_id: testProjectId,
-                title: 'Task Without Owner',
+                title: `Task Without Owner ${timestamp}`,
                 deadline: '2026-03-01',
                 description: 'All participants are collaborators',
                 status: 'Ongoing',
