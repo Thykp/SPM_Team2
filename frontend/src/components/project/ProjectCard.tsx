@@ -418,7 +418,13 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onPro
                         onToggleCollaborator={handleToggleCollaborator}
                         loadingUsers={loadingUsers}
                         currentUserId={currentProjectData?.owner || localProject.owner}
+                        disabled={profile?.id !== localProject.ownerId}
                     />
+                    {profile?.id !== localProject.ownerId && (
+                        <p className="text-sm text-muted-foreground">
+                            Only the project owner can modify the collaborators.
+                        </p>
+                    )}
                 </div>
                 <DialogFooter>
                     <Button 
