@@ -11,6 +11,10 @@ describe('Task API - Integration Tests', () => {
     const testOwnerId = 'e9f9a36c-5d22-49c8-9493-30cbf2f3fc67';
     const testCollaboratorId = '237f73b2-6850-4c5d-849f-56f1164a063b';
     const thirdUserId = 'de3f4aa2-97e0-4e94-972a-1ba5e6035746';
+    
+    // Unique identifier for this test run (important for CI environments)
+    const testRunId = `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
     const TABLES = {
         PROJECT: 'revamped_project',
         TASK: 'revamped_task',
@@ -44,7 +48,7 @@ describe('Task API - Integration Tests', () => {
             .from(TABLES.TASK)
             .insert({
                 project_id: testProjectId,
-                title: 'Test Task',
+                title: `Test Task ${testRunId}`,
                 deadline: '2025-12-31',
                 description: 'Test task description',
                 status: 'Ongoing',
@@ -80,7 +84,7 @@ describe('Task API - Integration Tests', () => {
             .insert({
                 parent_task_id: testTaskId,
                 project_id: testProjectId,
-                title: 'Test Subtask',
+                title: `Test Subtask ${testRunId}`,
                 deadline: '2025-12-31',
                 description: 'Test subtask description',
                 status: 'Ongoing',
@@ -159,6 +163,30 @@ describe('Task API - Integration Tests', () => {
             }
         }
 
+        // Additional cleanup: Remove any orphaned tasks from this test run
+        // This catches tasks created during tests that might not have been cleaned up
+        const { data: orphanedTasks } = await supabase
+            .from(TABLES.TASK)
+            .select('id')
+            .like('title', `%${testRunId}%`);
+
+        if (orphanedTasks && orphanedTasks.length > 0) {
+            console.log(`Found ${orphanedTasks.length} orphaned tasks from this test run, cleaning up...`);
+            const orphanedTaskIds = orphanedTasks.map(t => t.id);
+            
+            // Delete orphaned participants
+            await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .delete()
+                .in('task_id', orphanedTaskIds);
+            
+            // Delete orphaned tasks
+            await supabase
+                .from(TABLES.TASK)
+                .delete()
+                .in('id', orphanedTaskIds);
+        }
+
         // Delete project
         if (testProjectId) {
             const { error: projectError } = await supabase
@@ -171,7 +199,7 @@ describe('Task API - Integration Tests', () => {
                 console.log(`Deleted project: ${testProjectId}`);
             }
         }
-    }, 30000); // 30 second timeout for database cleanup
+    }, 60000); // 60 second timeout for database cleanup (increased for extra cleanup)
 
 
     describe('GET /task - Get all tasks', () => {
@@ -312,7 +340,7 @@ describe('Task API - Integration Tests', () => {
             const timestamp = Date.now();
             const newTask = {
                 project_id: testProjectId,
-                title: `New Integration Test Task ${timestamp}`,
+                title: `New Integration Test Task ${testRunId}-${timestamp}`,
                 deadline: '2026-01-15',
                 description: 'Task created by integration test',
                 status: 'Ongoing',
@@ -334,7 +362,7 @@ describe('Task API - Integration Tests', () => {
             const { data: tasks } = await supabase
                 .from(TABLES.TASK)
                 .select('*')
-                .eq('title', `New Integration Test Task ${timestamp}`)
+                .eq('title', `New Integration Test Task ${testRunId}-${timestamp}`)
                 .eq('project_id', testProjectId);
 
             expect(tasks.length).toBe(1);
@@ -373,7 +401,7 @@ describe('Task API - Integration Tests', () => {
             const timestamp = Date.now();
             const taskNoParticipants = {
                 project_id: testProjectId,
-                title: `Task Without Participants ${timestamp}`,
+                title: `Task Without Participants ${testRunId}-${timestamp}`,
                 deadline: '2026-03-01',
                 description: 'This should fail',
                 status: 'Ongoing',
@@ -392,7 +420,7 @@ describe('Task API - Integration Tests', () => {
             const timestamp = Date.now();
             const taskNoOwner = {
                 project_id: testProjectId,
-                title: `Task Without Owner ${timestamp}`,
+                title: `Task Without Owner ${testRunId}-${timestamp}`,
                 deadline: '2026-03-01',
                 description: 'All participants are collaborators',
                 status: 'Ongoing',
