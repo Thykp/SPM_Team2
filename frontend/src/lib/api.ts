@@ -354,6 +354,12 @@ export const TaskApi = {
     const { data } = await api.put<{ message: string; comments: string[] }>(url, { comment });
     return data;
   },
+
+  removeComment: async (taskId: string, userId: string, comment: string): Promise<{ message: string; comments: string[] }> => {
+    const url = `${TASK_API}/task/${taskId}/comment/${userId}/remove`;
+    const { data } = await api.put<{ message: string; comments: string[] }>(url, { comment });
+    return data;
+  },
 };
 
 // Fetch staff under scope (team or department)

@@ -382,6 +382,41 @@ class Task {
         return updatedComments; // Return the updated comments array
     }
 
+    async removeComment(userId, comment) {
+        if (!comment || comment.trim() === "") {
+            throw new ValidationError("Comment cannot be empty");
+        }
+
+        const { data: existingComments, error: fetchError } = await supabase
+            .from(Task.taskParticipantTable)
+            .select("comments")
+            .eq("task_id", this.id)
+            .eq("profile_id", userId)
+            .single();
+
+        if (fetchError) {
+            console.error("Error fetching existing comments:", fetchError);
+            throw new DatabaseError("Failed to fetch existing comments", fetchError);
+        }
+
+        const updatedComments = (existingComments?.comments || []).filter(
+            (existingComment) => existingComment !== comment // Remove the specific comment
+        );
+
+        const { error: updateError } = await supabase
+            .from(Task.taskParticipantTable)
+            .update({ comments: updatedComments })
+            .eq("task_id", this.id)
+            .eq("profile_id", userId);
+
+        if (updateError) {
+            console.error("Error updating comments:", updateError);
+            throw new DatabaseError("Failed to update comments", updateError);
+        }
+
+        return updatedComments; // Return the updated comments array
+    }
+
     async getDeadlineReminder(userId) {
         const { data, error } = await supabase
             .from(Task.taskParticipantTable)
