@@ -445,7 +445,7 @@ describe('Task API - Integration Tests', () => {
     describe('PUT /task/:id - Update task', () => {
         test('should update task basic fields', async () => {
             const updatedFields = {
-                title: 'Updated Test Task Title',
+                title: `Updated Test Task Title ${testRunId}-1`,
                 description: 'Updated description for integration test',
                 status: 'Under Review',
                 deadline: '2026-06-30',
@@ -468,7 +468,7 @@ describe('Task API - Integration Tests', () => {
                 .get(`/task/${testTaskId}`)
                 .expect(200);
 
-            expect(getResponse.body.title).toBe('Updated Test Task Title');
+            expect(getResponse.body.title).toBe(`Updated Test Task Title ${testRunId}-1`);
             expect(getResponse.body.description).toBe('Updated description for integration test');
             expect(getResponse.body.status).toBe('Under Review');
             expect(getResponse.body.deadline).toBe('2026-06-30T00:00:00+00:00');
@@ -477,7 +477,7 @@ describe('Task API - Integration Tests', () => {
 
         test('should update task participants (add new collaborator)', async () => {
             const updatedTask = {
-                title: 'Updated Test Task Title',
+                title: `Updated Test Task Title ${testRunId}-2`,
                 description: 'Updated description for integration test',
                 status: 'Under Review',
                 deadline: '2026-06-30',
@@ -515,7 +515,7 @@ describe('Task API - Integration Tests', () => {
 
         test('should update task status to Completed', async () => {
             const updatedFields = {
-                title: 'Updated Test Task Title',
+                title: `Updated Test Task Title ${testRunId}-3`,
                 description: 'Updated description for integration test',
                 status: 'Completed',
                 deadline: '2026-06-30',
