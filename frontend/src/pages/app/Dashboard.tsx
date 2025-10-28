@@ -9,9 +9,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import CreateTask from "@/components/task/CreateTask"
 import { type TaskDTO as TaskType, TaskApi as Task, Project, Report } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Filter, Search, LayoutGrid, Calendar, Rows, FileDown, Loader2 } from "lucide-react"
+import { Filter, Search, LayoutGrid, Calendar, Rows, FileDown, Loader2, Plus, Info } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -22,34 +21,33 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { useLocation } from 'react-router-dom';
+import { useLocation } from "react-router-dom"
 
 type ViewType = "board" | "timeline" | "cards"
-
 type OwnershipFilter = "all_mine" | "owner_only" | "assigned_only" | "project_peers_others"
 
 function toYMD(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
 }
 
 function last30Days(): { start: string; end: string } {
-  const end = new Date();
-  const start = new Date(end.getTime() - 29 * 24 * 3600 * 1000);
-  return { start: toYMD(start), end: toYMD(end) };
+  const end = new Date()
+  const start = new Date(end.getTime() - 29 * 24 * 3600 * 1000)
+  return { start: toYMD(start), end: toYMD(end) }
 }
 
 export function Dashboard() {
-  const location  = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const taskName = queryParams.get('taskName');
+  const location = useLocation()
+  const queryParams = new URLSearchParams(location.search)
+  const taskName = queryParams.get("taskName")
   const { profile, authLoading } = useAuth()
   const [tasks, setTasks] = useState<TaskType[]>([])
   const [allTasksCache, setAllTasksCache] = useState<TaskType[] | null>(null)
   const myProjectIdsRef = useRef<Set<string>>(new Set())
-  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false); 
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,11 +56,32 @@ export function Dashboard() {
   const [ownerFilter, setOwnerFilter] = useState<OwnershipFilter>("all_mine")
   const [loadingPeers, setLoadingPeers] = useState(false)
 
-  const defaultRange = last30Days();
-  const [startDate, setStartDate] = useState<string>(defaultRange.start);
-  const [endDate, setEndDate] = useState<string>(defaultRange.end);
-  const [reportBusy, setReportBusy] = useState(false);
-  const [reportBanner, setReportBanner] = useState<{ type: "success" | "error" | "info"; msg: string; href?: string } | null>(null);
+  const defaultRange = last30Days()
+  const [startDate, setStartDate] = useState<string>(defaultRange.start)
+  const [endDate, setEndDate] = useState<string>(defaultRange.end)
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportBanner, setReportBanner] = useState<
+    { type: "success" | "error" | "info"; msg: string; href?: string; showCreateCTA?: boolean } | null
+  >(null)
+
+  // --- helpers for friendlier error handling ---
+  function isNotFoundError(e: any): boolean {
+    const status = e?.response?.status ?? e?.status
+    const code = e?.response?.data?.code ?? e?.code
+    const msg = (e?.response?.data?.message ?? e?.message ?? "").toString()
+    return (
+      status === 404 ||
+      code === "NOT_FOUND" ||
+      code === "NO_TASKS" ||
+      /404/.test(String(status)) ||
+      /not\s*found/i.test(msg) ||
+      /no tasks/i.test(msg)
+    )
+  }
+
+  function rangeLabel() {
+    return `${startDate} to ${endDate}`
+  }
 
   // Load my tasks and my projects
   useEffect(() => {
@@ -71,12 +90,9 @@ export function Dashboard() {
       setLoading(true)
       setError(null)
       try {
-        const [myTasks, myProjs] = await Promise.all([
-          Task.getTasksByUserId(profile.id),
-          Project.getByUser(profile.id),
-        ])
+        const [myTasks, myProjs] = await Promise.all([Task.getTasksByUserId(profile.id), Project.getByUser(profile.id)])
         setTasks(myTasks || [])
-        myProjectIdsRef.current = new Set((myProjs || []).map(p => p.id))
+        myProjectIdsRef.current = new Set((myProjs || []).map((p) => p.id))
       } catch (err) {
         console.error("Error fetching tasks/projects:", err)
         setError("Failed to load tasks or projects. Please try again later.")
@@ -104,76 +120,80 @@ export function Dashboard() {
     }
     loadAllIfNeeded()
   }, [ownerFilter, allTasksCache, profile?.id])
-  
+
   useEffect(() => {
     if (taskName && tasks.length > 0) {
-      setSearchTerm(taskName);
+      setSearchTerm(taskName)
     }
-  }, [taskName, tasks]);
+  }, [taskName, tasks])
 
   const handleTaskCreated = async () => {
-    setIsCreateTaskOpen(false); // Close the modal
-    
-    // Refetch tasks to get the newly created one from backend
+    setIsCreateTaskOpen(false) // Close the modal
     if (profile?.id) {
       try {
-        const [myTasks, myProjs] = await Promise.all([
-          Task.getTasksByUserId(profile.id),
-          Project.getByUser(profile.id),
-        ]);
-        setTasks(myTasks || []);
-        myProjectIdsRef.current = new Set((myProjs || []).map(p => p.id));
-        
-        // Also refresh allTasksCache if it exists
+        const [myTasks, myProjs] = await Promise.all([Task.getTasksByUserId(profile.id), Project.getByUser(profile.id)])
+        setTasks(myTasks || [])
+        myProjectIdsRef.current = new Set((myProjs || []).map((p) => p.id))
         if (allTasksCache) {
-          const everything = await Task.getAllTask();
-          setAllTasksCache(everything || []);
+          const everything = await Task.getAllTask()
+          setAllTasksCache(everything || [])
         }
       } catch (err) {
-        console.error("Error refreshing tasks:", err);
+        console.error("Error refreshing tasks:", err)
       }
     }
-  };
+  }
 
   const handleTaskUpdate = (updatedTask: TaskType) => {
-    setTasks(prev => prev.map(t => (t.id === updatedTask.id ? updatedTask : t)))
+    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
     if (allTasksCache) {
-      setAllTasksCache(prev => prev ? prev.map(t => (t.id === updatedTask.id ? updatedTask : t)) : prev)
+      setAllTasksCache((prev) => (prev ? prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)) : prev))
     }
   }
 
   const handleTaskDelete = (taskId: string) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId))
+    setTasks((prev) => prev.filter((t) => t.id !== taskId))
     if (allTasksCache) {
-      setAllTasksCache(prev => prev ? prev.filter(t => t.id !== taskId) : prev)
+      setAllTasksCache((prev) => (prev ? prev.filter((t) => t.id !== taskId) : prev))
     }
   }
 
-
   async function handleGenerateReport() {
-    if (!profile?.id) return;
-    if (reportBusy) return;
-    
-    setReportBanner(null);
-    setReportBusy(true);
-    
+    if (!profile?.id) return
+    if (reportBusy) return
+
+    setReportBanner(null)
+    setReportBusy(true)
+
     try {
-      const res = await Report.generate(profile.id, { startDate, endDate });
-      const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
-      const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
-      
+      const res = await Report.generate(profile.id, { startDate, endDate })
+      const href = (res as any)?.data?.reportUrl ?? (res as any)?.url
+      const title = (res as any)?.data?.reportTitle ?? (res as any)?.message
       setReportBanner({
         type: href ? "success" : "info",
         msg: title || "Personal report generated successfully.",
         href,
-      });
+      })
     } catch (e: any) {
-      setReportBanner({ 
-        type: "error", 
-        msg: e?.message || "Failed to generate report." 
-      });
+      // Friendly copy for "no tasks" (typically 404 or custom code)
+      if (isNotFoundError(e)) {
+        setReportBanner({
+          type: "info",
+          msg: `No tasks found for ${rangeLabel()}. Create a task first, then try generating your personal report again.`,
+          showCreateCTA: true,
+        })
+      } else {
+        const rawMsg =
+          e?.response?.data?.message ||
+          e?.message ||
+          "Something went wrong while generating your personal report."
+        setReportBanner({
+          type: "error",
+          msg: rawMsg,
+        })
+      }
     } finally {
-      setReportBusy(false);
+      setReportBusy(false)
     }
   }
 
@@ -181,28 +201,24 @@ export function Dashboard() {
 
   const meId = profile?.id || ""
   const isOwner = (t: TaskType) => norm(t.owner) === norm(meId)
-  const isCollaborator = (t: TaskType) => Array.isArray(t.collaborators) && t.collaborators.map(norm).includes(norm(meId))
+  const isCollaborator = (t: TaskType) =>
+    Array.isArray(t.collaborators) && t.collaborators.map(norm).includes(norm(meId))
   const isParticipant = (t: TaskType) => isOwner(t) || isCollaborator(t)
 
   const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate)
 
   const matchesSearch = (t: TaskType) => {
     const q = norm(searchTerm)
-    return (
-      !q ||
-      norm(t.title).includes(q) ||
-      norm(t.description).includes(q)
-    )
+    return !q || norm(t.title).includes(q) || norm(t.description).includes(q)
   }
 
   // Compute the currently visible tasks based on the selected filter
   const visibleTasks = useMemo(() => {
-    const inMyProjects = (t: TaskType) =>
-      !!t.project_id && myProjectIdsRef.current.has(t.project_id)
+    const inMyProjects = (t: TaskType) => !!t.project_id && myProjectIdsRef.current.has(t.project_id)
 
     if (ownerFilter === "project_peers_others") {
       const source = allTasksCache || []
-      return source.filter(t => inMyProjects(t) && !isParticipant(t)).filter(matchesSearch)
+      return source.filter((t) => inMyProjects(t) && !isParticipant(t)).filter(matchesSearch)
     }
 
     const base = tasks.filter(matchesSearch)
@@ -211,7 +227,7 @@ export function Dashboard() {
       case "owner_only":
         return base.filter(isOwner)
       case "assigned_only":
-        return base.filter(t => !isOwner(t) && isCollaborator(t))
+        return base.filter((t) => !isOwner(t) && isCollaborator(t))
       case "all_mine":
       default:
         return base
@@ -252,7 +268,7 @@ export function Dashboard() {
         <CreateTask
           userId={profile?.id || ""}
           onTaskCreated={handleTaskCreated}
-          onClose={() => setIsCreateTaskOpen(false)} // Close the modal
+          onClose={() => setIsCreateTaskOpen(false)}
         />
       )}
 
@@ -278,10 +294,7 @@ export function Dashboard() {
           <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuLabel>Ownership</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup
-              value={ownerFilter}
-              onValueChange={(v) => setOwnerFilter(v as OwnershipFilter)}
-            >
+            <DropdownMenuRadioGroup value={ownerFilter} onValueChange={(v) => setOwnerFilter(v as OwnershipFilter)}>
               <DropdownMenuRadioItem value="all_mine">All Tasks</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="owner_only">I’m owner</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="assigned_only">Assigned to me (not owner)</DropdownMenuRadioItem>
@@ -340,51 +353,55 @@ export function Dashboard() {
             aria-live="polite"
           >
             <div className="flex items-center justify-between gap-3">
-              <span>{reportBanner.msg}</span>
-              {reportBanner.href && (
-                <a
-                  href={reportBanner.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 font-medium"
-                >
-                  Open report
-                </a>
-              )}
+              <div className="flex items-center gap-2">
+                {reportBanner.type === "info" && <Info className="h-4 w-4" aria-hidden="true" />}
+                <span>{reportBanner.msg}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {reportBanner.href && (
+                  <a
+                    href={reportBanner.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 font-medium"
+                  >
+                    Open report
+                  </a>
+                )}
+                {reportBanner.showCreateCTA && (
+                  <Button variant="secondary" size="sm" onClick={() => setIsCreateTaskOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create a task
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-auto"
-          />
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-auto"
-          />
-          <Button
-            onClick={handleGenerateReport}
-            disabled={reportBusy || dateInvalid || !profile?.id}
-            className="gap-2"
-          >
-            {reportBusy ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Generating...</span>
-              </>
-            ) : (
-              <>
-                <FileDown className="h-4 w-4" />
-                <span>Generate Report</span>
-              </>
-            )}
-          </Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto" />
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto" />
+            <Button onClick={handleGenerateReport} disabled={reportBusy || dateInvalid || !profile?.id} className="gap-2">
+              {reportBusy ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4" />
+                  <span>Generate Report</span>
+                </>
+              )}
+            </Button>
+          </div>
+          {dateInvalid && (
+            <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 w-fit">
+              Start date must be on or before end date.
+            </p>
+          )}
         </div>
       </div>
 
@@ -397,19 +414,11 @@ export function Dashboard() {
         )}
 
         {currentView === "board" && (
-          <TaskBoard
-            tasks={visibleTasks}
-            onTaskUpdate={handleTaskUpdate}
-            onTaskDelete={handleTaskDelete}
-          />
+          <TaskBoard tasks={visibleTasks} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
         )}
 
         {currentView === "timeline" && (
-          <TaskTimeline
-            tasks={visibleTasks}
-            onTaskUpdate={handleTaskUpdate}
-            onTaskDelete={handleTaskDelete}
-          />
+          <TaskTimeline tasks={visibleTasks} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
         )}
       </div>
     </div>
