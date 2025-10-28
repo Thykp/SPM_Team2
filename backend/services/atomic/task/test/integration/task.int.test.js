@@ -511,4 +511,187 @@ describe('Task API - Integration Tests', () => {
 
     });
 
+    describe('PUT /task/:id/comment/:userId - Add comment', () => {
+        test('Should add first comment and initialize comments array', async () => {
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testOwnerId}`)
+                .send({ comment: 'This is my first comment' })
+                .expect(200);
+
+            expect(response.body.message).toBe('Comment added successfully');
+            expect(response.body.comments).toContain('This is my first comment');
+            expect(response.body.comments.length).toBe(1);
+
+            // Verify in database
+            const { data: participant } = await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .select('comments')
+                .eq('task_id', testTaskId)
+                .eq('profile_id', testOwnerId)
+                .single();
+
+            expect(participant.comments).toContain('This is my first comment');
+        });
+
+        test('Should append comment to existing comments', async () => {
+            // Add second comment
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testOwnerId}`)
+                .send({ comment: 'This is my second comment' })
+                .expect(200);
+
+            expect(response.body.message).toBe('Comment added successfully');
+            expect(response.body.comments).toHaveLength(2);
+            expect(response.body.comments).toContain('This is my first comment');
+            expect(response.body.comments).toContain('This is my second comment');
+
+            // Verify in database
+            const { data: participant } = await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .select('comments')
+                .eq('task_id', testTaskId)
+                .eq('profile_id', testOwnerId)
+                .single();
+
+            expect(participant.comments).toHaveLength(2);
+            expect(participant.comments).toContain('This is my first comment');
+            expect(participant.comments).toContain('This is my second comment');
+        });
+
+        test('Should return 400 when comment is empty', async () => {
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testOwnerId}`)
+                .send({ comment: '' })
+                .expect(400);
+
+            expect(response.body.error).toBe('Comment cannot be empty');
+        });
+
+        test('Should return 400 when comment is only whitespace', async () => {
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testOwnerId}`)
+                .send({ comment: '   ' })
+                .expect(400);
+
+            expect(response.body.error).toBe('Comment cannot be empty');
+        });
+
+        test('Should handle comments from different users', async () => {
+            // Add comment from collaborator
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testCollaboratorId}`)
+                .send({ comment: 'Comment from collaborator' })
+                .expect(200);
+
+            expect(response.body.message).toBe('Comment added successfully');
+            expect(response.body.comments).toContain('Comment from collaborator');
+
+            // Verify owner's comments are unchanged
+            const { data: ownerParticipant } = await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .select('comments')
+                .eq('task_id', testTaskId)
+                .eq('profile_id', testOwnerId)
+                .single();
+
+            expect(ownerParticipant.comments).toHaveLength(2);
+        });
+
+        test('Should return 500 for non-existent task ID', async () => {
+            const fakeTaskId = '00000000-0000-0000-0000-000000000000';
+            const response = await request(app)
+                .put(`/task/${fakeTaskId}/comment/${testOwnerId}`)
+                .send({ comment: 'Comment on non-existent task' })
+                .expect(500);
+
+            expect(response.body.error).toBeDefined();
+        });
+    });
+
+    describe('PUT /task/:id/comment/:userId/remove - Remove comment', () => {
+        test('Should remove specific comment successfully', async () => {
+            // First, verify we have comments
+            const { data: beforeDelete } = await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .select('comments')
+                .eq('task_id', testTaskId)
+                .eq('profile_id', testOwnerId)
+                .single();
+
+            expect(beforeDelete.comments).toHaveLength(2);
+
+            // Remove one comment
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testOwnerId}/remove`)
+                .send({ comment: 'This is my first comment' })
+                .expect(200);
+
+            expect(response.body.message).toBe('Comment removed successfully');
+            expect(response.body.comments).toHaveLength(1);
+            expect(response.body.comments).toContain('This is my second comment');
+            expect(response.body.comments).not.toContain('This is my first comment');
+
+            // Verify in database
+            const { data: afterDelete } = await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .select('comments')
+                .eq('task_id', testTaskId)
+                .eq('profile_id', testOwnerId)
+                .single();
+
+            expect(afterDelete.comments).toHaveLength(1);
+            expect(afterDelete.comments[0]).toBe('This is my second comment');
+        });
+
+        test('Should return 400 when comment is empty', async () => {
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testOwnerId}/remove`)
+                .send({ comment: '' })
+                .expect(400);
+
+            expect(response.body.error).toBe('Comment cannot be empty');
+        });
+
+        test('Should handle removing non-existent comment gracefully', async () => {
+            const { data: beforeRemove } = await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .select('comments')
+                .eq('task_id', testTaskId)
+                .eq('profile_id', testOwnerId)
+                .single();
+
+            const initialCommentCount = beforeRemove.comments.length;
+
+            // Try to remove a comment that doesn't exist
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${testOwnerId}/remove`)
+                .send({ comment: 'This comment does not exist' })
+                .expect(200);
+
+            expect(response.body.message).toBe('Comment removed successfully');
+            // Comments array should remain unchanged (filter removes nothing)
+            expect(response.body.comments.length).toBe(initialCommentCount);
+
+            // Verify in database
+            const { data: afterRemove } = await supabase
+                .from(TABLES.TASK_PARTICIPANT)
+                .select('comments')
+                .eq('task_id', testTaskId)
+                .eq('profile_id', testOwnerId)
+                .single();
+
+            expect(afterRemove.comments.length).toBe(initialCommentCount);
+        });
+
+        test('Should handle removing from empty comments array', async () => {
+            // Use a different user that has no comments
+            const response = await request(app)
+                .put(`/task/${testTaskId}/comment/${thirdUserId}/remove`)
+                .send({ comment: 'Any comment' })
+                .expect(500);
+
+            expect(response.body.error).toBeDefined();
+        });
+    });
+
 })

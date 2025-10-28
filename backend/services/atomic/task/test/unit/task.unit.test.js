@@ -1193,4 +1193,428 @@ describe('Task Class Test', () => {
                 .toThrow(DatabaseError);
         });
     });
+
+    describe('deduplicateTasksById()', () => {
+        test('Should return empty array when tasks is null', () => {
+            const result = Task.deduplicateTasksById(null);
+            expect(result).toEqual([]);
+        });
+
+        test('Should return empty array when tasks is empty', () => {
+            const result = Task.deduplicateTasksById([]);
+            expect(result).toEqual([]);
+        });
+
+        test('Should remove duplicate tasks by id', () => {
+            const tasks = [
+                { id: 'task-1', title: 'Task 1', priority: 5 },
+                { id: 'task-2', title: 'Task 2', priority: 5 },
+                { id: 'task-1', title: 'Task 1 Duplicate', priority: 5 },
+                { id: 'task-3', title: 'Task 3', priority: 5 }
+            ];
+
+            const result = Task.deduplicateTasksById(tasks);
+
+            expect(result).toHaveLength(3);
+            expect(result[0].id).toBe('task-1');
+            expect(result[0].title).toBe('Task 1 Duplicate'); // Map keeps last occurrence
+            expect(result[1].id).toBe('task-2');
+            expect(result[2].id).toBe('task-3');
+        });
+
+        test('Should handle tasks with no duplicates', () => {
+            const tasks = [
+                { id: 'task-1', title: 'Task 1', priority: 5 },
+                { id: 'task-2', title: 'Task 2', priority: 5 },
+                { id: 'task-3', title: 'Task 3', priority: 5 }
+            ];
+
+            const result = Task.deduplicateTasksById(tasks);
+
+            expect(result).toHaveLength(3);
+            expect(result).toEqual(tasks);
+        });
+    });
+
+    describe('addComment()', () => {
+        test('Should add comment when no existing row exists (first comment)', async () => {
+            const task = new Task({ id: 'task-123' });
+            const userId = 'user-456';
+            const comment = 'First comment';
+
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: null,
+                                    error: { code: 'PGRST116' }
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
+                    insert: jest.fn().mockResolvedValue({
+                        error: null
+                    })
+                });
+
+            const result = await task.addComment(userId, comment);
+
+            expect(result).toEqual([comment]);
+        });
+
+        test('Should append comment to existing comments', async () => {
+            const task = new Task({ id: 'task-123' });
+            const userId = 'user-456';
+            const comment = 'New comment';
+            const existingComments = ['Comment 1', 'Comment 2'];
+
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: { comments: existingComments },
+                                    error: null
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
+                    update: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockResolvedValue({
+                                error: null
+                            })
+                        })
+                    })
+                });
+
+            const result = await task.addComment(userId, comment);
+
+            expect(result).toEqual(['Comment 1', 'Comment 2', 'New comment']);
+        });
+
+        test('Should throw ValidationError when comment is empty', async () => {
+            const task = new Task({ id: 'task-123' });
+            
+            await expect(task.addComment('user-456', ''))
+                .rejects
+                .toThrow(ValidationError);
+
+            await expect(task.addComment('user-456', '   '))
+                .rejects
+                .toThrow(ValidationError);
+        });
+
+        test('Should throw DatabaseError on fetch error', async () => {
+            const task = new Task({ id: 'task-123' });
+            const mockError = { message: 'Fetch failed' };
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: mockError
+                            })
+                        })
+                    })
+                })
+            });
+
+            await expect(task.addComment('user-456', 'Comment'))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+
+        test('Should throw DatabaseError on insert failure', async () => {
+            const task = new Task({ id: 'task-123' });
+            const mockError = { message: 'Insert failed' };
+
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: null,
+                                    error: { code: 'PGRST116' }
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
+                    insert: jest.fn().mockResolvedValue({
+                        error: mockError
+                    })
+                });
+
+            await expect(task.addComment('user-456', 'Comment'))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+
+        test('Should throw DatabaseError on update failure', async () => {
+            const task = new Task({ id: 'task-123' });
+            const mockError = { message: 'Update failed' };
+
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: { comments: ['Existing'] },
+                                    error: null
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
+                    update: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockResolvedValue({
+                                error: mockError
+                            })
+                        })
+                    })
+                });
+
+            await expect(task.addComment('user-456', 'Comment'))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+    });
+
+    describe('removeComment()', () => {
+        test('Should remove comment successfully', async () => {
+            const task = new Task({ id: 'task-123' });
+            const userId = 'user-456';
+            const commentToRemove = 'Comment to remove';
+            const existingComments = ['Comment 1', 'Comment to remove', 'Comment 2'];
+
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: { comments: existingComments },
+                                    error: null
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
+                    update: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockResolvedValue({
+                                error: null
+                            })
+                        })
+                    })
+                });
+
+            const result = await task.removeComment(userId, commentToRemove);
+
+            expect(result).toEqual(['Comment 1', 'Comment 2']);
+        });
+
+        test('Should throw ValidationError when comment is empty', async () => {
+            const task = new Task({ id: 'task-123' });
+            
+            await expect(task.removeComment('user-456', ''))
+                .rejects
+                .toThrow(ValidationError);
+
+            await expect(task.removeComment('user-456', '   '))
+                .rejects
+                .toThrow(ValidationError);
+        });
+
+        test('Should throw DatabaseError on fetch error', async () => {
+            const task = new Task({ id: 'task-123' });
+            const mockError = { message: 'Fetch failed' };
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: mockError
+                            })
+                        })
+                    })
+                })
+            });
+
+            await expect(task.removeComment('user-456', 'Comment'))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+
+        test('Should throw DatabaseError on update failure', async () => {
+            const task = new Task({ id: 'task-123' });
+            const mockError = { message: 'Update failed' };
+
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: { comments: ['Existing'] },
+                                    error: null
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
+                    update: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockResolvedValue({
+                                error: mockError
+                            })
+                        })
+                    })
+                });
+
+            await expect(task.removeComment('user-456', 'Comment'))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+
+        test('Should handle removing non-existent comment', async () => {
+            const task = new Task({ id: 'task-123' });
+            const existingComments = ['Comment 1', 'Comment 2'];
+
+            supabase.from = jest.fn()
+                .mockReturnValueOnce({
+                    select: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: { comments: existingComments },
+                                    error: null
+                                })
+                            })
+                        })
+                    })
+                })
+                .mockReturnValueOnce({
+                    update: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            eq: jest.fn().mockResolvedValue({
+                                error: null
+                            })
+                        })
+                    })
+                });
+
+            const result = await task.removeComment('user-456', 'Non-existent comment');
+
+            expect(result).toEqual(existingComments); // Should return original array unchanged
+        });
+    });
+
+    describe('getDeadlineReminder()', () => {
+        test('Should retrieve deadline reminder successfully', async () => {
+            const task = new Task({ id: 'task-123' });
+            const userId = 'user-456';
+            const mockReminder = [1, 3, 7];
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: { deadline_reminder: mockReminder },
+                                error: null
+                            })
+                        })
+                    })
+                })
+            });
+
+            const result = await task.getDeadlineReminder(userId);
+
+            expect(result).toEqual(mockReminder);
+            expect(task.deadline_reminder).toBe(mockReminder);
+        });
+
+        test('Should throw DatabaseError on query failure', async () => {
+            const task = new Task({ id: 'task-123' });
+            const mockError = { message: 'Query failed' };
+
+            supabase.from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockReturnValue({
+                            single: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: mockError
+                            })
+                        })
+                    })
+                })
+            });
+
+            await expect(task.getDeadlineReminder('user-456'))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+    });
+
+    describe('setDeadlineReminder()', () => {
+        test('Should set deadline reminder successfully', async () => {
+            const task = new Task({ id: 'task-123' });
+            const userId = 'user-456';
+            const reminders = [1, 2, 5];
+
+            supabase.from = jest.fn().mockReturnValue({
+                update: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockResolvedValue({
+                            error: null
+                        })
+                    })
+                })
+            });
+
+            await task.setDeadlineReminder(userId, reminders);
+
+            expect(task.deadline_reminder).toBe(reminders);
+        });
+
+        test('Should throw DatabaseError on update failure', async () => {
+            const task = new Task({ id: 'task-123' });
+            const mockError = { message: 'Update failed' };
+
+            supabase.from = jest.fn().mockReturnValue({
+                update: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        eq: jest.fn().mockResolvedValue({
+                            error: mockError
+                        })
+                    })
+                })
+            });
+
+            await expect(task.setDeadlineReminder('user-456', [1, 3]))
+                .rejects
+                .toThrow(DatabaseError);
+        });
+    });
 });
