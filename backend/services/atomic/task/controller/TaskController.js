@@ -189,6 +189,77 @@ module.exports = {
             }
             return res.status(500).json({ error: "Internal server error" });
         }
+    },
+
+    async getTaskParticipants(req, res) {
+        try {
+            const taskId = req.params.id; // Extract task ID from the route parameter
+            const taskObj = new Task({ id: taskId }); // Create a Task instance
+            const participants = await taskObj.getTaskParticipants(); // Fetch participants
+            res.status(200).json(participants); // Return participants as JSON
+        } catch (error) {
+            console.error("Error in getTaskParticipants:", error);
+            if (error instanceof DatabaseError) {
+                return res.status(error.statusCode).json({ error: error.message });
+            }
+            res.status(500).json({ error: "Internal server error" });
+        }
+    },
+
+    async addComment(req, res) {
+        try {
+            const { id: taskId, userId } = req.params; // Extract taskId and userId from route parameters
+            const { comment } = req.body; // Extract comment from request body
+
+            if (!comment || comment.trim() === "") {
+                return res.status(400).json({ error: "Comment cannot be empty" });
+            }
+
+            const taskObj = new Task({ id: taskId }); // Create a Task instance
+            const updatedComments = await taskObj.addComment(userId, comment); // Call the model method
+
+            res.status(200).json({
+                message: "Comment added successfully",
+                comments: updatedComments,
+            });
+        } catch (error) {
+            console.error("Error in addComment:", error);
+            if (error instanceof ValidationError) {
+                return res.status(400).json({ error: error.message });
+            }
+            if (error instanceof DatabaseError) {
+                return res.status(500).json({ error: error.message });
+            }
+            res.status(500).json({ error: "Internal server error" });
+        }
+    },
+
+    async removeComment(req, res) {
+        try {
+            const { id: taskId, userId } = req.params; // Extract taskId and userId from route parameters
+            const { comment } = req.body; // Extract comment from request body
+
+            if (!comment || comment.trim() === "") {
+                return res.status(400).json({ error: "Comment cannot be empty" });
+            }
+
+            const taskObj = new Task({ id: taskId }); // Create a Task instance
+            const updatedComments = await taskObj.removeComment(userId, comment); // Call the model method
+
+            res.status(200).json({
+                message: "Comment removed successfully",
+                comments: updatedComments,
+            });
+        } catch (error) {
+            console.error("Error in removeComment:", error);
+            if (error instanceof ValidationError) {
+                return res.status(400).json({ error: error.message });
+            }
+            if (error instanceof DatabaseError) {
+                return res.status(500).json({ error: error.message });
+            }
+            res.status(500).json({ error: "Internal server error" });
+        }
     }
 
 }

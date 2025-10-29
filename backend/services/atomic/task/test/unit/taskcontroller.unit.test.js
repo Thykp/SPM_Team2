@@ -536,4 +536,383 @@ describe('TaskController', () => {
             expect(res.json).toHaveBeenCalledWith({ error: genericError.message });
         });
     });
+
+    describe('getTaskDeadlineReminder', () => {
+        test('Should return 200 with deadline reminder successfully', async () => {
+            const mockReminder = [1, 3, 7];
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+
+            Task.mockImplementation(() => ({
+                getDeadlineReminder: jest.fn().mockResolvedValue(mockReminder),
+            }));
+
+            await TaskController.getTaskDeadlineReminder(req, res);
+
+            expect(Task).toHaveBeenCalledWith({ id: 'task-123' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                task_id: 'task-123',
+                deadline_reminder: mockReminder
+            });
+        });
+
+        test('Should return 404 when TaskNotFoundError occurs', async () => {
+            const notFoundError = new TaskNotFoundError('Task not found');
+
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+
+            Task.mockImplementation(() => ({
+                getDeadlineReminder: jest.fn().mockRejectedValue(notFoundError),
+            }));
+
+            await TaskController.getTaskDeadlineReminder(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({ error: notFoundError.message });
+        });
+
+        test('Should return 500 when DatabaseError occurs', async () => {
+            const dbError = new DatabaseError('Database error occurred');
+
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+
+            Task.mockImplementation(() => ({
+                getDeadlineReminder: jest.fn().mockRejectedValue(dbError),
+            }));
+
+            await TaskController.getTaskDeadlineReminder(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Database error occurred" });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+
+            Task.mockImplementation(() => ({
+                getDeadlineReminder: jest.fn().mockRejectedValue(genericError),
+            }));
+
+            await TaskController.getTaskDeadlineReminder(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
+        });
+    });
+
+    describe('setTaskDeadlineReminder', () => {
+        test('Should set deadline reminder successfully with valid array', async () => {
+            const deadlineReminder = [1, 2, 5];
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { deadline_reminder: deadlineReminder };
+
+            Task.mockImplementation(() => ({
+                setDeadlineReminder: jest.fn().mockResolvedValue(undefined),
+            }));
+
+            await TaskController.setTaskDeadlineReminder(req, res);
+
+            expect(Task).toHaveBeenCalledWith({ id: 'task-123' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                task_id: 'task-123',
+                deadline_reminder: deadlineReminder
+            });
+        });
+
+        test('Should return 400 when deadline_reminder is not an array', async () => {
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { deadline_reminder: 'not-an-array' };
+
+            await TaskController.setTaskDeadlineReminder(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "deadline_reminder must be an array" });
+        });
+
+        test('Should return 404 when TaskNotFoundError occurs', async () => {
+            const notFoundError = new TaskNotFoundError('Task not found');
+            const deadlineReminder = [1, 3];
+
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { deadline_reminder: deadlineReminder };
+
+            Task.mockImplementation(() => ({
+                setDeadlineReminder: jest.fn().mockRejectedValue(notFoundError),
+            }));
+
+            await TaskController.setTaskDeadlineReminder(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({ error: notFoundError.message });
+        });
+
+        test('Should return 500 when DatabaseError occurs', async () => {
+            const dbError = new DatabaseError('Database error occurred');
+            const deadlineReminder = [1, 3];
+
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { deadline_reminder: deadlineReminder };
+
+            Task.mockImplementation(() => ({
+                setDeadlineReminder: jest.fn().mockRejectedValue(dbError),
+            }));
+
+            await TaskController.setTaskDeadlineReminder(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Database error occurred" });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+            const deadlineReminder = [1, 3];
+
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { deadline_reminder: deadlineReminder };
+
+            Task.mockImplementation(() => ({
+                setDeadlineReminder: jest.fn().mockRejectedValue(genericError),
+            }));
+
+            await TaskController.setTaskDeadlineReminder(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
+        });
+    });
+
+    describe('getTaskParticipants', () => {
+        test('Should retrieve task participants successfully', async () => {
+            const mockParticipants = [
+                { task_id: 'task-123', profile_id: 'user-1', is_owner: true },
+                { task_id: 'task-123', profile_id: 'user-2', is_owner: false }
+            ];
+
+            req.params.id = 'task-123';
+
+            Task.mockImplementation(() => ({
+                getTaskParticipants: jest.fn().mockResolvedValue(mockParticipants),
+            }));
+
+            await TaskController.getTaskParticipants(req, res);
+
+            expect(Task).toHaveBeenCalledWith({ id: 'task-123' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(mockParticipants);
+        });
+
+        test('Should return 500 when DatabaseError occurs', async () => {
+            const dbError = new DatabaseError('Failed to retrieve task participants');
+
+            req.params.id = 'task-123';
+
+            Task.mockImplementation(() => ({
+                getTaskParticipants: jest.fn().mockRejectedValue(dbError),
+            }));
+
+            await TaskController.getTaskParticipants(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+
+            req.params.id = 'task-123';
+
+            Task.mockImplementation(() => ({
+                getTaskParticipants: jest.fn().mockRejectedValue(genericError),
+            }));
+
+            await TaskController.getTaskParticipants(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
+        });
+    });
+
+    describe('addComment', () => {
+        test('Should add comment successfully', async () => {
+            const updatedComments = ['Comment 1', 'Comment 2', 'New comment'];
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'New comment' };
+
+            Task.mockImplementation(() => ({
+                addComment: jest.fn().mockResolvedValue(updatedComments),
+            }));
+
+            await TaskController.addComment(req, res);
+
+            expect(Task).toHaveBeenCalledWith({ id: 'task-123' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Comment added successfully",
+                comments: updatedComments,
+            });
+        });
+
+        test('Should return 400 when comment is empty', async () => {
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: '' };
+
+            await TaskController.addComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "Comment cannot be empty" });
+        });
+
+        test('Should return 400 when ValidationError occurs', async () => {
+            const validationError = new ValidationError('Invalid comment');
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'Valid comment' };
+
+            Task.mockImplementation(() => ({
+                addComment: jest.fn().mockRejectedValue(validationError),
+            }));
+
+            await TaskController.addComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: validationError.message });
+        });
+
+        test('Should return 500 when DatabaseError occurs', async () => {
+            const dbError = new DatabaseError('Database error occurred');
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'Comment' };
+
+            Task.mockImplementation(() => ({
+                addComment: jest.fn().mockRejectedValue(dbError),
+            }));
+
+            await TaskController.addComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'Comment' };
+
+            Task.mockImplementation(() => ({
+                addComment: jest.fn().mockRejectedValue(genericError),
+            }));
+
+            await TaskController.addComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
+        });
+    });
+
+    describe('removeComment', () => {
+        test('Should remove comment successfully', async () => {
+            const updatedComments = ['Comment 1', 'Comment 2'];
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'Comment to remove' };
+
+            Task.mockImplementation(() => ({
+                removeComment: jest.fn().mockResolvedValue(updatedComments),
+            }));
+
+            await TaskController.removeComment(req, res);
+
+            expect(Task).toHaveBeenCalledWith({ id: 'task-123' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                message: "Comment removed successfully",
+                comments: updatedComments,
+            });
+        });
+
+        test('Should return 400 when comment is empty', async () => {
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: '' };
+
+            await TaskController.removeComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "Comment cannot be empty" });
+        });
+
+        test('Should return 400 when ValidationError occurs', async () => {
+            const validationError = new ValidationError('Invalid comment');
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'Valid comment' };
+
+            Task.mockImplementation(() => ({
+                removeComment: jest.fn().mockRejectedValue(validationError),
+            }));
+
+            await TaskController.removeComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: validationError.message });
+        });
+
+        test('Should return 500 when DatabaseError occurs', async () => {
+            const dbError = new DatabaseError('Database error occurred');
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'Comment' };
+
+            Task.mockImplementation(() => ({
+                removeComment: jest.fn().mockRejectedValue(dbError),
+            }));
+
+            await TaskController.removeComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: dbError.message });
+        });
+
+        test('Should return 500 on generic error', async () => {
+            const genericError = new Error('Unexpected error');
+            
+            req.params.id = 'task-123';
+            req.params.userId = 'user-456';
+            req.body = { comment: 'Comment' };
+
+            Task.mockImplementation(() => ({
+                removeComment: jest.fn().mockRejectedValue(genericError),
+            }));
+
+            await TaskController.removeComment(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
+        });
+    });
 });

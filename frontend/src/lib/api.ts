@@ -111,6 +111,15 @@ export type Notification = {
 // --- Task participants ---
 export type TaskParticipant = { profile_id: string; is_owner: boolean };
 
+export type TaskParticipantWithDetails = {
+    task_id: string;
+    profile_id: string;
+    is_owner: boolean;
+    created_at: string;
+    deadline_reminder: number[];
+    comments: string[] | null;
+};
+
 export async function getTaskWithParticipants(
   taskId: string
 ): Promise<{ id: string; participants?: TaskParticipant[] } & Record<string, any>> {
@@ -332,6 +341,24 @@ export const TaskApi = {
   setDeadlineReminder: async (taskId: string, userId: string, reminders: number[]): Promise<void> => {
     const url = `${KONG_BASE_URL}/manage-task/api/task/reminder/${taskId}/${userId}`;
     await api.post(url, {deadline_reminder: reminders});
+  },
+
+  getTaskParticipants: async (taskId: string): Promise<TaskParticipantWithDetails[]> => {
+    const url = `${TASK_API}/task/${taskId}/participants`;
+    const { data } = await api.get<TaskParticipantWithDetails[]>(url);
+    return data;
+  },
+
+  addComment: async (taskId: string, userId: string, comment: string): Promise<{ message: string; comments: string[] }> => {
+    const url = `${TASK_API}/task/${taskId}/comment/${userId}`;
+    const { data } = await api.put<{ message: string; comments: string[] }>(url, { comment });
+    return data;
+  },
+
+  removeComment: async (taskId: string, userId: string, comment: string): Promise<{ message: string; comments: string[] }> => {
+    const url = `${TASK_API}/task/${taskId}/comment/${userId}/remove`;
+    const { data } = await api.put<{ message: string; comments: string[] }>(url, { comment });
+    return data;
   },
 };
 

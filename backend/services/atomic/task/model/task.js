@@ -348,6 +348,97 @@ class Task {
         return data || [];
     }
 
+    async addComment(userId, comment) {
+        if (!comment || comment.trim() === "") {
+            throw new ValidationError("Comment cannot be empty");
+        }
+
+        // Fetch existing comments
+        const { data: existingComments, error: fetchError } = await supabase
+            .from(Task.taskParticipantTable)
+            .select("comments")
+            .eq("task_id", this.id)
+            .eq("profile_id", userId)
+            .single();
+
+        // Handle case where no row exists
+        if (fetchError && fetchError.code === "PGRST116") {
+            console.warn("No existing row found, initializing comments column.");
+            const { error: insertError } = await supabase
+                .from(Task.taskParticipantTable)
+                .insert({
+                    task_id: this.id,
+                    profile_id: userId,
+                    comments: [comment], // Initialize with the new comment
+                });
+
+            if (insertError) {
+                console.error("Error initializing comments column:", insertError);
+                throw new DatabaseError("Failed to initialize comments column", insertError);
+            }
+
+            return [comment]; // Return the new comments array
+        }
+
+        if (fetchError) {
+            console.error("Error fetching existing comments:", fetchError);
+            throw new DatabaseError("Failed to fetch existing comments", fetchError);
+        }
+
+        // Append the new comment to the existing array
+        const updatedComments = existingComments?.comments || [];
+        updatedComments.push(comment);
+
+        // Update the comments column
+        const { error: updateError } = await supabase
+            .from(Task.taskParticipantTable)
+            .update({ comments: updatedComments })
+            .eq("task_id", this.id)
+            .eq("profile_id", userId);
+
+        if (updateError) {
+            console.error("Error updating comments:", updateError);
+            throw new DatabaseError("Failed to update comments", updateError);
+        }
+
+        return updatedComments; // Return the updated comments array
+    }
+
+    async removeComment(userId, comment) {
+        if (!comment || comment.trim() === "") {
+            throw new ValidationError("Comment cannot be empty");
+        }
+
+        const { data: existingComments, error: fetchError } = await supabase
+            .from(Task.taskParticipantTable)
+            .select("comments")
+            .eq("task_id", this.id)
+            .eq("profile_id", userId)
+            .single();
+
+        if (fetchError) {
+            console.error("Error fetching existing comments:", fetchError);
+            throw new DatabaseError("Failed to fetch existing comments", fetchError);
+        }
+
+        const updatedComments = (existingComments?.comments || []).filter(
+            (existingComment) => existingComment !== comment // Remove the specific comment
+        );
+
+        const { error: updateError } = await supabase
+            .from(Task.taskParticipantTable)
+            .update({ comments: updatedComments })
+            .eq("task_id", this.id)
+            .eq("profile_id", userId);
+
+        if (updateError) {
+            console.error("Error updating comments:", updateError);
+            throw new DatabaseError("Failed to update comments", updateError);
+        }
+
+        return updatedComments; // Return the updated comments array
+    }
+
     async getDeadlineReminder(userId) {
         const { data, error } = await supabase
             .from(Task.taskParticipantTable)

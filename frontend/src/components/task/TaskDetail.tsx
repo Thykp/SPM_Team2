@@ -13,6 +13,8 @@ import { Edit, Trash2 } from "lucide-react";
 import EditTask from "./EditTask";
 import CreateSubtask from "./CreateSubtask";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import CreateComment from "./CreateComment";
 
 
 type TaskDetailProps = {
@@ -25,6 +27,11 @@ type TaskDetailProps = {
     onNavigateBack?: () => void;
 }
 
+type CommentWithParticipant = {
+  comment: string;
+  participantId: string;
+};
+
 export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigateToSubTask, onNavigateBack}: TaskDetailProps){
     const { user } = useAuth();
     const [subTasks, setSubTasks] = useState<taskType[]>([]);
@@ -34,6 +41,9 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
     const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
     const [editingSubtask, setEditingSubtask] = useState<taskType | null>(null);
     const [deletingSubtask, setDeletingSubtask] = useState<taskType | null>(null);
+    const [comments, setComments] = useState<CommentWithParticipant[]>([]);
+    const [showCreateComment, setShowCreateComment] = useState(false);
+    const [deletingComment, setDeletingComment] = useState<CommentWithParticipant | null>(null);
 
     // Helper function to display user name or "You"
     const getDisplayName = (userId: string): string => {
@@ -78,12 +88,61 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
       }
     };
 
+    const fetchComments = async () => {
+      try {
+        const participants = await taskAPI.getTaskParticipants(currentTask.id);
+
+        // Sort participants by profile_id (or any other attribute)
+        const sortedParticipants = participants.sort((a, b) =>
+          a.profile_id.localeCompare(b.profile_id)
+        );
+
+        const taskComments: CommentWithParticipant[] = sortedParticipants.flatMap((participant) =>
+          (participant.comments || []).map((comment) => ({
+            comment,
+            participantId: participant.profile_id,
+          }))
+        );
+
+        setComments(taskComments);
+      } catch (error) {
+        console.error("Failed to fetch comments:", error);
+      }
+    };
+
+    const getInitials = (userId: string): string => {
+      // Check if this is the current user
+      if (user?.id === userId) {
+        // Use the user's display name from userProfiles if available
+        const userProfile = userProfiles[userId];
+        if (userProfile?.display_name) {
+          const name = userProfile.display_name;
+          const parts = name.split(" ");
+          if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+          }
+          return name.substring(0, 2).toUpperCase();
+        }
+        // Fallback to email if display name is not available
+        return user?.email?.[0]?.toUpperCase() || "U";
+      }
+      
+      // For other users
+      const name = userProfiles[userId]?.display_name || userId;
+      const parts = name.split(" ");
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    };
+
     useEffect(() => {
         if (isOpen && currentTask){
           if (!parentTask){
             getSubTasks();
           }
           getUserProfiles();
+          fetchComments();
         }
     },
     [isOpen, currentTask, parentTask]
@@ -218,79 +277,128 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
 
               <Separator />
 
-              {/* Task Metadata Section */}
-              <div className="space-y-4">
-                <h4 className="text-lg font-semibold">Task Information</h4>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Owner</p>
-                      {userLoading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
-                          <p className="text-sm text-muted-foreground">Loading...</p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {currentTask.owner && getDisplayName(currentTask.owner) === "You" ? (
-                            <span className="font-bold">You</span>
-                          ) : (
-                            currentTask.owner ? getDisplayName(currentTask.owner) : "No owner assigned"
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+{/* Task Metadata Section */}
+<div className="space-y-4">
+  <div className="flex gap-6 items-start">
+    {/* Left Column: Task Information */}
+    <div className="flex-[0_0_30%] space-y-4">
+      <h4 className="text-lg font-semibold">Task Information</h4>
+      <div className="flex items-center gap-3">
+        <User className="h-4 w-4 text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium">Owner</p>
+          {userLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {currentTask.owner ? getDisplayName(currentTask.owner) : "No owner assigned"}
+            </p>
+          )}
+        </div>
+      </div>
 
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Deadline</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatToLocalDatetime(currentTask.deadline)}
-                      </p>
-                    </div>
-                  </div>
+      <div className="flex items-center gap-3">
+        <Calendar className="h-4 w-4 text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium">Deadline</p>
+          <p className="text-sm text-muted-foreground">
+            {formatToLocalDatetime(currentTask.deadline)}
+          </p>
+        </div>
+      </div>
 
-                  <div className="flex items-start gap-3">
-                    <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Collaborators</p>
-                      {userLoading ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
-                          <p className="text-sm text-muted-foreground">Loading...</p>
-                        </div>
-                      ) : (() => {
-                        // Filter out the owner and any null/undefined values
-                        const filteredCollaborators = (currentTask.collaborators || [])
-                          .filter(collaborator => collaborator && collaborator !== currentTask.owner);
-
-                          console.log("Filtered Collaboratorzz:", filteredCollaborators);
-                        
-                          console.log("Current Task Collaborators:", currentTask.collaborators);
-                        
-                        return filteredCollaborators.length > 0 ? (
-                          <div className="space-y-1 mt-1">
-                            {filteredCollaborators.map((collaborator, index) => (
-                              <p key={index} className="text-sm text-muted-foreground">
-                                {getDisplayName(collaborator) === "You" ? (
-                                  <span className="font-bold">You</span>
-                                ) : (
-                                  getDisplayName(collaborator)
-                                )}
-                              </p>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No collaborators assigned</p>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
+      <div className="flex items-start gap-3">
+        <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
+        <div>
+          <p className="text-sm font-medium">Collaborators</p>
+          {userLoading ? (
+            <div className="flex items-center gap-2 mt-1">
+              <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
+          ) : (
+            currentTask.collaborators && currentTask.collaborators.length > 0 ? (
+              <div className="space-y-1 mt-1">
+                {currentTask.collaborators.map((collaborator, index) => (
+                  <p key={index} className="text-sm text-muted-foreground">
+                    {getDisplayName(collaborator)}
+                  </p>
+                ))}
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No collaborators assigned</p>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Vertical Divider */}
+    <div className="w-px bg-border self-stretch min-h-[200px]" />
+
+{/* Right Column: Comments Section */}
+<div className="flex-1 space-y-4">
+  <div className="flex items-center justify-between">
+    <h4 className="text-lg font-semibold">Comments</h4>
+    {currentTask.status !== "Completed" && user?.id && (
+      <Button variant="outline" size="sm" onClick={() => setShowCreateComment(true)}>
+        + Add Comment
+      </Button>
+    )}
+  </div>
+  <Card className="p-4">
+    <div className="space-y-6 max-h-60 overflow-y-auto">
+      {userLoading ? (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-3 w-3 border-b border-muted-foreground"></div>
+          <p className="text-sm text-muted-foreground">Loading comments...</p>
+        </div>
+      ) : comments && comments.length > 0 ? (
+        comments.map((commentData, index) => (
+          <div key={index} className="space-y-2">
+            {/* Avatar, Name, and Delete Button */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">
+                    {getInitials(commentData.participantId)}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="text-sm font-medium">
+                  {getDisplayName(commentData.participantId)}
+                </p>
+              </div>
+              {/* Delete Button */}
+              <button
+                type="button"
+                className="p-2 rounded-full hover:bg-destructive/20 transition-transform transition-colors"
+                aria-label="Delete Comment"
+                onClick={() => setDeletingComment(commentData)} // Open delete confirmation dialog
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </button>
+            </div>
+
+            {/* Comment Text */}
+            <div className="p-2 bg-muted/10 rounded-md">
+              <p className="text-sm text-muted-foreground">{commentData.comment}</p>
+            </div>
+
+            {/* Add separator between comments, but not after the last one */}
+            {index < comments.length - 1 && <Separator className="my-3" />}
+          </div>
+        ))
+      ) : (
+        <p className="text-sm text-muted-foreground">No comments yet.</p>
+      )}
+    </div>
+  </Card>
+</div>
+  </div>
+</div>
 
               {/* Only show Subtasks section if current task is not a subtask */}
               {!isSubtask && (
@@ -462,6 +570,62 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
             </Dialog>
           )}
 
+          {/* Create Comment modal/component */}
+          {showCreateComment && (
+            <CreateComment
+              open={showCreateComment}
+              onOpenChange={setShowCreateComment}
+              onCommentCreated={() => {
+                // optional: refresh comments list after create
+                fetchComments();
+                setShowCreateComment(false);
+              }}
+              taskId={currentTask.id}
+              currentUserId={user?.id || ""}
+            />
+          )}
+
+          {/* Delete Confirmation Dialog for Comments */}
+          {deletingComment && (
+            <Dialog open={true} onOpenChange={() => setDeletingComment(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Comment</DialogTitle>
+                </DialogHeader>
+                <p>Are you sure you want to delete this comment?</p>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeletingComment(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      try {
+                        // Check if the current user is authorized to delete the comment
+                        const isAuthorized =
+                          user?.id === currentTask.owner || user?.id === deletingComment.participantId;
+
+                        if (!isAuthorized) {
+                          alert("You are not authorized to delete this comment.");
+                          return;
+                        }
+
+                        // Proceed with deletion
+                        await taskAPI.removeComment(currentTask.id, deletingComment.participantId, deletingComment.comment);
+                        await fetchComments(); // Refresh comments list
+                        setDeletingComment(null); // Close the dialog
+                      } catch (error) {
+                        console.error("Failed to remove comment:", error);
+                        alert("Failed to remove comment. Please try again.");
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </SheetContent>
       </Sheet>    
     )
