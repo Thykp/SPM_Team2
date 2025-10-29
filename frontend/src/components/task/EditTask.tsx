@@ -52,12 +52,13 @@ interface EditTaskProps {
   taskId: string; // The ID of the task to be edited
   currentUserId: string; // The current user's ID
   parentTaskCollaborators?: string[]; // Collaborators from the parent task (optional)
+  parentTaskOwnerId?: string | null;
   projectId?: string | null; // The project ID (optional)
   onClose: () => void;
   onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, projectId, onClose, onTaskUpdated }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, parentTaskOwnerId, projectId, onClose, onTaskUpdated }) => {
   const { profile } = useAuth();
   const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
   const [originalTask, setOriginalTask] = useState<LocalTask>();
@@ -154,10 +155,19 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
             console.error("Error fetching project collaborators:", error);
           }
         } else if (task?.parent) {
-          // If the task is a subtask, filter collaborators based on the parent task's collaborators
-          filteredCollaborators = allUsers.filter((user) =>
-            parentTaskCollaborators?.includes(user.id)
-          );
+            const parentTaskParticipants = [...(parentTaskCollaborators || [])];
+            
+            // Add parent task owner if provided and not already included
+            if (parentTaskOwnerId && !parentTaskParticipants.includes(parentTaskOwnerId)) {
+              parentTaskParticipants.push(parentTaskOwnerId);
+            }
+
+            console.log("Parent Task Participants (including owner):", parentTaskParticipants);
+
+            // Filter users to only include parent task participants
+            filteredCollaborators = allUsers.filter((user) =>
+              parentTaskParticipants.includes(user.id)
+            );
         }
 
         setUsers(filteredCollaborators); // Set the filtered users for the CollaboratorPicker

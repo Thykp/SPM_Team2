@@ -180,6 +180,7 @@ const SubtaskCard: React.FC<SubtaskCardProps> = ({ subtask, projectId, currentUs
                     currentUserId={currentUserId || ''}
                     projectId={subtask.project_id || projectId}
                     parentTaskCollaborators={subtask.collaborators || []}
+                    parentTaskOwnerId={subtask.owner}
                     onClose={() => setShowEditDialog(false)}
                     onTaskUpdated={() => {
                         setShowEditDialog(false);

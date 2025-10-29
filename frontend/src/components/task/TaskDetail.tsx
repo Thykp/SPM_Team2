@@ -543,6 +543,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
               taskId={editingSubtask.id}
               currentUserId={user?.id || ""}
               parentTaskCollaborators={currentTask?.collaborators || []} // Pass parent task collaborators
+              parentTaskOwnerId={currentTask?.owner}
               onClose={() => setEditingSubtask(null)} // Close the edit modal
               onTaskUpdated={() => {
                 setEditingSubtask(null); // Close the modal

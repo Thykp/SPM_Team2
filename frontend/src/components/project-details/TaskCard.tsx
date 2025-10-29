@@ -194,14 +194,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                                     Edit Task
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
-                                    disabled={!isUserCollaborator && task.owner !== userId}
+                                    disabled={task.owner !== userId} // Only enabled for owner
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (isUserCollaborator || task.owner === userId) {
+                                        if (task.owner === userId) { // Only allow owner to access
                                             setShowRecurDialog(true);
                                         }
                                     }}
-                                    className={!isUserCollaborator && task.owner !== userId ? "opacity-50 cursor-not-allowed" : ""}
+                                    className={task.owner !== userId ? "opacity-50 cursor-not-allowed" : ""}
                                 >
                                     <Gauge className="h-4 w-4 mr-2" />
                                     Recur Task
@@ -293,6 +293,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                         currentUserId={userId}
                         projectId={task.project_id ?? projectId}
                         parentTaskCollaborators={task.collaborators || []}
+                        parentTaskOwnerId={task.owner}
                         onClose={() => setShowEditDialog(false)}
                         onTaskUpdated={() => {
                             setShowEditDialog(false);

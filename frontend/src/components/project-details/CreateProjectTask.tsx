@@ -95,7 +95,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
     deadline: formatToLocalDatetime(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
   });
   const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
-  const [selectedOwner, setSelectedOwner] = useState<string>("");
+  const [selectedOwner, setSelectedOwner] = useState<string>(userId);
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [projectCollaboratorIds, setProjectCollaboratorIds] = useState<string[]>([]);
   const [projectOwner, setProjectOwner] = useState<string>("");
@@ -195,6 +195,14 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
           }
         });
 
+        // ✅ Always ensure the current user is included in the filtered users (similar to CreateTask)
+        if (!filteredUsers.some((u: any) => u.id === userId)) {
+          const currentUserInProject = eligibleMembers.find((user: any) => user.id === userId);
+          if (currentUserInProject) {
+            filteredUsers = [currentUserInProject, ...filteredUsers];
+          }
+        }
+
         // Map to owner options for the combobox
         const options = filteredUsers.map((user: any) => ({
           value: user.id,
@@ -204,8 +212,8 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
         setOwnerOptions(options);
         setAssignableUsers(filteredUsers);
 
-        // Auto-select current user as owner by default if they're in the list
-        if (filteredUsers.some((u: any) => u.id === userId) && !selectedOwner) {
+        // ✅ Set current user as default owner if not already set (similar to CreateTask)
+        if (!selectedOwner && filteredUsers.some((u: any) => u.id === userId)) {
           setSelectedOwner(userId);
         }
       } catch (err) {
@@ -223,18 +231,18 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
     let eligibleMemberIds: string[];
     
     if (parentTaskId && parentTask) {
-      // For subtasks: only parent task's owner and collaborators (excluding current user)
+      // For subtasks: only parent task's owner and collaborators
       const parentParticipants = [
         parentTask.owner,
         ...(parentTask.collaborators || [])
-      ].filter((id): id is string => id != null && id !== userId);
+      ].filter((id): id is string => id != null);
       eligibleMemberIds = parentParticipants;
     } else {
-      // For regular tasks: project collaborators and owner (excluding current user)
+      // For regular tasks: project collaborators and owner
       eligibleMemberIds = [
         ...projectCollaboratorIds,
         projectOwner
-      ].filter((id): id is string => id != null && id !== userId);
+      ].filter((id): id is string => id != null);
     }
     
     const eligibleMembers = projectMembers.filter((member: any) => 
@@ -242,13 +250,18 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
     );
     
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return eligibleMembers;
+    if (!query) {
+      // Only exclude the selected owner, not the current user
+      return eligibleMembers.filter((member: any) => member.id !== selectedOwner);
+    }
     
-    return eligibleMembers.filter((member: any) =>
-      [member.display_name, member.role, member.department]
-        .some((field) => field?.toLowerCase().includes(query))
-    );
-  }, [projectMembers, searchQuery, projectCollaboratorIds, projectOwner, userId, parentTaskId, parentTask]);
+    return eligibleMembers
+      .filter((member: any) => member.id !== selectedOwner) // Only exclude selected owner
+      .filter((member: any) =>
+        [member.display_name, member.role, member.department]
+          .some((field) => field?.toLowerCase().includes(query))
+      );
+  }, [projectMembers, searchQuery, projectCollaboratorIds, projectOwner, selectedOwner, parentTaskId, parentTask]);
 
   const resetForm = () => {
     setNewTask({ 
@@ -259,7 +272,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       deadline: formatToLocalDatetime(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
     });
     setSelectedCollaborators([]);
-    setSelectedOwner("");
+    setSelectedOwner(userId);
     setSearchQuery("");
   };
 
@@ -302,7 +315,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
         title: newTask.title,
         description: newTask.description,
         status: newTask.status,
-        owner: selectedOwner || userId, // Use selected owner or default to current user
+        owner: selectedOwner, // Use selected owner or default to current user
         collaborators: finalCollaborators,
         deadline: new Date(newTask.deadline).toISOString(),
         priority: newTask.priority,
@@ -510,7 +523,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
                   </p>
                 ) : (
                   filteredMembers
-                    .filter((member: any) => member.id !== selectedOwner && member.id !== userId) // Exclude the selected owner and current user
+                    // Remove this line: .filter((member: any) => member.id !== selectedOwner && member.id !== userId)
                     .map((member: any) => (
                       <label
                         key={member.id}
