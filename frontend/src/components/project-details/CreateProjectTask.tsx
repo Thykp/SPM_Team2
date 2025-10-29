@@ -106,6 +106,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   const [assignableUsers, setAssignableUsers] = useState<any[]>([]);
   const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]);
   const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch project details and users when dialog opens
   useEffect(() => {
@@ -265,8 +266,32 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
+      // Validate required fields
+      if (!newTask.title.trim()) {
+        setError("Please fill in the title");
+        setLoading(false);
+        return;
+      }
+
+      if (!newTask.description.trim()) {
+        setError("Please fill in the description");
+        setLoading(false);
+        return;
+      }
+
+      // Validate deadline is not in the past
+      const selectedDeadline = new Date(newTask.deadline);
+      const currentTime = new Date();
+      
+      if (selectedDeadline < currentTime) {
+        setError("Deadline cannot be in the past");
+        setLoading(false);
+        return;
+      }
+
       // If the current user assigns the task to someone else, add them to collaborators
       let finalCollaborators = selectedCollaborators;
       if (selectedOwner && selectedOwner !== userId && !selectedCollaborators.includes(userId)) {
@@ -386,59 +411,60 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
             />
           </div>
 
-          {/* Status */}
-          <div className="space-y-2">
-            <Label htmlFor="status" className="text-base font-medium">
-              Initial Status
-            </Label>
-            <Select
-              value={newTask.status}
-              onValueChange={(val: StatusType) =>
-                setNewTask((prev) => ({ ...prev, status: val }))
-              }
-            >
-              <SelectTrigger id="status" className="h-11">
-                <SelectValue placeholder="Select initial status" />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Priority */}
-          <div className="space-y-2">
-            <Label htmlFor="priority" className="text-base font-medium">
-              Priority (1-10)
-            </Label>
-            <Select
-              value={newTask.priority.toString()}
-              onValueChange={(val: string) =>
-                setNewTask((prev) => ({ ...prev, priority: parseInt(val) }))
-              }
-            >
-              <SelectTrigger id="priority" className="h-11">
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => {
-                  let label = `${priority}`;
-                  if (priority <= 3) label += ' (Low)';
-                  else if (priority <= 7) label += ' (Medium)';
-                  else label += ' (High)';
-                  
-                  return (
-                    <SelectItem key={priority} value={priority.toString()}>
-                      {label}
+          {/* Status and Priority */}
+          <div className="flex gap-4">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="status" className="text-base font-medium">
+                Initial Status
+              </Label>
+              <Select
+                value={newTask.status}
+                onValueChange={(val: StatusType) =>
+                  setNewTask((prev) => ({ ...prev, status: val }))
+                }
+              >
+                <SelectTrigger id="status" className="h-11">
+                  <SelectValue placeholder="Select initial status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
                     </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="priority" className="text-base font-medium">
+                Priority (1-10)
+              </Label>
+              <Select
+                value={newTask.priority.toString()}
+                onValueChange={(val: string) =>
+                  setNewTask((prev) => ({ ...prev, priority: parseInt(val) }))
+                }
+              >
+                <SelectTrigger id="priority" className="h-11">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((priority) => {
+                    let label = `${priority}`;
+                    if (priority <= 3) label += ' (Low)';
+                    else if (priority <= 7) label += ' (Medium)';
+                    else label += ' (High)';
+                    
+                    return (
+                      <SelectItem key={priority} value={priority.toString()}>
+                        {label}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Deadline */}
@@ -449,14 +475,73 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
             <Input
               id="deadline"
               type="datetime-local"
+              min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+              .toISOString()
+              .slice(0, 16)}
               value={newTask.deadline}
               onChange={(e) =>
                 setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
               }
-              min={new Date().toISOString().slice(0, 16)}
               className="h-11"
               required
             />
+          </div>
+
+          {/* Collaborators */}
+          <div className="space-y-2">
+            <Label className="text-base font-medium">
+              Collaborators (Optional)
+            </Label>
+            <div className="border rounded-lg p-3 space-y-3">
+              <Input
+                placeholder="Search by name, role, or department..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10"
+              />
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {loadingMembers ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    Loading members...
+                  </p>
+                ) : filteredMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    {searchQuery ? "No members found" : "No collaborators available"}
+                  </p>
+                ) : (
+                  filteredMembers
+                    .filter((member: any) => member.id !== selectedOwner && member.id !== userId) // Exclude the selected owner and current user
+                    .map((member: any) => (
+                      <label
+                        key={member.id}
+                        className="flex items-start gap-3 p-2 rounded hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedCollaborators.includes(member.id)}
+                          onCheckedChange={() => {
+                            setSelectedCollaborators((prev) =>
+                              prev.includes(member.id)
+                                ? prev.filter((id) => id !== member.id)
+                                : [...prev, member.id]
+                            );
+                          }}
+                        />
+                        <div className="flex-1 text-sm">
+                          <div className="font-medium">{member.display_name}</div>
+                          <div className="text-muted-foreground">
+                            {member.role} • {member.department || "—"}
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                )}
+              </div>
+              {selectedCollaborators.length > 0 && (
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  {selectedCollaborators.length} collaborator{selectedCollaborators.length !== 1 ? 's' : ''} selected
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Owner */}
@@ -524,63 +609,6 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
                 </Command>
               </PopoverContent>
             </Popover>
-          </div>
-
-          {/* Collaborators */}
-          <div className="space-y-2">
-            <Label className="text-base font-medium">
-              Collaborators (Optional)
-            </Label>
-            <div className="border rounded-lg p-3 space-y-3">
-              <Input
-                placeholder="Search by name, role, or department..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10"
-              />
-              <div className="max-h-48 overflow-y-auto space-y-2">
-                {loadingMembers ? (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    Loading members...
-                  </p>
-                ) : filteredMembers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    {searchQuery ? "No members found" : "No collaborators available"}
-                  </p>
-                ) : (
-                  filteredMembers
-                    .filter((member: any) => member.id !== selectedOwner && member.id !== userId) // Exclude the selected owner and current user
-                    .map((member: any) => (
-                      <label
-                        key={member.id}
-                        className="flex items-start gap-3 p-2 rounded hover:bg-muted cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={selectedCollaborators.includes(member.id)}
-                          onCheckedChange={() => {
-                            setSelectedCollaborators((prev) =>
-                              prev.includes(member.id)
-                                ? prev.filter((id) => id !== member.id)
-                                : [...prev, member.id]
-                            );
-                          }}
-                        />
-                        <div className="flex-1 text-sm">
-                          <div className="font-medium">{member.display_name}</div>
-                          <div className="text-muted-foreground">
-                            {member.role} • {member.department || "—"}
-                          </div>
-                        </div>
-                      </label>
-                    ))
-                )}
-              </div>
-              {selectedCollaborators.length > 0 && (
-                <div className="text-xs text-muted-foreground pt-2 border-t">
-                  {selectedCollaborators.length} collaborator{selectedCollaborators.length !== 1 ? 's' : ''} selected
-                </div>
-              )}
-            </div>
           </div>
 
           </div> {/* End scrollable content */}

@@ -317,7 +317,9 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
               <Input
                 id="deadline"
                 type="datetime-local"
-                min={new Date().toISOString().slice(0, 16)}
+                min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16)}
                 value={formatToLocalDatetime(newTask.deadline)}
                 onChange={(e) =>
                   setNewTask((prev) => ({ ...prev, deadline: e.target.value }))

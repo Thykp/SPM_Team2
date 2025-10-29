@@ -466,8 +466,10 @@ const EditProjectTask: React.FC<EditProjectTaskProps> = ({
               <Input
                 id="deadline"
                 type="datetime-local"
+                min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16)}
                 value={task.deadline ? formatToLocalDatetime(task.deadline) : ''}
-                min={new Date().toISOString().slice(0, 16)}
                 onChange={(e) =>
                   setTask((prev) => prev ? { ...prev, deadline: e.target.value } : null)
                 }

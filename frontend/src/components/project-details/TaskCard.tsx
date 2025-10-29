@@ -60,6 +60,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
     const [showRecurDialog, setShowRecurDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     
+    // Check if current user is a collaborator or owner
+    const isUserCollaborator = task.collaborators?.includes(userId) || false;
+
     const {
         attributes,
         listeners,
@@ -178,42 +181,57 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuItem 
+                                    disabled={!isUserCollaborator && task.owner !== userId}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setShowEditDialog(true);
+                                        if (isUserCollaborator || task.owner === userId) {
+                                            setShowEditDialog(true);
+                                        }
                                     }}
+                                    className={!isUserCollaborator && task.owner !== userId ? "opacity-50 cursor-not-allowed" : ""}
                                 >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit Task
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
+                                    disabled={!isUserCollaborator && task.owner !== userId}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setShowRecurDialog(true);
+                                        if (isUserCollaborator || task.owner === userId) {
+                                            setShowRecurDialog(true);
+                                        }
                                     }}
+                                    className={!isUserCollaborator && task.owner !== userId ? "opacity-50 cursor-not-allowed" : ""}
                                 >
                                     <Gauge className="h-4 w-4 mr-2" />
                                     Recur Task
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
+                                    disabled={!isUserCollaborator && task.owner !== userId}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setShowAddSubtaskDialog(true);
+                                        if (isUserCollaborator || task.owner === userId) {
+                                            setShowAddSubtaskDialog(true);
+                                        }
                                     }}
+                                    className={!isUserCollaborator && task.owner !== userId ? "opacity-50 cursor-not-allowed" : ""}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Subtask
                                 </DropdownMenuItem>                                    
                                 <DropdownMenuItem 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
+                                    disabled={task.owner !== userId}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (task.owner === userId) {
                                             setShowDeleteDialog(true);
-                                        }}
-                                        className="text-red-600 focus:text-red-600"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete Task
-                                    </DropdownMenuItem>
+                                        }
+                                    }}
+                                    className={task.owner !== userId ? "opacity-50 cursor-not-allowed" : "text-red-600 focus:text-red-600"}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Task
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -301,6 +319,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                     projectId={projectId}
                     currentUserId={userId}
                     parentTaskDeadline={task.deadline || new Date().toISOString()}
+                    parentTaskOwnerId={task.owner}
                     parentTaskCollaborators={task.collaborators || []}
                     open={showAddSubtaskDialog}
                     onOpenChange={setShowAddSubtaskDialog}

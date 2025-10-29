@@ -69,6 +69,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null);
   const [error, setError] = useState<string | null>(null); // State to store error messages
+  const [parentTaskDeadline, setParentTaskDeadline] = useState<string | null>(null);
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const isOwner = task?.owner === currentUserId;
 
 
@@ -347,6 +349,24 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
     return localDate.toISOString().slice(0, 16);
   };
 
+  useEffect(() => {
+    const fetchParentTaskDeadline = async () => {
+      if (task?.parent) { // Only if this is a subtask
+        try {
+          const parentTask = await TaskApi.getTaskByIdWithOwner(task.parent);
+          setParentTaskDeadline(parentTask.deadline);
+          console.log("Parent Task Deadline:", parentTask.deadline);
+        } catch (error) {
+          console.error("Error fetching parent task deadline:", error);
+        }
+      }
+    };
+
+    if (task) {
+      fetchParentTaskDeadline();
+    }
+  }, [task]);
+
   if (!task) {
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -483,21 +503,42 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
               <Input
                 id="deadline"
                 type="datetime-local"
+                min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+                  .toISOString()
+                  .slice(0, 16)}
+                max={task.parent && parentTaskDeadline ? formatToLocalDatetime(parentTaskDeadline) : undefined} // Add max constraint for subtasks
                 value={formatToLocalDatetime(task.deadline)}
-                onChange={(e) =>
-                  setTask((prev) => ({ ...prev!, deadline: e.target.value }))
-                }
+                onChange={(e) => {
+                  const selectedDate = new Date(e.target.value);
+                  const now = new Date();
+                  
+                  // Validate against current time
+                  if (selectedDate < now) {
+                    setDeadlineError("Deadline cannot be in the past");
+                  } 
+                  // Validate against parent task deadline (only for subtasks)
+                  else if (task.parent && parentTaskDeadline && selectedDate > new Date(parentTaskDeadline)) {
+                    setDeadlineError("Subtask deadline cannot be after parent task deadline");
+                  } else {
+                    setDeadlineError(null);
+                  }
+                  
+                  setTask((prev) => ({ ...prev!, deadline: e.target.value }));
+                }}
                 className="h-11"
                 required
                 disabled={!isOwner}
               />
-                {!isOwner && (
-                  <p className="text-sm text-gray-500">
-                    Only the task owner can modify the deadline.
-                  </p>
-                )}
+              {/* Show deadline error */}
+              {deadlineError && (
+                <p className="text-sm text-red-500">{deadlineError}</p>
+              )}
+              {!isOwner && (
+                <p className="text-sm text-gray-500">
+                  Only the task owner can modify the deadline.
+                </p>
+              )}
             </div>
-
             {/* Collaborators */}
             <div className="space-y-2">
               <CollaboratorPicker

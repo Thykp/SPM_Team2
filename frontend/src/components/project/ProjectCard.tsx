@@ -325,15 +325,23 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onPro
                                         <Edit className="h-4 w-4 mr-2" />
                                         {isLoadingEdit ? 'Loading...' : 'Edit Project'}
                                     </DropdownMenuItem>
-                                    {currentUserId && project.ownerId && currentUserId === project.ownerId && (
-                                        <DropdownMenuItem 
-                                            onClick={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
-                                            className="text-destructive"
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete Project
-                                        </DropdownMenuItem>
-                                    )}
+                                    <DropdownMenuItem 
+                                        disabled={!currentUserId || !project.ownerId || currentUserId !== project.ownerId}
+                                        onClick={(e) => { 
+                                            e.preventDefault(); 
+                                            if (currentUserId && project.ownerId && currentUserId === project.ownerId) {
+                                                setIsDeleteDialogOpen(true);
+                                            }
+                                        }}
+                                        className={
+                                            !currentUserId || !project.ownerId || currentUserId !== project.ownerId 
+                                                ? "opacity-50 cursor-not-allowed" 
+                                                : "text-destructive"
+                                        }
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete Project
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
@@ -435,10 +443,14 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, currentUserId, onPro
                         Cancel
                     </Button>
                     <Button 
-                        onClick={handleSaveProject}
-                        disabled={isLoading || !editForm.title.trim()}
+                    onClick={handleSaveProject}
+                    disabled={
+                        isLoading || 
+                        !editForm.title.trim() || 
+                        !editForm.description.trim() // Ensure description is not empty
+                    }
                     >
-                        {isLoading ? 'Saving...' : 'Save Changes'}
+                    {isLoading ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
