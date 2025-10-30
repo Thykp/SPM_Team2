@@ -41,7 +41,7 @@
     "clearMocks": true,
     "collectCoverage": true,
     "collectCoverageFrom": [
-      "api/**/*.js",
+      "services/**/*.js",
       "model/**/*.js"
     ],
     "coverageDirectory": "coverage"

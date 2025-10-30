@@ -4,7 +4,14 @@ const preferencesRoutes = require('./api/preferencesRoutes');
 const publishRoutes = require('./api/publishRoutes')
 
 const app = express();
-app.use(cors());
+
+app.use(
+  cors({
+    origin: ['http://localhost:5173'].filter(Boolean),
+    credentials: true
+  })
+);
+
 app.use(express.json());
 
 app.use('/preferences', preferencesRoutes);

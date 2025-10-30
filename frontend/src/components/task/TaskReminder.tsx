@@ -32,21 +32,24 @@ export const TaskReminder: React.FC<TaskReminderProps> = ({ taskId, status, dead
     ? Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : Infinity;
 
-  // ✅ Filter out default reminder options that exceed deadline
   const defaultOptions = [1, 3, 7].filter((day) => day <= daysUntilDeadline);
 
   const fetchReminders = async () => {
-    setLoading(true);
-    try {
-      const data: TaskDeadlineReminder = await TaskApi.getDeadlineReminder(taskId, userId);
-      setReminderDays(data.deadline_reminder || []);
-    } catch (err) {
-      console.error("Failed to fetch reminders:", err);
-      setError("Failed to load reminders");
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const data: TaskDeadlineReminder = await TaskApi.getDeadlineReminder(taskId, userId);
+    const validReminders = (data.deadline_reminder || []).filter(
+      (day) => day <= daysUntilDeadline && day > 0
+    );
+    setReminderDays(validReminders);
+  } catch (err) {
+    console.error("Failed to fetch reminders:", err);
+    setError("Failed to load reminders");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const persistReminders = async (reminders: number[]) => {
     try {
