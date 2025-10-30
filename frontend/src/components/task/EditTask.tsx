@@ -24,6 +24,15 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
+// Format any ISO datetime into a local datetime-local input string; passthrough if already local
+const toLocalInputString = (s: string) => {
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+};
+
 interface LocalTask {
   id: string;
   title: string;
@@ -69,6 +78,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null);
   const [error, setError] = useState<string | null>(null); // State to store error messages
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const isOwner = task?.owner === currentUserId;
 
 
@@ -212,7 +222,13 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
         throw new Error("Task data is missing");
       }
 
-      const utcDeadline = new Date(task.deadline).toISOString();
+      const parsedDeadline = new Date(task.deadline);
+      if (isNaN(parsedDeadline.getTime())) {
+        setError("Please enter a valid deadline.");
+        setLoading(false);
+        return;
+      }
+      const utcDeadline = parsedDeadline.toISOString();
 
       // Call the API to update the task
       const updatedTask = await TaskApi.updateTask(task.id, {
@@ -340,12 +356,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
     }
   };
 
-  const formatToLocalDatetime = (dateString: string) => {
-    const date = new Date(dateString);
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
-    return localDate.toISOString().slice(0, 16);
-  };
+  // removed unused formatToLocalDatetime; input binds raw local string and converts on submit
 
   if (!task) {
     return (
@@ -483,14 +494,30 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
               <Input
                 id="deadline"
                 type="datetime-local"
-                value={formatToLocalDatetime(task.deadline)}
-                onChange={(e) =>
-                  setTask((prev) => ({ ...prev!, deadline: e.target.value }))
+                value={
+                  task.deadline && task.deadline.length === 16
+                    ? task.deadline
+                    : toLocalInputString(task.deadline)
                 }
+                onChange={(e) => {
+                  const selectedDate = new Date(e.target.value);
+                  const now = new Date();
+
+                  if (selectedDate < now) {
+                    setDeadlineError("Deadline cannot be in the past");
+                  } else {
+                    setDeadlineError(null);
+                  }
+
+                  setTask((prev) => ({ ...prev!, deadline: e.target.value }));
+                }}
                 className="h-11"
                 required
                 disabled={!isOwner}
               />
+                {deadlineError && (
+                  <p className="text-sm text-red-500">{deadlineError}</p>
+                )}
                 {!isOwner && (
                   <p className="text-sm text-gray-500">
                     Only the task owner can modify the deadline.
@@ -615,7 +642,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
               <Button
                 type="submit"
                 className="flex-1 h-11"
-                disabled={!task.title.trim()}
+                disabled={!task.title.trim() || !!deadlineError}
               >
                 {loading ? "Updating..." : "Update Task"}
               </Button>
