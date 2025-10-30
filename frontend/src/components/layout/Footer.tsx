@@ -7,9 +7,9 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <Link to="/" className="flex items-center space-x-2">
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">A</span>
+              <span className="text-primary-foreground font-bold text-xs">L</span>
             </div>
-            <span className="font-semibold">AppName</span>
+            <span className="font-semibold">Lira</span>
           </Link>
 
           <div className="flex items-center space-x-6">
@@ -24,7 +24,7 @@ export function Footer() {
             </Link>
           </div>
 
-          <p className="text-sm text-muted-foreground">© 2024 AppName. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">© 2024 Lira. All rights reserved.</p>
         </div>
       </div>
     </footer>

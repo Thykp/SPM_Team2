@@ -42,9 +42,9 @@ export function Navbar({ variant = "landing" }: NavbarProps) {
         <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">A</span>
+              <span className="text-primary-foreground font-bold text-sm">L</span>
             </div>
-            <span className="font-bold text-xl">AppName</span>
+            <span className="font-bold text-xl">Lira</span>
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">

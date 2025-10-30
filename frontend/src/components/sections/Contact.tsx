@@ -26,7 +26,7 @@ export function Contact() {
                 Send us an email and we'll get back to you within 24 hours.
               </CardDescription>
               <Button variant="outline" className="w-full bg-transparent">
-                hello@appname.com
+                support@lira.com
               </Button>
             </CardContent>
           </Card>
