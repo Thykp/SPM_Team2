@@ -24,6 +24,19 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
+// Format any ISO datetime into a local datetime-local input string
+// Safe: returns empty string when input is invalid so the input doesn't crash
+// and displays as empty while user is editing invalid content.
+// This mirrors robust behavior in CreateTask where the controlled value is local.
+const safeFormatToLocalInput = (isoString: string) => {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  const s = local.toISOString();
+  return s.slice(0, 16);
+};
+
 interface LocalTask {
   id: string;
   title: string;
@@ -70,7 +83,6 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null);
   const [error, setError] = useState<string | null>(null); // State to store error messages
-  const [parentTaskDeadline, setParentTaskDeadline] = useState<string | null>(null);
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const isOwner = task?.owner === currentUserId;
 
@@ -224,7 +236,13 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
         throw new Error("Task data is missing");
       }
 
-      const utcDeadline = new Date(task.deadline).toISOString();
+      const parsedDeadline = new Date(task.deadline);
+      if (isNaN(parsedDeadline.getTime())) {
+        setError("Please enter a valid deadline.");
+        setLoading(false);
+        return;
+      }
+      const utcDeadline = parsedDeadline.toISOString();
 
       // Call the API to update the task
       const updatedTask = await TaskApi.updateTask(task.id, {
@@ -353,29 +371,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
   };
 
   const formatToLocalDatetime = (dateString: string) => {
-    const date = new Date(dateString);
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60 * 1000); // Adjust for timezone offset
-    return localDate.toISOString().slice(0, 16);
+    return safeFormatToLocalInput(dateString);
   };
-
-  useEffect(() => {
-    const fetchParentTaskDeadline = async () => {
-      if (task?.parent) { // Only if this is a subtask
-        try {
-          const parentTask = await TaskApi.getTaskByIdWithOwner(task.parent);
-          setParentTaskDeadline(parentTask.deadline);
-          console.log("Parent Task Deadline:", parentTask.deadline);
-        } catch (error) {
-          console.error("Error fetching parent task deadline:", error);
-        }
-      }
-    };
-
-    if (task) {
-      fetchParentTaskDeadline();
-    }
-  }, [task]);
 
   if (!task) {
     return (
@@ -388,6 +385,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
       </div>
     );
   }
+
+  // Align deadline validation UX with CreateTask: validate on change and show message
 
   return (
     <div 
@@ -516,38 +515,33 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
                 min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
                   .toISOString()
                   .slice(0, 16)}
-                max={task.parent && parentTaskDeadline ? formatToLocalDatetime(parentTaskDeadline) : undefined} // Add max constraint for subtasks
                 value={formatToLocalDatetime(task.deadline)}
                 onChange={(e) => {
                   const selectedDate = new Date(e.target.value);
                   const now = new Date();
-                  
-                  // Validate against current time
+
                   if (selectedDate < now) {
                     setDeadlineError("Deadline cannot be in the past");
-                  } 
-                  // Validate against parent task deadline (only for subtasks)
-                  else if (task.parent && parentTaskDeadline && selectedDate > new Date(parentTaskDeadline)) {
-                    setDeadlineError("Subtask deadline cannot be after parent task deadline");
+                  } else if (isNaN(selectedDate.getTime())) {
+                    setDeadlineError("Please enter a valid deadline.");
                   } else {
                     setDeadlineError(null);
                   }
-                  
+
                   setTask((prev) => ({ ...prev!, deadline: e.target.value }));
                 }}
                 className="h-11"
                 required
                 disabled={!isOwner}
               />
-              {/* Show deadline error */}
               {deadlineError && (
                 <p className="text-sm text-red-500">{deadlineError}</p>
               )}
-              {!isOwner && (
-                <p className="text-sm text-gray-500">
-                  Only the task owner can modify the deadline.
-                </p>
-              )}
+                {!isOwner && (
+                  <p className="text-sm text-gray-500">
+                    Only the task owner can modify the deadline.
+                  </p>
+                )}
             </div>
             {/* Collaborators */}
             <div className="space-y-2">
@@ -666,7 +660,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
               <Button
                 type="submit"
                 className="flex-1 h-11"
-                disabled={!task.title.trim()}
+                disabled={!task.title.trim() || !!deadlineError}
               >
                 {loading ? "Updating..." : "Update Task"}
               </Button>

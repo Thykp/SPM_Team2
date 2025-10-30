@@ -76,6 +76,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
   const [assignableUsers, setAssignableUsers] = useState<UserRow[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAssignableUsers = async () => {
@@ -148,13 +149,19 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
     setError(null); 
 
     try {
+      const parsedDeadline = new Date(newTask.deadline);
+      if (isNaN(parsedDeadline.getTime())) {
+        setError("Please enter a valid deadline.");
+        setLoading(false);
+        return;
+      }
       const taskData = {
         title: newTask.title,
         description: newTask.description,
         status: newTask.status,
         owner: newTask.owner,
         collaborators: newTask.collaborators,
-        deadline: new Date(newTask.deadline).toISOString(),
+        deadline: parsedDeadline.toISOString(),
         priority: newTask.priority,
       };
 
@@ -320,13 +327,23 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
                 min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
                 .toISOString()
                 .slice(0, 16)}
-                value={formatToLocalDatetime(newTask.deadline)}
-                onChange={(e) =>
-                  setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
-                }
+                value={newTask.deadline}
+                onChange={(e) => {
+                  const selectedDate = new Date(e.target.value);
+                  const now = new Date();
+
+                  if (selectedDate < now) {
+                    setDeadlineError("Deadline cannot be in the past");
+                  } else {
+                    setDeadlineError(null);
+                  }
+
+                  setNewTask((prev) => ({ ...prev, deadline: e.target.value }));
+                }}
                 className="h-11"
                 required
               />
+              {deadlineError && <p className="text-red-500 text-sm">{deadlineError}</p>}
             </div>
 
             {/* Collaborators */}
@@ -418,7 +435,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
               <Button
                 type="submit"
                 className="flex-1 h-11"
-                disabled={!newTask.title.trim()}
+                disabled={!newTask.title.trim() || !!deadlineError}
               >
                 {loading ? "Creating..." : "Create Task"}
               </Button>

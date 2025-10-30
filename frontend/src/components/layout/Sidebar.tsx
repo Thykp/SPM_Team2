@@ -36,7 +36,7 @@ export function Sidebar() {
   const visibleNavigation = navigation.filter(item => {
     if (item.href === "/app/manage-users") {
       // Only show to Manager, Director, Senior Management (NOT Staff)
-      return userRole && ["Manager", "Director", "Senior Management"].includes(userRole);
+      return userRole && (["Manager", "Director", "Senior Management"].includes(userRole) || profile?.department_id === "00000000-0000-0000-0000-000000000005");
     }
     if (item.href === "/app/team-task") {
       // Only show to Staff and Managers
