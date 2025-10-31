@@ -107,6 +107,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
   const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]);
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
 
   // Fetch project details and users when dialog opens
   useEffect(() => {
@@ -295,15 +296,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
         return;
       }
 
-      // Validate deadline is not in the past
-      const selectedDeadline = new Date(newTask.deadline);
-      const currentTime = new Date();
-      
-      if (selectedDeadline < currentTime) {
-        setError("Deadline cannot be in the past");
-        setLoading(false);
-        return;
-      }
+      // Deadline validation is handled by inline validation
 
       // If the current user assigns the task to someone else, add them to collaborators
       let finalCollaborators = selectedCollaborators;
@@ -349,8 +342,29 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
         console.log("No collaborators selected — no notification sent upon creating project task.");
       }
       resetForm();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create task:", err);
+
+      if (err.response && err.response.data) {
+        try {
+          const errorData = typeof err.response.data === "string"
+            ? JSON.parse(err.response.data) // Parse if it's a string
+            : err.response.data;
+
+          if (errorData.error) {
+            setError(errorData.error); // Use the error message from the backend
+          } else {
+            setError("An unexpected error occurred."); // Fallback if no error field exists
+          }
+        } catch (parseError) {
+          console.error("Error parsing response data:", parseError);
+          setError("An unexpected error occurred."); // Fallback for parsing errors
+        }
+      } else if (err.message) {
+        setError(err.message); // Use the generic error message
+      } else {
+        setError("An unexpected error occurred."); // Fallback for unknown errors
+      }
     } finally {
       setLoading(false);
     }
@@ -402,6 +416,8 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
               className="h-11"
               required
             />
+            {/* Error Message */}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
           </div>
 
           {/* Description */}
@@ -492,12 +508,22 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
               .toISOString()
               .slice(0, 16)}
               value={newTask.deadline}
-              onChange={(e) =>
-                setNewTask((prev) => ({ ...prev, deadline: e.target.value }))
-              }
+              onChange={(e) => {
+                const selectedDate = new Date(e.target.value);
+                const now = new Date();
+
+                if (selectedDate < now) {
+                  setDeadlineError("Deadline cannot be in the past");
+                } else {
+                  setDeadlineError(null);
+                }
+
+                setNewTask((prev) => ({ ...prev, deadline: e.target.value }));
+              }}
               className="h-11"
               required
             />
+            {deadlineError && <p className="text-red-500 text-sm">{deadlineError}</p>}
           </div>
 
           {/* Collaborators */}
@@ -636,7 +662,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
             <Button
               type="submit"
               className="h-11"
-              disabled={loading || !newTask.title.trim()}
+              disabled={loading || !newTask.title.trim() || !!deadlineError}
             >
               {loading ? "Creating..." : "Create Task"}
             </Button>
