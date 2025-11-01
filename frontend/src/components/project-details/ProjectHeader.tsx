@@ -258,7 +258,11 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
             </Button>
             <Button
               onClick={handleSaveProject}
-              disabled={isLoading || !editForm.title.trim()}
+              disabled={
+                isLoading || 
+                !editForm.title.trim() || 
+                !editForm.description.trim() // Ensure description is not empty
+              }
             >
               {isLoading ? 'Saving...' : 'Save Changes'}
             </Button>

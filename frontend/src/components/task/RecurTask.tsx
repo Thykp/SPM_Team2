@@ -82,6 +82,17 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
         return;
       }
 
+      // Validate that end date is in the future
+      if (!noEndDate && endDate) {
+        const selectedEndDate = new Date(endDate);
+        const currentDate = new Date();
+        
+        if (selectedEndDate <= currentDate) {
+          alert("End date must be in the future.");
+          return;
+        }
+      }
+
       // Prepare the payload for creating or updating recurrence
       const payload: RecurrencePostRequestDto = {
         frequency: isRecurring ? frequency : "Day",
@@ -213,6 +224,9 @@ export const RecurTask: React.FC<RecurTaskProps> = ({ taskId, onClose }) => {
                 <Input
                   id="endDate"
                   type="datetime-local"
+                  min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+                    .toISOString()
+                    .slice(0, 16)}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                 />

@@ -37,6 +37,11 @@ export const Task: React.FC<TaskProps> = ({
   const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
+  // Access control checks
+  const currentUserId = profile?.id || "";
+  const isUserOwner = taskContent.owner === currentUserId;
+  const isUserCollaborator = taskContent.collaborators?.includes(currentUserId) || false;
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Unassigned":
@@ -123,27 +128,56 @@ export const Task: React.FC<TaskProps> = ({
             <DropdownMenuContent align="end" className="z-[1000]">
               {taskContent.status !== "Completed" && (
                 <>
-                  <DropdownMenuItem onClick={() => setEditing(true)}>
+                  <DropdownMenuItem 
+                    disabled={!isUserOwner && !isUserCollaborator}
+                    onClick={() => {
+                      if (isUserOwner || isUserCollaborator) {
+                        setEditing(true);
+                      }
+                    }}
+                    className={!isUserOwner && !isUserCollaborator ? "opacity-50 cursor-not-allowed" : ""}
+                  >
                     <Edit className="h-4 w-4 mr-2 text-gray-500" />
                     Edit Task
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem onClick={() => setRecurring(true)}>
+                  <DropdownMenuItem 
+                    disabled={!isUserOwner}
+                    onClick={() => {
+                      if (isUserOwner) {
+                        setRecurring(true);
+                      }
+                    }}
+                    className={!isUserOwner ? "opacity-50 cursor-not-allowed" : ""}
+                  >
                     <Gauge className="h-4 w-4 mr-2 text-gray-500" />
                     Recur Task
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem onClick={() => setShowAddSubtaskDialog(true)}>
+                  <DropdownMenuItem 
+                    disabled={!isUserOwner && !isUserCollaborator}
+                    onClick={() => {
+                      if (isUserOwner || isUserCollaborator) {
+                        setShowAddSubtaskDialog(true);
+                      }
+                    }}
+                    className={!isUserOwner && !isUserCollaborator ? "opacity-50 cursor-not-allowed" : ""}
+                  >
                     <Plus className="h-4 w-4 mr-2 text-gray-500" />
                     Add Subtask
                   </DropdownMenuItem>
                 </>
               )}
 
-              <DropdownMenuItem
-                onClick={() => setShowDeleteConfirmation(true)}
-                className="text-destructive"
-              >
+                <DropdownMenuItem
+                  disabled={!isUserOwner}
+                  onClick={() => {
+                    if (isUserOwner) {
+                      setShowDeleteConfirmation(true);
+                    }
+                  }}
+                  className={!isUserOwner ? "opacity-50 cursor-not-allowed" : "text-destructive"}
+                >
                 <Trash2 className="h-4 w-4 mr-2 text-red-500" />
                 Delete Task
               </DropdownMenuItem>
@@ -173,6 +207,7 @@ export const Task: React.FC<TaskProps> = ({
         <CreateSubtask
           parentTaskId={taskContent.id} // Pass the current task ID as the parentTaskId
           parentTaskDeadline={taskContent.deadline} // Pass the parent task deadline for validation
+          parentTaskOwnerId={taskContent.owner}
           projectId={taskContent.project_id || ""} // Pass the project ID
           parentTaskCollaborators={taskContent.collaborators || []} // Pass collaborators
           onSubtaskCreated={(newSubtask) => {

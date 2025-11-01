@@ -35,6 +35,7 @@ type StatusType = (typeof STATUSES)[number];
 interface CreateSubtaskProps {
   parentTaskId: string; // Parent task ID for linking the subtask
   parentTaskDeadline: string; // Parent task deadline for validation
+  parentTaskOwnerId: string | null;
   projectId: string;
   parentTaskCollaborators: string[]; // Collaborators from the parent task
   onSubtaskCreated: (subtask: TaskDTO) => void; // Callback when a subtask is created
@@ -53,6 +54,7 @@ interface CreateSubtaskProps {
 const CreateSubtask: React.FC<CreateSubtaskProps> = ({
   parentTaskId,
   parentTaskDeadline,
+  parentTaskOwnerId,
   projectId, 
   parentTaskCollaborators,
   onSubtaskCreated,
@@ -86,6 +88,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
   const [ownerOptions, setOwnerOptions] = useState<{ value: string; label: string }[]>([]); // Owner dropdown options
   const [deadlineError, setDeadlineError] = useState<string | null>(null); // Deadline validation error
 
+  
   useEffect(() => {
     const fetchAssignableUsers = async () => {
         setLoadingUsers(true);
@@ -107,7 +110,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
         console.log("Current User Department ID:", currentUserDepartmentId);
         console.log("Current User Team ID:", currentUserTeamId);
 
-        const parentTaskOwner = allUsers.find((user) => user.id === parentTaskId);
+        const parentTaskOwner = allUsers.find((user) => user.id === parentTaskOwnerId); // Use the prop instead
         let filteredCollaborators = allUsers.filter((user) =>
           parentTaskCollaborators.includes(user.id)
         );
@@ -453,7 +456,7 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
             <Button
               type="submit"
               className="flex-1 h-11"
-              disabled={!newSubtask.title.trim() || !!deadlineError}
+              disabled={!newSubtask.title.trim() || !newSubtask.description.trim() || !!deadlineError}
               onClick={handleCreateSubtask}
             >
               {loading ? "Creating..." : "Create Subtask"}

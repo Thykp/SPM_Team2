@@ -59,7 +59,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
     const [showAddSubtaskDialog, setShowAddSubtaskDialog] = useState(false);
     const [showRecurDialog, setShowRecurDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const isUserOwner = task.owner ===  userId;
     
+    // Check if current user is a collaborator or owner
+    const isUserCollaborator = task.collaborators?.includes(userId) || false;
+
     const {
         attributes,
         listeners,
@@ -176,45 +180,64 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                                     <MoreVertical className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowEditDialog(true);
-                                    }}
-                                >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit Task
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowRecurDialog(true);
-                                    }}
-                                >
-                                    <Gauge className="h-4 w-4 mr-2" />
-                                    Recur Task
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowAddSubtaskDialog(true);
-                                    }}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add Subtask
-                                </DropdownMenuItem>                                    
-                                <DropdownMenuItem 
+                                <DropdownMenuContent align="end" className="w-48">
+                                    {task.status !== "Completed" && (
+                                        <>
+                                            <DropdownMenuItem 
+                                                disabled={!isUserOwner && !isUserCollaborator}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isUserOwner || isUserCollaborator) {
+                                                        setShowEditDialog(true);
+                                                    }
+                                                }}
+                                                className={!isUserOwner && !isUserCollaborator ? "opacity-50 cursor-not-allowed" : ""}
+                                            >
+                                                <Edit className="h-4 w-4 mr-2" />
+                                                Edit Task
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                disabled={!isUserOwner}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isUserOwner) {
+                                                        setShowRecurDialog(true);
+                                                    }
+                                                }}
+                                                className={!isUserOwner ? "opacity-50 cursor-not-allowed" : ""}
+                                            >
+                                                <Gauge className="h-4 w-4 mr-2" />
+                                                Recur Task
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                disabled={!isUserOwner && !isUserCollaborator}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isUserOwner || isUserCollaborator) {
+                                                        setShowAddSubtaskDialog(true);
+                                                    }
+                                                }}
+                                                className={!isUserOwner && !isUserCollaborator ? "opacity-50 cursor-not-allowed" : ""}
+                                            >
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Add Subtask
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    <DropdownMenuItem 
+                                        disabled={!isUserOwner}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setShowDeleteDialog(true);
+                                            if (isUserOwner) {
+                                                setShowDeleteDialog(true);
+                                            }
                                         }}
-                                        className="text-red-600 focus:text-red-600"
+                                        className={!isUserOwner ? "opacity-50 cursor-not-allowed" : "text-red-600 focus:text-red-600"}
                                     >
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Delete Task
                                     </DropdownMenuItem>
-                            </DropdownMenuContent>
+                                </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
                     
@@ -275,6 +298,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                         currentUserId={userId}
                         projectId={task.project_id ?? projectId}
                         parentTaskCollaborators={task.collaborators || []}
+                        parentTaskOwnerId={task.owner}
                         onClose={() => setShowEditDialog(false)}
                         onTaskUpdated={() => {
                             setShowEditDialog(false);
@@ -301,6 +325,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, projectId, userId, isDragging
                     projectId={projectId}
                     currentUserId={userId}
                     parentTaskDeadline={task.deadline || new Date().toISOString()}
+                    parentTaskOwnerId={task.owner}
                     parentTaskCollaborators={task.collaborators || []}
                     open={showAddSubtaskDialog}
                     onOpenChange={setShowAddSubtaskDialog}

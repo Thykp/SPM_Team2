@@ -523,6 +523,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
             <CreateSubtask
               parentTaskId={currentTask.id} // Pass the current task ID as the parentTaskId
               parentTaskDeadline={currentTask.deadline} // Pass the parent task deadline for validation
+              parentTaskOwnerId={currentTask.owner} 
               projectId={currentTask.project_id || ""} // Pass the project ID
               parentTaskCollaborators={currentTask.collaborators || []} // Pass collaborators
               onSubtaskCreated={(newSubtask) => {
@@ -542,6 +543,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
               taskId={editingSubtask.id}
               currentUserId={user?.id || ""}
               parentTaskCollaborators={currentTask?.collaborators || []} // Pass parent task collaborators
+              parentTaskOwnerId={currentTask?.owner}
               onClose={() => setEditingSubtask(null)} // Close the edit modal
               onTaskUpdated={() => {
                 setEditingSubtask(null); // Close the modal

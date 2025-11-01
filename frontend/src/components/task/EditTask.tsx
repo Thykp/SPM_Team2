@@ -24,13 +24,17 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
-// Format any ISO datetime into a local datetime-local input string; passthrough if already local
-const toLocalInputString = (s: string) => {
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return s;
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 16);
+// Format any ISO datetime into a local datetime-local input string
+// Safe: returns empty string when input is invalid so the input doesn't crash
+// and displays as empty while user is editing invalid content.
+// This mirrors robust behavior in CreateTask where the controlled value is local.
+const safeFormatToLocalInput = (isoString: string) => {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  const s = local.toISOString();
+  return s.slice(0, 16);
 };
 
 interface LocalTask {
@@ -61,12 +65,13 @@ interface EditTaskProps {
   taskId: string; // The ID of the task to be edited
   currentUserId: string; // The current user's ID
   parentTaskCollaborators?: string[]; // Collaborators from the parent task (optional)
+  parentTaskOwnerId?: string | null;
   projectId?: string | null; // The project ID (optional)
   onClose: () => void;
   onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, projectId, onClose, onTaskUpdated }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, parentTaskOwnerId, projectId, onClose, onTaskUpdated }) => {
   const { profile } = useAuth();
   const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
   const [originalTask, setOriginalTask] = useState<LocalTask>();
@@ -162,10 +167,19 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
             console.error("Error fetching project collaborators:", error);
           }
         } else if (task?.parent) {
-          // If the task is a subtask, filter collaborators based on the parent task's collaborators
-          filteredCollaborators = allUsers.filter((user) =>
-            parentTaskCollaborators?.includes(user.id)
-          );
+            const parentTaskParticipants = [...(parentTaskCollaborators || [])];
+            
+            // Add parent task owner if provided and not already included
+            if (parentTaskOwnerId && !parentTaskParticipants.includes(parentTaskOwnerId)) {
+              parentTaskParticipants.push(parentTaskOwnerId);
+            }
+
+            console.log("Parent Task Participants (including owner):", parentTaskParticipants);
+
+            // Filter users to only include parent task participants
+            filteredCollaborators = allUsers.filter((user) =>
+              parentTaskParticipants.includes(user.id)
+            );
         }
 
         setUsers(filteredCollaborators); // Set the filtered users for the CollaboratorPicker
@@ -356,7 +370,9 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
     }
   };
 
-  // removed unused formatToLocalDatetime; input binds raw local string and converts on submit
+  const formatToLocalDatetime = (dateString: string) => {
+    return safeFormatToLocalInput(dateString);
+  };
 
   if (!task) {
     return (
@@ -369,6 +385,8 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
       </div>
     );
   }
+
+  // Align deadline validation UX with CreateTask: validate on change and show message
 
   return (
     <div 
@@ -494,17 +512,18 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
               <Input
                 id="deadline"
                 type="datetime-local"
-                value={
-                  task.deadline && task.deadline.length === 16
-                    ? task.deadline
-                    : toLocalInputString(task.deadline)
-                }
+                min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+                  .toISOString()
+                  .slice(0, 16)}
+                value={formatToLocalDatetime(task.deadline)}
                 onChange={(e) => {
                   const selectedDate = new Date(e.target.value);
                   const now = new Date();
 
                   if (selectedDate < now) {
                     setDeadlineError("Deadline cannot be in the past");
+                  } else if (isNaN(selectedDate.getTime())) {
+                    setDeadlineError("Please enter a valid deadline.");
                   } else {
                     setDeadlineError(null);
                   }
@@ -515,16 +534,15 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
                 required
                 disabled={!isOwner}
               />
-                {deadlineError && (
-                  <p className="text-sm text-red-500">{deadlineError}</p>
-                )}
+              {deadlineError && (
+                <p className="text-sm text-red-500">{deadlineError}</p>
+              )}
                 {!isOwner && (
                   <p className="text-sm text-gray-500">
                     Only the task owner can modify the deadline.
                   </p>
                 )}
             </div>
-
             {/* Collaborators */}
             <div className="space-y-2">
               <CollaboratorPicker
