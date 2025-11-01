@@ -127,7 +127,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          projectBaseDir: backend/services/atomic/task
+          projectBaseDir: backend/services/atomic/project
           args: >
             -Dsonar.qualitygate.wait=false
 
