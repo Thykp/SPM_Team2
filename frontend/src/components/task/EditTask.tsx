@@ -86,6 +86,9 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const isOwner = task?.owner === currentUserId;
 
+  // Feature flag for owner dropdown - when true, allows anyone to modify the owner
+  const ALLOW_OWNER_MODIFICATION_BY_ALL = false;
+
 
 
   // Fetch the task details when the component is mounted
@@ -584,7 +587,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
         role="combobox"
         aria-expanded="false"
         className="w-full justify-between h-11"
-        disabled={!isOwner} 
+        disabled={ALLOW_OWNER_MODIFICATION_BY_ALL ? false : !isOwner} 
         ref={(el) => {
           if (el) {
             const triggerWidth = el.offsetWidth; // Get the width of the trigger
@@ -640,7 +643,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
       </Command>
     </PopoverContent>
   </Popover>
-    {!isOwner && (
+    {!ALLOW_OWNER_MODIFICATION_BY_ALL && !isOwner && (
     <p className="text-sm text-gray-500">
       Only the task owner can modify the owner.
     </p>
