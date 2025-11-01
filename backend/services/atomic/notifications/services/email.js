@@ -40,7 +40,7 @@ async function sendDeadlineOrAddedEmail(emailPayload) {
 
     console.log("Email sent!", response.data);
   } catch (err) {
-    console.error("Failed to send email:", err.response?.data || err.message);
+    console.error("[Email] Failed to send Deadline/Added email:", err.response?.data || err.message);
   }
 }
 
@@ -63,7 +63,7 @@ try {
 
     console.log("Email sent!", response.data);
   } catch (err) {
-    console.error("Failed to send email:", err.response?.data || err.message);
+    console.error("[Email] Failed to send Updates email:", err.response?.data || err.message);
   }
 }
 
