@@ -14,8 +14,8 @@ import { Users, Building2, FileDown, Loader2, Globe2 } from "lucide-react";
 import { UserTaskDrawer } from "@/components/user/UserTaskDrawer";
 
 type CacheEntry<T> = { ts: number; data: T };
-const CACHE_TTL_USERS_MS = 5 * 60 * 1000;   // 5 minutes
-const CACHE_TTL_PCT_MS   = 2 * 60 * 1000;   // 2 minutes
+const CACHE_TTL_USERS_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_PCT_MS = 2 * 60 * 1000; // 2 minutes
 
 function setCache<T>(key: string, data: T) {
   try {
@@ -39,7 +39,7 @@ function isFresh(entry: CacheEntry<any> | null, ttl: number) {
   return Date.now() - entry.ts < ttl;
 }
 
-const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 type UserRow = {
   id: string;
@@ -70,12 +70,18 @@ function ProgressBar({ value }: { value: number }) {
 
 function statusToProgress(status?: TaskType["status"]): number {
   switch (status) {
-    case "Completed": return 100;
-    case "Under Review": return 80;
-    case "Ongoing": return 50;
-    case "Overdue": return 30;
-    case "Unassigned": return 10;
-    default: return 30;
+    case "Completed":
+      return 100;
+    case "Under Review":
+      return 80;
+    case "Ongoing":
+      return 50;
+    case "Overdue":
+      return 30;
+    case "Unassigned":
+      return 10;
+    default:
+      return 30;
   }
 }
 
@@ -124,8 +130,7 @@ function isReportForMe(
   const isHR = isHRDepartment(myDepartmentId);
 
   if (myRole === "Director" && !isHR) {
-    return u.role !== "Director" && u.role !== "Senior Management" 
-    && u.department_id === myDepartmentId;
+    return u.role !== "Director" && u.role !== "Senior Management" && u.department_id === myDepartmentId;
   }
 
   if (myRole === "Senior Management" || isHR) {
@@ -140,6 +145,21 @@ function isReportForMe(
   return false;
 }
 
+/** detect "no tasks" / 404-ish, same pattern as dashboard */
+function isNotFoundError(e: any): boolean {
+  const status = e?.response?.status ?? e?.status;
+  const code = e?.response?.data?.code ?? e?.code;
+  const msg = (e?.response?.data?.message ?? e?.message ?? "").toString();
+  return (
+    status === 404 ||
+    code === "NOT_FOUND" ||
+    code === "NO_TASKS" ||
+    /404/.test(String(status)) ||
+    /not\s*found/i.test(msg) ||
+    /no tasks/i.test(msg)
+  );
+}
+
 export default function ManageUser() {
   const { profile } = useAuth();
 
@@ -152,7 +172,6 @@ export default function ManageUser() {
   const [selected, setSelected] = useState<UserRow | null>(null);
   const [tasks, setTasks] = useState<TaskType[] | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
-
 
   // progress % per user
   const [perUserPct, setPerUserPct] = useState<Record<string, number>>({});
@@ -169,14 +188,21 @@ export default function ManageUser() {
   const [myDepartmentId, setMyDepartmentId] = useState<string | null>(null);
 
   const [reportBusy, setReportBusy] = useState<"team" | "department" | "organisation" | null>(null);
-  const [banner, setBanner] = useState<{ type: "success" | "error" | "info"; msg: string; href?: string } | null>(null);
+  const [banner, setBanner] = useState<{
+    type: "success" | "error" | "info";
+    msg: string;
+    href?: string;
+    showHint?: string;
+  } | null>(null);
 
-  // Cache keys
   const USERS_CACHE_KEY = "manageUser:users:all";
-  const PCT_CACHE_KEY   = myUserId ? `manageUser:pct:${myUserId}` : "manageUser:pct:anon";
+  const PCT_CACHE_KEY = myUserId ? `manageUser:pct:${myUserId}` : "manageUser:pct:anon";
+
+  function rangeLabel() {
+    return `${startDate} to ${endDate}`;
+  }
 
   useEffect(() => {
-    // load users (SWR: render from cache then revalidate)
     const loadUsers = async () => {
       setLoading(true);
       setError(null);
@@ -189,25 +215,29 @@ export default function ManageUser() {
       }
 
       if (all) {
-        const me = myUserId ? all.find(u => u.id === myUserId) : undefined;
+        const me = myUserId ? all.find((u) => u.id === myUserId) : undefined;
         setMyTeamId(me?.team_id ?? null);
         setMyDepartmentId(me?.department_id ?? null);
 
-        const mine = all.filter(u => isReportForMe(myRole, me?.team_id ?? null, me?.department_id ?? null, myUserId, u));
+        const mine = all.filter((u) =>
+          isReportForMe(myRole, me?.team_id ?? null, me?.department_id ?? null, myUserId, u)
+        );
         setUsers(mine);
         setLoading(false);
       }
 
       try {
-        const freshAll = await Profile.getAllUsers() as unknown as UserRow[];
+        const freshAll = (await Profile.getAllUsers()) as unknown as UserRow[];
         if (freshAll.length > 0) {
           setCache(USERS_CACHE_KEY, freshAll);
 
-          const meFresh = myUserId ? freshAll.find(u => u.id === myUserId) : undefined;
+          const meFresh = myUserId ? freshAll.find((u) => u.id === myUserId) : undefined;
           setMyTeamId(meFresh?.team_id ?? null);
           setMyDepartmentId(meFresh?.department_id ?? null);
 
-          const mineFresh = freshAll.filter(u => isReportForMe(myRole, meFresh?.team_id ?? null, meFresh?.department_id ?? null, myUserId, u));
+          const mineFresh = freshAll.filter((u) =>
+            isReportForMe(myRole, meFresh?.team_id ?? null, meFresh?.department_id ?? null, myUserId, u)
+          );
           setUsers(mineFresh);
 
           void prefetchPct(mineFresh);
@@ -230,19 +260,13 @@ export default function ManageUser() {
 
     loadPct();
     loadUsers();
-
   }, [myUserId, myRole]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
-    return users.filter(u =>
-      [
-        u.display_name,
-        u.role ?? "",
-        u.department ?? "",
-        u.team ?? "",
-      ].some(v => v.toLowerCase().includes(q))
+    return users.filter((u) =>
+      [u.display_name, u.role ?? "", u.department ?? "", u.team ?? ""].some((v) => v.toLowerCase().includes(q))
     );
   }, [users, query]);
 
@@ -266,7 +290,7 @@ export default function ManageUser() {
     if (!list || list.length === 0) return;
 
     const cachedPct = getCache<Record<string, number>>(PCT_CACHE_KEY);
-    const basePct = (cachedPct?.data && isFresh(cachedPct, CACHE_TTL_PCT_MS)) ? cachedPct.data : {};
+    const basePct = cachedPct?.data && isFresh(cachedPct, CACHE_TTL_PCT_MS) ? cachedPct.data : {};
     if (Object.keys(basePct).length > 0) {
       setPerUserPct(basePct);
     }
@@ -282,17 +306,17 @@ export default function ManageUser() {
         try {
           const ts = await TaskAPI.getTasksByUserId(u.id);
           const total = ts.length;
-          const done = ts.filter(t => statusToProgress(t.status) >= 100).length;
+          const done = ts.filter((t) => statusToProgress(t.status) >= 100).length;
           const pct = total ? Math.round((done / total) * 100) : 0;
           nextPct[u.id] = pct;
-          setPerUserPct(prev => ({ ...prev, [u.id]: pct }));
+          setPerUserPct((prev) => ({ ...prev, [u.id]: pct }));
         } catch {
           nextPct[u.id] = nextPct[u.id] ?? 0;
         }
       }
       setCache(PCT_CACHE_KEY, nextPct);
     } catch {
-      setBanner(prev => prev ?? { type: "info", msg: "Some progress data is cached due to rate limits." });
+      setBanner((prev) => prev ?? { type: "info", msg: "Some progress data is cached due to rate limits." });
     }
   };
 
@@ -307,8 +331,8 @@ export default function ManageUser() {
       if (kind === "team") {
         if (!canSeeTeamButton(myRole)) throw new Error("You are not allowed to generate a team report.");
         if (!myTeamId) throw new Error("Your team is not set.");
-        const res = await Report.generateTeam(myTeamId, { startDate, endDate, userId: myUserId });
 
+        const res = await Report.generateTeam(myTeamId, { startDate, endDate, userId: myUserId });
         const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
         const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
 
@@ -320,8 +344,8 @@ export default function ManageUser() {
       } else if (kind === "department") {
         if (!canSeeDepartmentButton(myRole)) throw new Error("You are not allowed to generate a department report.");
         if (!myDepartmentId) throw new Error("Your department is not set.");
-        const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate, userId: myUserId });
 
+        const res = await Report.generateDepartment(myDepartmentId, { startDate, endDate, userId: myUserId });
         const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
         const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
 
@@ -336,7 +360,6 @@ export default function ManageUser() {
           throw new Error("You are not allowed to generate an organisation report.");
         }
         const res = await Report.generateOrganisation({ startDate, endDate, userId: myUserId });
-
         const href = (res as any)?.data?.reportUrl ?? (res as any)?.url;
         const title = (res as any)?.data?.reportTitle ?? (res as any)?.message;
 
@@ -347,7 +370,30 @@ export default function ManageUser() {
         });
       }
     } catch (e: any) {
-      setBanner({ type: "error", msg: e?.message || "Failed to generate report." });
+      // 👇 graceful handling like dashboard
+      if (isNotFoundError(e)) {
+        if (kind === "team") {
+          setBanner({
+            type: "info",
+            msg: `No tasks found for your team for ${rangeLabel()}.`,
+            showHint: "Ask your team members to create tasks first, then try generating the team report again.",
+          });
+        } else if (kind === "department") {
+          setBanner({
+            type: "info",
+            msg: `No tasks found for your department for ${rangeLabel()}.`,
+            showHint:
+              "Ask your department staff to create or update tasks for this period, then try generating the department report again.",
+          });
+        } else {
+          setBanner({
+            type: "info",
+            msg: `No tasks found for the organisation for ${rangeLabel()}.`,
+          });
+        }
+      } else {
+        setBanner({ type: "error", msg: e?.message || "Failed to generate report." });
+      }
     } finally {
       setReportBusy(null);
     }
@@ -356,14 +402,12 @@ export default function ManageUser() {
   const dateInvalid = !startDate || !endDate || new Date(startDate) > new Date(endDate);
   const disableTeamBtn = reportBusy !== null || !myTeamId || !myUserId || dateInvalid;
   const disableDeptBtn = reportBusy !== null || !myDepartmentId || !myUserId || dateInvalid;
-  const disableOrgBtn  = reportBusy !== null || !myUserId || dateInvalid;
+  const disableOrgBtn = reportBusy !== null || !myUserId || dateInvalid;
 
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Manage Users</h1>
-      <p className="text-muted-foreground mb-6">
-        View your reports, their workloads, and task progress.
-      </p>
+      <p className="text-muted-foreground mb-6">View your reports, their workloads, and task progress.</p>
 
       {/* Top actions */}
       <div className="mb-4 space-y-3">
@@ -393,27 +437,18 @@ export default function ManageUser() {
                 </a>
               )}
             </div>
+            {banner.showHint && <p className="text-xs mt-2 text-muted-foreground">{banner.showHint}</p>}
           </div>
         )}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {/* Date range */}
           <div className="flex gap-2 w-full sm:w-auto">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              aria-label="Start date"
-            />
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              aria-label="End date"
-            />
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Start date" />
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="End date" />
           </div>
 
-          {/* Subtle, outlined button group */}
+          {/* Button group */}
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
             <div className="inline-flex overflow-hidden rounded-lg border border-border shadow-sm bg-card">
               {canSeeTeamButton(myRole) && (
@@ -445,9 +480,7 @@ export default function ManageUser() {
                   <span className="hidden sm:inline">
                     {reportBusy === "team" ? "Generating…" : "Team Report"}
                   </span>
-                  <span className="sm:hidden">
-                    {reportBusy === "team" ? "…" : "Team"}
-                  </span>
+                  <span className="sm:hidden">{reportBusy === "team" ? "…" : "Team"}</span>
                 </Button>
               )}
 
@@ -480,9 +513,7 @@ export default function ManageUser() {
                   <span className="hidden sm:inline">
                     {reportBusy === "department" ? "Generating…" : "Department Report"}
                   </span>
-                  <span className="sm:hidden">
-                    {reportBusy === "department" ? "…" : "Dept"}
-                  </span>
+                  <span className="sm:hidden">{reportBusy === "department" ? "…" : "Dept"}</span>
                 </Button>
               )}
 
@@ -513,9 +544,7 @@ export default function ManageUser() {
                   <span className="hidden sm:inline">
                     {reportBusy === "organisation" ? "Generating…" : "Organisation Report"}
                   </span>
-                  <span className="sm:hidden">
-                    {reportBusy === "organisation" ? "…" : "Org"}
-                  </span>
+                  <span className="sm:hidden">{reportBusy === "organisation" ? "…" : "Org"}</span>
                 </Button>
               )}
             </div>
@@ -526,15 +555,9 @@ export default function ManageUser() {
               <span>
                 Range: <span className="font-medium">{startDate}</span> → <span className="font-medium">{endDate}</span>
               </span>
-              {canSeeTeamButton(myRole) && (
-                <Badge variant="outline" className="h-5 text-xs">Team</Badge>
-              )}
-              {canSeeDepartmentButton(myRole) && (
-                <Badge variant="outline" className="h-5 text-xs">Department</Badge>
-              )}
-              {canSeeOrganisationButton(myRole, myDepartmentId) && (
-                <Badge variant="outline" className="h-5 text-xs">Org</Badge>
-              )}
+              {canSeeTeamButton(myRole) && <Badge variant="outline">Team</Badge>}
+              {canSeeDepartmentButton(myRole) && <Badge variant="outline">Department</Badge>}
+              {canSeeOrganisationButton(myRole, myDepartmentId) && <Badge variant="outline">Org</Badge>}
             </div>
           </div>
 
