@@ -38,6 +38,7 @@ async function processReminderNotification(payload) {
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
 
+  if (taskContent.status == "Completed") return
 
   const highPriority = taskContent.priority > 7;
   const mediumPriority = taskContent.priority > 4 && taskContent.priority <= 7;
@@ -92,6 +93,11 @@ async function processAddedNotification(payload){
 
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
+
+  //check payload and format update payload
+  if(payload.resource_content.updated){
+    payload.resource_content = {...payload.resource_content.updated}
+  }
 
   let wsPayload = formatWsAdded(payload)
   wsPayload = { ...wsPayload, push };
