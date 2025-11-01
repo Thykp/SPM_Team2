@@ -87,6 +87,7 @@ async function pollNotifications(setName) {
       await redis.zrem(setName, n);
     } catch (err) {
       console.error("[poller] Failed to process notification:", err);
+      await redis.zrem(setName, n);
     }
   }
 }
@@ -110,4 +111,4 @@ function startPoller() {
   }, POLL_INTERVAL);
 }
 
-module.exports = { startPoller };
+module.exports = { startPoller, pollNotifications };

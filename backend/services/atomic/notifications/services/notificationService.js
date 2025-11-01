@@ -1,6 +1,4 @@
 // logic for routes in api/notificationRoutes
-
-const { json } = require("express");
 const { supabase } = require("../db/supabase");
 
 // NOTIFICATIONS TABLE
@@ -26,7 +24,7 @@ async function markAsRead(ids) {
     .in("id", ids)
     .select();
 
-  if (error) throw new Error(`Failed to mark as read: ${json.stringify(error)}`);
+  if (error) throw new Error(`Failed to mark as read: ${JSON.stringify(error)}`);
   return data;
 }
 

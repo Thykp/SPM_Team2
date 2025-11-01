@@ -23,7 +23,7 @@ function broadcastToUser(userId, message) {
   for (const ws of sockets) {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));
   }
-  console.log(`[ws] Sent notification to ${userId}`);
+  console.log(`[ws] Sent notification to ${userId}, payload:${JSON.stringify(message)}`);
 }
 
 function initWebSocketServer(server) {
@@ -67,7 +67,7 @@ function initWebSocketServer(server) {
 
 function formatWsAdded(payload) {
   let resourceLabel = '';
-  if (payload.isSubtask) resourceLabel = 'Sub Task';
+  if (payload.isSubtask) resourceLabel = 'Subtask';
   else if (payload.isTask) resourceLabel = 'Task';
   else if (payload.isProject) resourceLabel = 'Project';
   else if (payload.isProjectTask) resourceLabel = 'Project Task';
@@ -76,33 +76,30 @@ function formatWsAdded(payload) {
 
   let priority = '';
   if (payload.isTask || payload.isProjectTask || payload.isProjectSubtask) {
-    if (payload.isHighPriority) priority = '[High]';
-    else if (payload.isMediumPriority) priority = '[Medium]';
-    else if (payload.isLowPriority) priority = '[Low]';
+    if (payload.isHighPriority) priority = '[HIGH]';
+    else if (payload.isMediumPriority) priority = '[MEDIUM]';
+    else if (payload.isLowPriority) priority = '[LOW]';
   }
 
   let description = ""
-  if (payload.resource_content.status) description += ` (${payload.resource_content.status})`
+  if (payload.resource_content.status) description += ` (${payload.resource_content.status}) `
   
-  description += `${payload.addedBy} has added you to ${payload.resource_content.title || payload.resource_content.id} to collaborate.`;
+  description += `${payload.addedBy} has added you to ${payload.resource_content.title} to collaborate.`;
 
 
   const notificationId = crypto.randomUUID();; 
 
-  console.info(`[FormatWsAdded]: ${JSON.stringify({ title: `Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
+  console.info(`[FormatWsAdded]: ${JSON.stringify({ title: `Added to ${resourceLabel}: ${payload.resource_content.title}`,
     description,
     link: payload.link, })}`);
 
   return {
     id: notificationId,
-    title: `${priority} Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
+    title: `${priority} Added to ${resourceLabel}: ${payload.resource_content.title}`,
     description,
     link: payload.link,
   };
 }
-
-
-
 
 
 function formatWsUpdate(batchedResources) {
@@ -141,17 +138,31 @@ function formatWsUpdate(batchedResources) {
     batchedResources.batched_resources.task.forEach((task) => {
       const updated = task.resource_content.updated;
       const notificationId = crypto.randomUUID();
+      let link = ""
 
       let titlePrefix;
-      if (updated.parent == null) {
-        titlePrefix = `Task ${updated.title} ${task.update_type} by: ${task.updated_by}`;
-      } else {
-        titlePrefix = `Subtask ${updated.title} ${task.update_type} by: ${task.updated_by}`;  
+      if (updated.project_id !== null){
+        if (updated.parent == null){
+          titlePrefix = `Project Task ${updated.title} ${task.update_type} by: ${task.updated_by}`;
+          link = `/app/project/${updated.project_id}`
+          
+        }
+        else {
+          titlePrefix = `Project Subtask ${updated.title} ${task.update_type} by: ${task.updated_by}`;
+          link = `/app/project/${updated.project_id}`
+        }
+      }
+      else{
+        if (updated.parent == null) {
+          titlePrefix = `Task ${updated.title} ${task.update_type} by: ${task.updated_by}`;
+          link = `/app?taskName=${updated.title}`
+        } else {
+          titlePrefix = `Subtask ${updated.title} ${task.update_type} by: ${task.updated_by}`;
+          link = `/app?taskName=${updated.title}`
+        }
       }
 
-      const link = `/app?taskName=${updated.title}`;
-
-      const description = `(${updated.status || 'N/A'})`;
+      const description = `(${updated.status || 'N/A'}) ${updated.description}`;
 
       wsNotifications.push({
         id: notificationId,
@@ -192,8 +203,8 @@ function formatWsReminder(wsPayload) {
     priority = "[LOW]"
   }
 
-  const description = `Reminder set for ${wsPayload.day} day(s) before deadline. ` +
-    `${priority} Status: ${task.status || 'N/A'}. ` +
+  const description = `${priority} ${wsPayload.day} day(s) before deadline. ` +
+    `Status: ${task.status || 'N/A'}. ` +
     `${task.description ? `Description: "${task.description}"` : ''}`;
 
   console.info(`[FormatWsReminder]: ${JSON.stringify({ title, link, description })}`);
@@ -208,4 +219,4 @@ function formatWsReminder(wsPayload) {
 
 
 
-module.exports = { initWebSocketServer, broadcastToUser, formatWsAdded, formatWsUpdate, formatWsReminder };
+module.exports = { initWebSocketServer, broadcastToUser, formatWsAdded, formatWsUpdate, formatWsReminder, clients, addClient };

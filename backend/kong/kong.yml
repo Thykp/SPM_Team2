@@ -36,6 +36,7 @@ services:
       - name: manage-notification-route
         paths:
           - /manage-notifications
+          
   - name: report-service
     url: http://report:3042
     routes:

@@ -88,6 +88,23 @@ jobs:
           SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
         run: npm test -- --coverage
 
+  notificaitons_test:
+    name: Node — atomic/notifications tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/atomic/notifications
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/atomic/notifications/package-lock.json
+      - run: npm ci
+      - run: npm test -- --coverage
+  
+  
   manage_account_tests:
     name: Go — composite/manage-account tests
     runs-on: ubuntu-latest
@@ -180,3 +197,19 @@ jobs:
         run: |
           go mod tidy
           go test -v -coverpkg=./... -coverprofile=coverage.out ./test/...
+
+  manage_notification_tests:
+    name: Node — composite/manage-notification tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/services/composite/manage-notification
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/services/composite/manage-notification/package-lock.json
+      - run: npm ci
+      - run: npm test -- --coverage

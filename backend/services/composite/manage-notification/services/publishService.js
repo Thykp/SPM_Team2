@@ -133,7 +133,11 @@ async function publishDeadlineReminder({ taskId, userId, deadline, reminderDays 
 
   await removeDeadlineReminders(taskId, userId);
 
-  for (const day of reminderDays) {
+  // Filter out invalid reminder days
+  const validReminderDays = reminderDays.filter(day => typeof day === "number" && !isNaN(day) && day > 0);
+  if (validReminderDays.length === 0) return;
+
+  for (const day of validReminderDays) {
     const notifyAt = deadlineDate.getTime() - day * 24 * 60 * 60 * 1000;
 
     const payload = {
@@ -156,9 +160,11 @@ async function publishDeadlineReminder({ taskId, userId, deadline, reminderDays 
   }
 }
 
+
 /**
  * Publishes resource-collaboration notifications.
  * since delivered immediately, no need to remove from notifications
+ * Update with default deadline reminders too
  */
 async function publishAddedToResource( resourceType, resourceId, collaboratorIds, resourceContent, addedBy ) {
   const payload = {
@@ -173,6 +179,39 @@ async function publishAddedToResource( resourceType, resourceId, collaboratorIds
   };
 
   await pushToRedis("added", payload, payload.notify_at);
+
+  // push update reminders to redis
+  const reminderDays = [];
+  console.info(`[publishAddedReminder] Setting reminder for ${resourceType}, ${resourceContent} on ${resourceContent.deadline}`);
+  if (resourceType === "task") {
+  // construct reminder array with [1,3,7] default, taking deadline into account
+    const defaultReminderDays = [1, 3, 7];
+    const deadline = new Date(resourceContent.deadline);
+    if (isNaN(deadline.getTime())) return; 
+
+    const now = new Date();
+
+    const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+    defaultReminderDays.forEach((day) => {
+      if (day < daysUntilDeadline) {
+        reminderDays.push(day);
+      }
+    });
+
+    if (reminderDays.length !== 0){
+      const userIdsToNotify = [...collaboratorIds];
+      if (resourceContent.owner) userIdsToNotify.push(resourceContent.owner);
+      console.info(`[publishAddedReminder] Pushing reminders for ${userIdsToNotify}`);
+
+      await Promise.all(
+        userIdsToNotify.map((userId) => {
+          console.info(`[publishAddedReminder] Pushing reminder for ${userId}, ${reminderDays}`);
+          return publishDeadlineReminder({ resourceId, userId, deadline, reminderDays });
+        })
+      );
+    }
+  }
 }
 
 /**
@@ -180,19 +219,19 @@ async function publishAddedToResource( resourceType, resourceId, collaboratorIds
  * logic to update existing frequency is above (updateUserNotifications)
  */
 async function publishUpdate( updateType, resourceId, resourceType, resourceContent, userId, notifyAt, updatedBy ) {
-    const payload = {
-      type: "update",
-      update_type: updateType,
-      resource_id: resourceId,
-      resource_type: resourceType,
-      resource_content: resourceContent,
-      user_id: userId,
-      updated_by: updatedBy,
-      notify_at: notifyAt,
-      original_sent: Date.now(),
-    }
-    await pushToRedis("update", payload, payload.notify_at);
+  const payload = {
+    type: "update",
+    update_type: updateType,
+    resource_id: resourceId,
+    resource_type: resourceType,
+    resource_content: resourceContent,
+    user_id: userId,
+    updated_by: updatedBy,
+    notify_at: notifyAt,
+    original_sent: Date.now(),
   }
+  await pushToRedis("update", payload, payload.notify_at);
+}
 
 
 module.exports = {

@@ -38,6 +38,7 @@ async function processReminderNotification(payload) {
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
 
+  if (taskContent.status == "Completed") return
 
   const highPriority = taskContent.priority > 7;
   const mediumPriority = taskContent.priority > 4 && taskContent.priority <= 7;
@@ -55,7 +56,6 @@ async function processReminderNotification(payload) {
     hour12: true,
     });
   }
-
 
   deadline = formatSingaporeDateTime(taskContent.deadline)
 
@@ -76,6 +76,8 @@ async function processReminderNotification(payload) {
 
   const wsPayload = { ...emailPayload, push };
   broadcastPayload = formatWsReminder(wsPayload)
+  broadcastPayload = { ...broadcastPayload, push };
+
   broadcastToUser(payload.user_id, broadcastPayload); //TODO: decide the content in the notification
 
   postToSupabase({...broadcastPayload, "user_id": payload.user_id})
@@ -91,6 +93,11 @@ async function processAddedNotification(payload){
 
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
+
+  //check payload and format update payload
+  if(payload.resource_content.updated){
+    payload.resource_content = {...payload.resource_content.updated}
+  }
 
   let wsPayload = formatWsAdded(payload)
   wsPayload = { ...wsPayload, push };
@@ -130,11 +137,13 @@ async function processUpdateNotification(payload){
   const { email, delivery_method } = await getUserPreferences(payload.user_id); 
   const push = delivery_method.includes("in-app");
   const emailPref = delivery_method.includes("email");
-  let wsPayloads = formatWsUpdate(payload)
+  let wsPayloads = formatWsUpdate(payload) || []
+  await new Promise((resolve) => {
   let index = 0;
   const interval = setInterval(() => {
     if (index >= wsPayloads.length) {
-      clearInterval(interval); // stop when done
+      clearInterval(interval);
+      resolve()
       return;
     }
 
@@ -145,7 +154,7 @@ async function processUpdateNotification(payload){
     postToSupabase({ ...p, user_id: payload.user_id });
 
     index++;
-  }, 100);
+  }, 100); });
 
 
   if (emailPref) {
@@ -218,7 +227,7 @@ async function handleUpdate(userId, payloads) {
   console.log(JSON.stringify(modifiedPayload));
   console.info("[handler] Batched updates:", JSON.stringify(modifiedPayload, null, 2));
 
-  processUpdateNotification(modifiedPayload);
+  await processUpdateNotification(modifiedPayload);
 }
 
 
@@ -244,10 +253,14 @@ async function handleAddedToResource(payload) {
     isTask = true;
     link = `http://localhost:5173/app?taskName=${resource_content.title}`;
   } 
-  else if (resource_type === 'task' && resource_id !== 'task') {
+  else if (resource_type === 'task' && resource_id !== 'task' && resource_content.project_id !== "") {
+    isProjectSubtask = true;
+    link = `http://localhost:5173/app/project/${resource_content.project_id}`;
+  } 
+  else if (resource_type === 'task' && resource_id !== 'task'){
     isSubtask = true;
     link = `http://localhost:5173/app`;
-  } 
+  }
   else if (resource_type === 'project' && !resource_content.project_id && !resource_content.parent) {
     isProject = true;
     link = `http://localhost:5173/app/project/${resource_content.id}`;
@@ -256,10 +269,10 @@ async function handleAddedToResource(payload) {
     isProjectTask = true;
     link = `http://localhost:5173/app/project/${resource_content.project_id}`;
   } 
-  else if (resource_type === 'project' && resource_content.project_id && resource_content.parent) {
-    isProjectSubtask = true;
-    link = `http://localhost:5173/app/project/${resource_content.project_id}`;
-  }
+  // else if (resource_type === 'project' && resource_content.project_id && resource_content.parent) {
+  //   isProjectSubtask = true;
+  //   link = `http://localhost:5173/app/project/${resource_content.project_id}`;
+  // }
 
   const isTaskLike = isTask || isSubtask || isProjectTask || isProjectSubtask;
   if (isTaskLike && typeof resource_content.priority === 'number') {
@@ -301,4 +314,6 @@ module.exports = {
   handleDeadlineReminder,
   handleUpdate,
   handleAddedToResource,
+  getUserPreferences,
+  getTaskDetails
 };
