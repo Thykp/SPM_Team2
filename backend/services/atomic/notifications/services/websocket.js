@@ -84,25 +84,22 @@ function formatWsAdded(payload) {
   let description = ""
   if (payload.resource_content.status) description += ` (${payload.resource_content.status}) `
   
-  description += `${payload.addedBy} has added you to ${payload.resource_content.title || payload.resource_content.id} to collaborate.`;
+  description += `${payload.addedBy} has added you to ${payload.resource_content.title} to collaborate.`;
 
 
   const notificationId = crypto.randomUUID();; 
 
-  console.info(`[FormatWsAdded]: ${JSON.stringify({ title: `Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
+  console.info(`[FormatWsAdded]: ${JSON.stringify({ title: `Added to ${resourceLabel}: ${payload.resource_content.title}`,
     description,
     link: payload.link, })}`);
 
   return {
     id: notificationId,
-    title: `${priority} Added to ${resourceLabel}: ${payload.resource_content.title || payload.resource_content.id}`,
+    title: `${priority} Added to ${resourceLabel}: ${payload.resource_content.title}`,
     description,
     link: payload.link,
   };
 }
-
-
-
 
 
 function formatWsUpdate(batchedResources) {
@@ -144,7 +141,7 @@ function formatWsUpdate(batchedResources) {
       let link = ""
 
       let titlePrefix;
-      if (updated.project_id !== "" || updated.project_id !== null){
+      if (updated.project_id !== null){
         if (updated.parent == null){
           titlePrefix = `Project Task ${updated.title} ${task.update_type} by: ${task.updated_by}`;
           link = `/app/project/${updated.project_id}`
