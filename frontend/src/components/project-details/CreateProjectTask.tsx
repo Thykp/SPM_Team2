@@ -325,9 +325,8 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
           return; // or handle the error
         }
 
-        const taskId: string = matchingTask.id; // ✅ safe
+        const taskId: string = matchingTask.id;
       
-
         // Notify collaborators upon creation
         const collaboratorsToNotify = selectedCollaborators;
         if (collaboratorsToNotify.length > 0) {

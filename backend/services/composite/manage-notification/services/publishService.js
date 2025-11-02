@@ -218,7 +218,7 @@ async function publishAddedToResource( resourceType, resourceId, collaboratorIds
  * Publishes update notifications.
  * logic to update existing frequency is above (updateUserNotifications)
  */
-async function publishUpdate( updateType, resourceId, resourceType, resourceContent, userId, notifyAt, updatedBy ) {
+async function publishUpdate(updateType, resourceId, resourceType, resourceContent, userId, notifyAt, updatedBy) {
   const payload = {
     type: "update",
     update_type: updateType,
@@ -229,9 +229,46 @@ async function publishUpdate( updateType, resourceId, resourceType, resourceCont
     updated_by: updatedBy,
     notify_at: notifyAt,
     original_sent: Date.now(),
-  }
+  };
+
   await pushToRedis("update", payload, payload.notify_at);
+
+  if (resourceType === "task") {
+    const deadlineStr = resourceContent.updated?.deadline;
+    const deadline = new Date(deadlineStr);
+    if (!isNaN(deadline.getTime())) {
+      const defaultReminderDays = [1, 3, 7];
+      const now = new Date();
+      const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      const reminderDays = defaultReminderDays.filter((day) => day < daysUntilDeadline);
+      if (reminderDays.length !== 0) {
+        const userIdsToNotify = [
+          ...(resourceContent.updated?.collaborators || []),
+        ];
+        if (resourceContent.updated?.owner) userIdsToNotify.push(resourceContent.updated.owner);
+
+        console.info(`[publishUpdate] Pushing deadline reminders for ${userIdsToNotify}`);
+
+        await Promise.all(
+          userIdsToNotify.map((userId) => {
+            console.info(
+              `[publishUpdate] Pushing reminder for ${userId}, days: ${reminderDays}, task: ${resourceId}`
+            );
+            return publishDeadlineReminder({
+              taskId: resourceId,
+              userId,
+              deadline: deadline.toISOString(),
+              reminderDays,
+              username: updatedBy || "Unknown User",
+            });
+          })
+        );
+      }
+    }
+  }
 }
+
 
 
 module.exports = {
