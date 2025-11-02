@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Toast } from "./toast";
 import type { ToastData } from "./toast";
 
-const MAX_VISIBLE = 2; // maximum toasts shown at once
+const MAX_VISIBLE = 2;
 
 export function ToastContainer() {
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -11,26 +11,27 @@ export function ToastContainer() {
 
   const addToast = useCallback((toast: ToastData) => {
     setToasts(prev => {
-      if (prev.length < MAX_VISIBLE) {
-        return [toast, ...prev];
-      } else {
-        setQueue(q => [...q, toast]);
-        return prev;
-      }
+      setQueue(q => {
+        const isDuplicate =
+          prev.some(t => t.title === toast.title && t.description === toast.description) ||
+          q.some(t => t.title === toast.title && t.description === toast.description);
+        if (isDuplicate) return q;
+        if (prev.length < MAX_VISIBLE) return q;
+        return [...q, toast];
+      });
+
+      const isDuplicate = prev.some(t => t.title === toast.title && t.description === toast.description);
+      if (isDuplicate) return prev;
+
+      if (prev.length < MAX_VISIBLE) return [toast, ...prev];
+      return prev;
     });
   }, []);
 
   const removeToast = useCallback((id: string) => {
-    setToasts(prev => {
-      const updated = prev.filter(t => t.id !== id);
-      if (queue.length > 0) {
-        const [next, ...rest] = queue;
-        setQueue(rest);
-        return [next, ...updated];
-      }
-      return updated;
-    });
-  }, [queue]);
+    setToasts(prev => prev.filter(t => t.id !== id));
+    setQueue(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined" && !(window as any).addToast) {
@@ -38,7 +39,6 @@ export function ToastContainer() {
     }
   }, [addToast]);
 
-  // Determine visible toasts for "showAll" (optional)
   const visibleToasts = showAll ? [...toasts, ...queue] : toasts;
 
   return (
