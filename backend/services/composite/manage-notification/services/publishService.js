@@ -182,7 +182,7 @@ async function publishAddedToResource( resourceType, resourceId, collaboratorIds
 
   // push update reminders to redis
   const reminderDays = [];
-  console.info(`[publishAddedReminder] Setting reminder for ${resourceType}, ${resourceContent} on ${resourceContent.deadline}`);
+  console.info(`[publishAddedReminder] Setting reminder for ${resourceType}, on ${resourceContent.deadline}`);
   if (resourceType === "task") {
   // construct reminder array with [1,3,7] default, taking deadline into account
     const defaultReminderDays = [1, 3, 7];
@@ -206,8 +206,8 @@ async function publishAddedToResource( resourceType, resourceId, collaboratorIds
 
       await Promise.all(
         userIdsToNotify.map((userId) => {
-          console.info(`[publishAddedReminder] Pushing reminder for ${userId}, ${reminderDays}`);
-          return publishDeadlineReminder({ resourceId, userId, deadline, reminderDays });
+          console.info(`[publishAddedReminder] Pushing reminder for ${userId}, ${reminderDays} for task ${resourceId}`);
+          return publishDeadlineReminder({ taskId: resourceId, userId, deadline, reminderDays });
         })
       );
     }

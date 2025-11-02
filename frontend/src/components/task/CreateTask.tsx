@@ -168,9 +168,13 @@ const CreateTask: React.FC<CreateTaskProps> = ({ userId, onTaskCreated, onClose 
       await TaskApi.createTask(taskData);
       onTaskCreated();
 
+      const userTasks = await TaskApi.getTasksByUserId(newTask.owner);
+      const matchingTask = userTasks.filter((t) => t.title === newTask.title)
+      const taskId = matchingTask[0].id;
+
       await NotificationApi.publishAddedToResource({
         resourceType: "task",
-        resourceId: "task",
+        resourceId: taskId,
         collaboratorIds: taskData.collaborators,
         resourceContent: { ...taskData },
         addedBy: profile?.display_name || "Unknown User",
