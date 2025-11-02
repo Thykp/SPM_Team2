@@ -544,6 +544,7 @@ export function TaskDetail({currentTask, isOpen, onClose, parentTask, onNavigate
               currentUserId={user?.id || ""}
               parentTaskCollaborators={currentTask?.collaborators || []} // Pass parent task collaborators
               parentTaskOwnerId={currentTask?.owner}
+              parentTaskDeadline={currentTask?.deadline || null} // Pass parent task deadline for validation
               onClose={() => setEditingSubtask(null)} // Close the edit modal
               onTaskUpdated={() => {
                 setEditingSubtask(null); // Close the modal
