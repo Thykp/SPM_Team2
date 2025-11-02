@@ -66,12 +66,13 @@ interface EditTaskProps {
   currentUserId: string; // The current user's ID
   parentTaskCollaborators?: string[]; // Collaborators from the parent task (optional)
   parentTaskOwnerId?: string | null;
+  parentTaskDeadline?: string | null; // Parent task deadline for validation (optional)
   projectId?: string | null; // The project ID (optional)
   onClose: () => void;
   onTaskUpdated?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, parentTaskOwnerId, projectId, onClose, onTaskUpdated }) => {
+const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCollaborators, parentTaskOwnerId, parentTaskDeadline, projectId, onClose, onTaskUpdated }) => {
   const { profile } = useAuth();
   const [originalCollaborators, setOriginalCollaborators] = useState<string[]>([]);
   const [originalTask, setOriginalTask] = useState<LocalTask>();
@@ -84,6 +85,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
   const [currentUser, setCurrentUser] = useState<UserRow | null>(null);
   const [error, setError] = useState<string | null>(null); // State to store error messages
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
+  const [parentDeadline, setParentDeadline] = useState<string | null>(parentTaskDeadline || null);
   const isOwner = task?.owner === currentUserId;
 
 
@@ -104,6 +106,16 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
           const originalOwner = allUsers.find((user) => user.id === data.owner);
           if (originalOwner) {
             setCurrentUser(originalOwner); // Store the original owner
+          }
+        }
+
+        // If this is a subtask and parent deadline wasn't provided, fetch parent task
+        if (data.parent && !parentTaskDeadline) {
+          try {
+            const parentTaskData = await TaskApi.getTaskByIdWithOwner(data.parent);
+            setParentDeadline(parentTaskData.deadline);
+          } catch (error) {
+            console.error("Error fetching parent task:", error);
           }
         }
       } catch (error) {
@@ -128,7 +140,14 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
 
     fetchUsers();
     fetchTask();
-  }, [taskId]);
+  }, [taskId, parentTaskDeadline]);
+
+  // Update parent deadline when prop changes
+  useEffect(() => {
+    if (parentTaskDeadline) {
+      setParentDeadline(parentTaskDeadline);
+    }
+  }, [parentTaskDeadline]);
 
   useEffect(() => {
     const fetchAssignableUsers = async () => {
@@ -224,7 +243,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
     };
 
     fetchAssignableUsers();
-  }, [currentUserId, task, currentUser, parentTaskCollaborators]); // Add `parentTaskCollaborators` as a dependency
+  }, [currentUserId, task, currentUser, parentTaskCollaborators, parentTaskOwnerId]); // Add dependencies
 
   const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,6 +261,25 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
         setLoading(false);
         return;
       }
+
+      // Validate deadline against parent task deadline if this is a subtask
+      if (parentDeadline && task.parent) {
+        const parentDeadlineDate = new Date(parentDeadline);
+        if (parsedDeadline > parentDeadlineDate) {
+          setDeadlineError("Subtask deadline cannot be after parent task deadline");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Validate deadline is not in the past
+      const now = new Date();
+      if (parsedDeadline < now) {
+        setDeadlineError("Deadline cannot be in the past");
+        setLoading(false);
+        return;
+      }
+
       const utcDeadline = parsedDeadline.toISOString();
 
       // Call the API to update the task
@@ -515,13 +553,17 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
                 min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
                   .toISOString()
                   .slice(0, 16)}
+                max={parentDeadline ? safeFormatToLocalInput(parentDeadline) : undefined}
                 value={formatToLocalDatetime(task.deadline)}
                 onChange={(e) => {
                   const selectedDate = new Date(e.target.value);
                   const now = new Date();
+                  const parentDeadlineDate = parentDeadline ? new Date(parentDeadline) : null;
 
                   if (selectedDate < now) {
                     setDeadlineError("Deadline cannot be in the past");
+                  } else if (parentDeadlineDate && selectedDate > parentDeadlineDate) {
+                    setDeadlineError("Subtask deadline cannot be after parent task deadline");
                   } else if (isNaN(selectedDate.getTime())) {
                     setDeadlineError("Please enter a valid deadline.");
                   } else {
@@ -660,7 +702,7 @@ const EditTask: React.FC<EditTaskProps> = ({ taskId, currentUserId, parentTaskCo
               <Button
                 type="submit"
                 className="flex-1 h-11"
-                disabled={!task.title.trim() || !!deadlineError}
+                disabled={!task.title.trim() || !!deadlineError || loading}
               >
                 {loading ? "Updating..." : "Update Task"}
               </Button>
