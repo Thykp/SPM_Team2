@@ -248,31 +248,28 @@ async function handleAddedToResource(payload) {
   let isMediumPriority = false;
   let isLowPriority = false;
   let link = '';
-
-  if (resource_type === 'task' && resource_id === 'task') {
-    isTask = true;
-    link = `http://localhost:5173/app?taskName=${resource_content.title}`;
-  } 
-  else if (resource_type === 'task' && resource_id !== 'task' && resource_content.project_id !== "") {
-    isProjectSubtask = true;
-    link = `http://localhost:5173/app/project/${resource_content.project_id}`;
-  } 
-  else if (resource_type === 'task' && resource_id !== 'task'){
-    isSubtask = true;
-    link = `http://localhost:5173/app`;
-  }
-  else if (resource_type === 'project' && !resource_content.project_id && !resource_content.parent) {
+  
+  if (resource_type === "project") {
     isProject = true;
     link = `http://localhost:5173/app/project/${resource_content.id}`;
-  } 
-  else if (resource_type === 'project' && resource_content.project_id && !resource_content.parent) {
-    isProjectTask = true;
-    link = `http://localhost:5173/app/project/${resource_content.project_id}`;
-  } 
-  // else if (resource_type === 'project' && resource_content.project_id && resource_content.parent) {
-  //   isProjectSubtask = true;
-  //   link = `http://localhost:5173/app/project/${resource_content.project_id}`;
-  // }
+  } else if (resource_type === "task") {
+    const hasProjectId = resource_content.project_id && resource_content.project_id.trim() !== "";
+    const hasParent = !!resource_content.parent;
+
+    if (hasProjectId && hasParent) {
+      isProjectSubtask = true;
+      link = `http://localhost:5173/app/project/${resource_content.project_id}`;
+    } else if (hasProjectId && !hasParent) {
+      isProjectTask = true;
+      link = `http://localhost:5173/app/project/${resource_content.project_id}`;
+    } else if (!hasProjectId && hasParent) {
+      isSubtask = true;
+      link = `http://localhost:5173/app`;
+    } else {
+      isTask = true;
+      link = `http://localhost:5173/app?taskName=${resource_content.title}`;
+    }
+  }
 
   const isTaskLike = isTask || isSubtask || isProjectTask || isProjectSubtask;
   if (isTaskLike && typeof resource_content.priority === 'number') {

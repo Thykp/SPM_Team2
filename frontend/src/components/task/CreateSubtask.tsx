@@ -196,9 +196,18 @@ const CreateSubtask: React.FC<CreateSubtaskProps> = ({
         owner: currentUserId, // Reset to the current user
       });
 
+      let subtasks: TaskDTO[] = [];
+
+      if (subtaskData.parent) {
+        // Fetch all existing subtasks of the parent
+        subtasks = await TaskAPI.getSubTaskOfTask(subtaskData.parent);
+      }
+
+      const matchingSubtask = subtasks.filter(t => t.title === subtaskData.title)
+
       await NotificationApi.publishAddedToResource({
         resourceType: "task",
-        resourceId: subtaskData.title,
+        resourceId: matchingSubtask[0].id,
         collaboratorIds: subtaskData.collaborators.filter(id => id !== profile?.id),
         resourceContent: { ...subtaskData },
         addedBy: profile?.display_name || "Unknown User",
