@@ -299,11 +299,7 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       // Deadline validation is handled by inline validation
 
       // If the current user assigns the task to someone else, add them to collaborators
-      let finalCollaborators = selectedCollaborators;
-      if (selectedOwner && selectedOwner !== userId && !selectedCollaborators.includes(userId)) {
-        finalCollaborators = [...selectedCollaborators, userId];
-      }
-
+      const finalCollaborators = selectedCollaborators; // Only use explicitly selected collaborators
       const taskData: TaskPostRequestDto = {
         title: newTask.title,
         description: newTask.description,
@@ -320,26 +316,40 @@ const CreateProjectTask: React.FC<CreateProjectTaskProps> = ({
       onTaskCreated(createdTask);
       setOpen(false);
 
-      // Notify collaborators upon creation
-      if (selectedCollaborators.length > 0) {
-        const payload = {
-          resourceType: "project",
-          resourceId: String(taskData.project_id),
-          resourceContent: { ...taskData },
-          collaboratorIds: taskData.collaborators,
-          addedBy: profile?.display_name || "Unknown User",
-        };
+      if (taskData.owner) {
+        const userTasks = await TaskAPI.getTasksByUserId(taskData.owner)
+        const matchingTask = userTasks.find((t) => t.title === newTask.title);
 
-        console.log("Publishing notifications for project task creation:", payload);
-
-        try {
-          const notifResponse = await NotificationAPI.publishAddedToResource(payload);
-          console.log("Notification published upon creating project task:", notifResponse);
-        } catch (notifErr) {
-          console.error("Failed to publish notification upon creating project task:", notifErr);
+        if (!matchingTask?.id) {
+          console.error("Failed to find created task ID");
+          return; // or handle the error
         }
-      } else {
-        console.log("No collaborators selected — no notification sent upon creating project task.");
+
+        const taskId: string = matchingTask.id; // ✅ safe
+      
+
+        // Notify collaborators upon creation
+        const collaboratorsToNotify = selectedCollaborators;
+        if (collaboratorsToNotify.length > 0) {
+          const payload = {
+            resourceType: "task",  // same type as CreateTask
+            resourceId: taskId,
+            resourceContent: { ...taskData },
+            collaboratorIds: collaboratorsToNotify,
+            addedBy: profile?.display_name || "Unknown User",
+          };
+
+          console.log("Publishing notifications for project task creation:", payload);
+
+          try {
+            const notifResponse = await NotificationAPI.publishAddedToResource(payload);
+            console.log("Notification published upon creating project task:", notifResponse);
+          } catch (notifErr) {
+            console.error("Failed to publish notification upon creating project task:", notifErr);
+          }
+        } else {
+          console.log("No collaborators selected — no notification sent upon creating project task.");
+        }
       }
       resetForm();
     } catch (err: any) {
