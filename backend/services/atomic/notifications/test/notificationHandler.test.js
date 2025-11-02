@@ -97,9 +97,10 @@ describe("Notification Handler", () => {
             { update_type: "updated", resource_type: "task", resource_id: null },
         ];
 
+        websocket.formatWsUpdate.mockReturnValue([]);
         await handleUpdate("user1", payloads);
 
-        // Expect formatWsUpdate to be called with empty batched resources
+        // formatWsUpdate called with batched_resources empty
         expect(websocket.formatWsUpdate).toHaveBeenCalledWith(expect.objectContaining({ batched_resources: { project: [], task: [] } }));
         expect(websocket.broadcastToUser).not.toHaveBeenCalled();
     });
@@ -133,7 +134,7 @@ describe("Notification Handler", () => {
     });
 
     it("processes added notification for each collaborator", async () => {
-        const payload = { collaborator_ids: ["user1","user2"], resource_type: "task", resource_id: "task", resource_content: { title: "Task1", priority: 8 } };
+        const payload = { collaborator_ids: ["user1","user2"], resource_type: "task", resource_id: "task", resource_content: { title: "Task1", priority: 8, parent: null } };
         await handleAddedToResource(payload);
         expect(websocket.formatWsAdded).toHaveBeenCalledTimes(2);
         expect(websocket.broadcastToUser).toHaveBeenCalledTimes(2);
@@ -158,11 +159,11 @@ describe("Notification Handler", () => {
     it("handles project, project task, project subtask, subtask, and task links correctly", async () => {
         const baseUser = ["user1"];
         
-        const taskPayload = { collaborator_ids: baseUser, resource_type: "task", resource_id: "task", resource_content: { title: "Task" } };
+        const taskPayload = { collaborator_ids: baseUser, resource_type: "task", resource_id: "task1", resource_content: { title: "Task", priority: 5 } };
         await handleAddedToResource(taskPayload);
         expect(websocket.formatWsAdded).toHaveBeenCalledWith(expect.objectContaining({ isTask: true }));
 
-        const subtaskPayload = { collaborator_ids: baseUser, resource_type: "task", resource_id: "x", resource_content: { project_id: "" } };
+        const subtaskPayload = { collaborator_ids: baseUser, resource_type: "task", resource_id: "subtask1", resource_content: { parent: "t0" } };
         await handleAddedToResource(subtaskPayload);
         expect(websocket.formatWsAdded).toHaveBeenCalledWith(expect.objectContaining({ isSubtask: true }));
 
@@ -170,11 +171,11 @@ describe("Notification Handler", () => {
         await handleAddedToResource(projectPayload);
         expect(websocket.formatWsAdded).toHaveBeenCalledWith(expect.objectContaining({ isProject: true }));
 
-        const projectTaskPayload = { collaborator_ids: baseUser, resource_type: "project", resource_id: "p2", resource_content: { project_id: "p2" } };
+        const projectTaskPayload = { collaborator_ids: baseUser, resource_type: "task", resource_id: "t2", resource_content: { project_id: "p2" } };
         await handleAddedToResource(projectTaskPayload);
         expect(websocket.formatWsAdded).toHaveBeenCalledWith(expect.objectContaining({ isProjectTask: true }));
 
-        const projectSubtaskPayload = { collaborator_ids: baseUser, resource_type: "task", resource_id: "x", resource_content: { project_id: "p3" } };
+        const projectSubtaskPayload = { collaborator_ids: baseUser, resource_type: "task", resource_id: "t3", resource_content: { project_id: "p3", parent: "t0" } };
         await handleAddedToResource(projectSubtaskPayload);
         expect(websocket.formatWsAdded).toHaveBeenCalledWith(expect.objectContaining({ isProjectSubtask: true }));
     });
@@ -206,7 +207,6 @@ describe("Notification Handler", () => {
 
         await handleUpdate("user1", payloads);
 
-        // Check only first argument to console.error
         expect(consoleSpy.mock.calls[0][0]).toContain("[processUpdateNotification] Failed:");
         consoleSpy.mockRestore();
     });
