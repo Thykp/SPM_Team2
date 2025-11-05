@@ -4,8 +4,6 @@
 IDE (Any) <br>
 Node Package Manager (npm) <br>
 Github Desktop (If you prefer else CLI) <br>
-Terraform <br>
-Kubectl <br>
 Docker <br>
 
 ## Instructions
@@ -34,7 +32,7 @@ Switch to your branch before starting to code <br>
 <img width="919" height="461" alt="Screenshot 2025-10-23 at 1 23 06 PM" src="https://github.com/user-attachments/assets/05463f96-56df-413b-8ea8-065cc42adb67" />
 
 
-## DevOps CI/CD Pipelines
+## CI Pipeline
 ### Key Workflows
 - Merge to main
 
@@ -90,10 +88,9 @@ Switch to your branch before starting to code <br>
 
 <p align="center"><strong>Storage Solutions</strong></p>  
 <p align="center">
-<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/b/bc/Amazon-S3-Logo.svg" alt="Google Cloud Storage" width="40"/></a>&nbsp;&nbsp;
 <a href="https://supabase.com/"><img src="https://www.vectorlogo.zone/logos/supabase/supabase-icon.svg" alt="Supabase" width="40" /></a>&nbsp;&nbsp;
 <br>
-<i>S3 · Supabase</i>
+<i>Supabase</i>
 </p>
 <br> 
 
@@ -105,20 +102,12 @@ Switch to your branch before starting to code <br>
 </p>
 <br> 
 
-<p align="center"><strong>Cloud Services</strong></p>
-<p align="center">
-<a href="https://cloud.google.com/storage/"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg" alt="Amazon Web Services" width="70"/></a>&nbsp;&nbsp;
-<br>
-<i>Amazon Web Services</i>
-</p> 
-<br>
 
 <p align="center"><strong>Inter-service Communications</strong></p>
 <p align="center">
-<a href="https://grpc.io/"><img src="https://grpc.io/img/logos/grpc-icon-color.png" alt="gRPC" width="60"/></a>&nbsp;&nbsp;
 <a href="https://restfulapi.net/"><img src="https://keenethics.com/wp-content/uploads/2022/01/rest-api-1.svg" alt="REST API" width="100"/></a>
 <br>
-<i>gRPC · REST API</i>
+<i>REST API</i>
 </p> 
 <br>
 
@@ -126,23 +115,18 @@ Switch to your branch before starting to code <br>
 <p align="center">
 <a href="https://github.com/features/actions"><img src="https://github.com/user-attachments/assets/84046b86-7745-4ddd-8c36-b39b6a9ead91" alt="GitHub Actions" width="60"/></a>&nbsp;&nbsp;
 <a href="https://grafana.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/e/e6/Sonarqube-48x200.png" alt="SonarQube" width="130"/></a>&nbsp;&nbsp;
-<a href="https://grafana.com/"><img src="https://github.com/user-attachments/assets/cd9f1fa6-5410-4407-81b3-d7cc28c79a75" alt="Checkov" width="100"/></a>&nbsp;&nbsp;
-<a href="https://grafana.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a1/Grafana_logo.svg" alt="Grafana" width="60"/></a>&nbsp;&nbsp;
-<a href="https://prometheus.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/3/38/Prometheus_software_logo.svg" alt="Prometheus" width="60"/></a>&nbsp;&nbsp;
-<a href="https://www.terraform.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Terraform_Logo.svg" alt="Terraform" width="150"/></a>&nbsp;&nbsp;
 <br>
-<i>Github Actions · SonarQube · Checkov · Grafana · Prometheus · Terraform</i>
+<i>Github Actions · SonarQube</i>
 </p> 
 <br>
 
 <p align="center"><strong>Other Technologies</strong></p>
 <p align="center">
 <a href="https://www.docker.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Docker_%28container_engine%29_logo.svg" alt="Docker" width="150"/></a>&nbsp;&nbsp;
-<a href="https://kubernetes.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/6/67/Kubernetes_logo.svg" alt="Kubernetes" width="180"/></a>&nbsp;&nbsp;
 <a href="https://socket.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Socket-io.svg" alt="Socket.io" width="40"/></a>&nbsp;&nbsp;
 </p>
 <p align="center">
-<i>Docker Compose · Docker Hub · Kubernetes · Socket.io</i>
+<i>Docker Compose · Docker Hub · Socket.io</i>
 </p>
 <br> 
 
@@ -153,12 +137,12 @@ Switch to your branch before starting to code <br>
 <div align="center">
     <table>
         <tr>
-            <th><a href="https://www.linkedin.com/in/ryanbangras/">Phoebe</a></th>
-            <th><a href="https://www.linkedin.com/in/saurabh-maskara/">Yao Hui</a></th>
-            <th><a href="https://www.linkedin.com/in/saurabh-maskara/">Yu Feng</a></th>
+            <th><a href="https://www.linkedin.com/in/phoebeneo/">Phoebe</a></th>
+            <th><a href="https://www.linkedin.com/in/wongyaohui/">Yao Hui</a></th>
+            <th><a href="https://www.linkedin.com/in/yu-feng-leong/">Yu Feng</a></th>
             <th><a href="https://www.linkedin.com/in/kendrick-poon/">Kendrick</a></th>
-            <th><a href="https://www.linkedin.com/in/kevin-tan-513a9b207/">Utkarsh</a></th>
-            <th><a href="https://www.linkedin.com/in/ewan-lim-chee-chong/">Gerald</a></th>
+            <th><a href="https://www.linkedin.com/in/utkarsh-tayal24/">Utkarsh</a></th>
+            <th><a href="https://www.linkedin.com/in/gerald-chee-si-hao/">Gerald</a></th>
         </tr>
         <!-- <tr>
             <td><img src="https://github.com/user-attachments/assets/80d01dda-0d39-4648-b695-5ed0367d2777" alt="Ryan" width="120" height="120" style="display:block; margin:0 auto;"></td>
